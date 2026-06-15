@@ -1,0 +1,35 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: eclipse-worker
+  datasource:
+    url: jdbc:mysql://localhost:3306/eclipse?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    username: root
+    password: eclipse123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  batch:
+    job:
+      enabled: false        # 시작 시 자동 실행 방지 — Scheduler가 트리거
+    jdbc:
+      initialize-schema: always   # Spring Batch 메타데이터 테이블 자동 생성
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        options:
+          model: claude-haiku-4-5-20251001  # 요약 작업은 Haiku로 비용 절감
+          temperature: 0.1
+          max-tokens: 512
+
+logging:
+  level:
+    com.shinhan.eclipse: INFO

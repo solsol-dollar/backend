@@ -1,0 +1,11 @@
+package com.shinhan.eclipse.worker.dto;
+
+import java.time.LocalDateTime;
+
+public record NewsItem(
+        Long ipoId,
+        String title,
+        String url,
+        String source,
+        LocalDateTime publishedAt
+) {}

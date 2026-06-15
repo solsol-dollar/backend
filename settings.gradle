@@ -1,0 +1,8 @@
+rootProject.name = 'eclipse'
+include 'common'
+include 'domain'
+include 'ledger'
+include 'service'
+include 'ledger-app'
+include 'service-app'
+include 'worker-app'
