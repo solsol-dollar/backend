@@ -16,6 +16,6 @@ out/
 .DS_Store
 ### Env
 .env
-*.env
+*.env.local
 application-*.yml
 !application-local.yml

@@ -3,12 +3,12 @@ services:
     image: mysql:8.0
     container_name: eclipse_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: eclipse123
-      MYSQL_DATABASE: eclipse
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-eclipse}
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - eclipse_mysql_data:/var/lib/mysql
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
