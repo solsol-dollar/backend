@@ -1,5 +1,7 @@
 package com.shinhan.eclipse.service.securities.internal;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.holding.HoldingLot;
@@ -12,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.NoSuchElementException;
 
 @Slf4j
 @Service
@@ -31,10 +32,12 @@ class TradeOrderServiceImpl implements TradeOrderService {
     public TradeOrderResponse placeOrder(Long userId, TradeOrderRequest req) {
         InvestmentProduct product = productRepository.findById(req.productId())
                 .filter(p -> "ACTIVE".equals(p.getStatus()))
-                .orElseThrow(() -> new NoSuchElementException("종목을 찾을 수 없습니다: " + req.productId()));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND,
+                        "종목을 찾을 수 없습니다: " + req.productId()));
 
         FinancialAccount account = accountRepository.findByIdAndUserId(req.accountId(), userId)
-                .orElseThrow(() -> new NoSuchElementException("계좌를 찾을 수 없습니다: " + req.accountId()));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND,
+                        "계좌를 찾을 수 없습니다: " + req.accountId()));
 
         BigDecimal executedPrice = resolvePrice(req, product);
         BigDecimal executedAmount = executedPrice.multiply(BigDecimal.valueOf(req.quantity()));
@@ -42,7 +45,8 @@ class TradeOrderServiceImpl implements TradeOrderService {
         return switch (req.orderSide()) {
             case "BUY"  -> executeBuy(userId, product, account, req, executedPrice, executedAmount);
             case "SELL" -> executeSell(userId, product, account, req, executedPrice, executedAmount);
-            default     -> throw new IllegalArgumentException("유효하지 않은 주문 방향: " + req.orderSide());
+            default     -> throw new BusinessException(ErrorCode.INVALID_ORDER,
+                    "유효하지 않은 주문 방향: " + req.orderSide());
         };
     }
 
@@ -53,7 +57,7 @@ class TradeOrderServiceImpl implements TradeOrderService {
         return quoteCache.get(product.getTicker())
                 .map(QuoteSnapshot::price)
                 .filter(p -> p.compareTo(BigDecimal.ZERO) > 0)
-                .orElseThrow(() -> new IllegalStateException("현재가를 조회할 수 없습니다 (장 외 시간). 가격을 직접 입력해 주세요."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.QUOTE_UNAVAILABLE));
     }
 
     private TradeOrderResponse executeBuy(Long userId, InvestmentProduct product,
@@ -88,8 +92,13 @@ class TradeOrderServiceImpl implements TradeOrderService {
                                            BigDecimal executedPrice, BigDecimal executedAmount) {
         Holding holding = holdingRepository
                 .findByUserIdAndProductId(userId, product.getId())
-                .orElseThrow(() -> new IllegalStateException("해당 종목을 보유하고 있지 않습니다: " + product.getTicker()));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSUFFICIENT_HOLDING,
+                        "해당 종목을 보유하고 있지 않습니다: " + product.getTicker()));
 
+        if (holding.getTotalQuantity() < req.quantity()) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_HOLDING,
+                    "보유 수량 부족 (보유: %d, 요청: %d)".formatted(holding.getTotalQuantity(), req.quantity()));
+        }
         holding.addSell(req.quantity());
         holdingRepository.save(holding);
 

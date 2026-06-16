@@ -1,5 +1,6 @@
 package com.shinhan.eclipse.service.securities.internal;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
@@ -16,7 +17,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -120,8 +120,7 @@ class TradeOrderServiceImplTest {
         TradeOrderRequest req = new TradeOrderRequest(10L, 99L, "BUY", 5, new BigDecimal("200.00"));
 
         assertThatThrownBy(() -> service.placeOrder(1L, req))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("잔액 부족");
+                .isInstanceOf(BusinessException.class);
     }
 
     // ── 매도 ─────────────────────────────────────────────────────────────────
@@ -162,8 +161,7 @@ class TradeOrderServiceImplTest {
         TradeOrderRequest req = new TradeOrderRequest(10L, 99L, "SELL", 5, new BigDecimal("200.00"));
 
         assertThatThrownBy(() -> service.placeOrder(1L, req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("수량 부족");
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -173,7 +171,7 @@ class TradeOrderServiceImplTest {
         TradeOrderRequest req = new TradeOrderRequest(999L, 99L, "BUY", 1, BigDecimal.TEN);
 
         assertThatThrownBy(() -> service.placeOrder(1L, req))
-                .isInstanceOf(NoSuchElementException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test

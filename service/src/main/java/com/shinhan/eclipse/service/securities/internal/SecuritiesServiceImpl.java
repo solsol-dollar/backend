@@ -1,5 +1,7 @@
 package com.shinhan.eclipse.service.securities.internal;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
 import com.shinhan.eclipse.domain.user.InvestmentProfile;
@@ -16,7 +18,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Slf4j
@@ -45,7 +46,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
     @Override
     public ProductDetail getProduct(Long id) {
         InvestmentProduct product = productRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("종목을 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "종목을 찾을 수 없습니다: " + id));
 
         QuoteSnapshot quote = quoteCache.get(product.getTicker()).orElseGet(() -> {
             // Redis 미스 시 REST 폴백 (장 중에만 데이터 반환)
@@ -69,7 +70,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
     @Override
     public OrderBookResponse getOrderBook(Long id) {
         InvestmentProduct product = productRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("종목을 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "종목을 찾을 수 없습니다: " + id));
 
         return lsRestClient.getOrderBook(product.getTicker(), product.getExchangeName())
                 .map(dto -> {

@@ -1,5 +1,6 @@
 package com.shinhan.eclipse.service.securities.internal;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
 import com.shinhan.eclipse.service.mypage.MyPageService;
@@ -14,7 +15,6 @@ import org.springframework.ai.chat.client.ChatClient;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -105,7 +105,7 @@ class SecuritiesServiceImplTest {
         given(productRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getProduct(999L))
-                .isInstanceOf(NoSuchElementException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     // ── SEC-003: getOrderBook ────────────────────────────────────────────────
