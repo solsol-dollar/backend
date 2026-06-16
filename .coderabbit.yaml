@@ -1,0 +1,122 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "ko-KR"
+
+reviews:
+  profile: "chill"
+  auto_review:
+    enabled: true
+    drafts: false
+
+  # 리뷰 불필요 파일 제외
+  path_filters:
+    - "!**/*.gradle"
+    - "!**/gradle-wrapper.*"
+    - "!.gradle/**"
+    - "!**/generated/**"
+
+  path_instructions:
+    # 전체 Java 파일 공통 규칙
+    - path: "**/*.java"
+      instructions: |
+        아래 프로젝트 컨벤션을 기준으로 리뷰합니다.
+
+        [금액 계산]
+        - 금액(USD, KRW)은 반드시 BigDecimal을 사용합니다. double/float 사용을 금지합니다.
+        - BigDecimal 비교는 == 대신 compareTo()를 사용합니다.
+
+        [예외 처리]
+        - 비즈니스 오류는 BusinessException(ErrorCode)을 사용합니다.
+        - RuntimeException, IllegalArgumentException 등을 직접 throw하지 않습니다.
+        - GlobalExceptionHandler에서 처리되지 않는 새로운 예외 타입을 추가한 경우 핸들러 등록 여부를 확인합니다.
+
+        [응답 형식]
+        - 모든 Controller 응답은 ApiResponse<T>로 감쌉니다.
+        - 성공: ApiResponse.success(data), ApiResponse.success()
+        - 실패: GlobalExceptionHandler에 위임 (직접 에러 응답을 만들지 않음)
+
+        [Lombok]
+        - 의존성 주입은 @RequiredArgsConstructor + final 필드를 사용합니다. @Autowired 금지.
+        - 로깅은 @Slf4j를 사용합니다. System.out.println 금지.
+
+        [트랜잭션]
+        - 쓰기 작업: @Transactional
+        - 읽기 전용 작업: @Transactional(readOnly = true)
+        - @Transactional은 public 메서드에만 적용합니다. private 메서드에는 동작하지 않습니다.
+
+        [사용자 ID]
+        - userId는 X-User-Id 헤더에서 @UserHeader 어노테이션으로 추출합니다.
+        - Controller 파라미터에서 Long userId를 직접 받으면 @UserHeader 사용 여부를 확인합니다.
+
+    # Spring Modulith 모듈 경계 규칙
+    - path: "**/internal/**"
+      instructions: |
+        [모듈 캡슐화]
+        - internal/ 패키지의 클래스는 반드시 package-private (접근제어자 없음)이어야 합니다.
+        - public class로 선언하면 Spring Modulith 경계를 위반합니다.
+        - Repository 인터페이스도 internal/에 위치하며 package-private입니다.
+        - 예: class SubscriptionFacadeImpl implements SubscriptionFacade { ... }
+          (public class가 아님에 주의)
+
+    # Facade 인터페이스 규칙 (internal/ 바깥)
+    - path: "ledger/src/main/java/**"
+      instructions: |
+        [ledger 모듈 역할]
+        - 청약(subscription), 리턴플랜(returnplan), 증권주문(trade), 계좌연동(accountlink) 담당
+        - 자금 이동이 수반되는 모든 작업이 이 모듈에 있어야 합니다.
+        - service 모듈의 클래스를 직접 참조하지 않습니다 (모듈 간 단방향 의존성).
+
+        [Facade 패턴]
+        - 모듈 외부에 노출되는 API는 public interface ({Domain}Facade)로 정의합니다.
+        - 구현체({Domain}FacadeImpl)는 internal/에 위치하며 package-private입니다.
+
+    - path: "service/src/main/java/**"
+      instructions: |
+        [service 모듈 역할]
+        - IPO 탐색, AI Risk Score, 홈 대시보드, 마이페이지, 쉬는 달러 감지 담당
+        - 조회 중심 서비스이며 자금 이동 로직은 포함하지 않습니다.
+        - 금융 계산이 필요한 경우 ledger 모듈 Facade를 호출합니다.
+
+    # Domain 엔티티 규칙
+    - path: "domain/src/main/java/**"
+      instructions: |
+        [domain 모듈 역할]
+        - 순수 JPA 엔티티만 포함합니다. Spring Bean(@Service, @Component)을 두지 않습니다.
+        - 엔티티에 비즈니스 로직이 필요한 경우 정적 팩토리 메서드(static factory method)로 작성합니다.
+          예: TradeOrder.mockFill(...)
+        - Service/Repository에 대한 의존성을 갖지 않습니다.
+        - 모든 엔티티는 BaseEntity를 상속하여 createdAt, updatedAt을 자동 관리합니다.
+
+    # Common 모듈 규칙
+    - path: "common/src/main/java/**"
+      instructions: |
+        [common 모듈 역할]
+        - ApiResponse, BaseEntity, GlobalExceptionHandler, ErrorCode, UserIdArgumentResolver만 위치합니다.
+        - 특정 도메인 로직이나 비즈니스 규칙을 common에 추가하지 않습니다.
+        - ErrorCode 추가 시 코드 체계(C0xx: 공통, 도메인별 prefix 구분)를 따릅니다.
+
+    # Worker 앱 (Spring Batch) 규칙
+    - path: "worker-app/src/main/java/**"
+      instructions: |
+        [worker-app 역할]
+        - Finnhub/외부 API 연동 데이터 수집, AI 요약 배치 처리 담당
+        - Spring Batch Job 구조: Reader → Processor → Writer
+        - 배치 실패 시 재시도 정책(retry)이 설정되어 있는지 확인합니다.
+        - AI API 호출(Claude)은 Processor에서 단건 처리합니다. Writer에 AI 호출이 있으면 지적합니다.
+
+    # AI 관련 코드
+    - path: "**/ai/**"
+      instructions: |
+        - Claude API 호출 결과는 항상 null/empty 체크를 합니다.
+        - 프롬프트에 사용자 입력값이 포함될 경우 프롬프트 인젝션 가능성을 검토합니다.
+        - AI 응답을 그대로 DB에 저장하기 전에 길이/형식 검증이 있는지 확인합니다.
+
+    # 테스트 코드
+    - path: "**/test/**"
+      instructions: |
+        - Spring Modulith 경계 검증 테스트(ModularityTest)가 통과하는 코드인지 확인합니다.
+        - 금액 관련 테스트는 정확한 BigDecimal 값 비교를 사용합니다.
+          예: assertThat(result).isEqualByComparingTo(new BigDecimal("100.00"))
+
+chat:
+  auto_reply: true
