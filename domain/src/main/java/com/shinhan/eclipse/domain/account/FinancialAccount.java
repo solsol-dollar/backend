@@ -48,4 +48,13 @@ public class FinancialAccount extends BaseEntity {
     private Boolean linked;
 
     private LocalDateTime linkedAt;
+
+    public void deductBalance(BigDecimal amount) {
+        if (this.balance.compareTo(amount) < 0) throw new IllegalStateException("잔액 부족");
+        this.balance = this.balance.subtract(amount);
+    }
+
+    public void addBalance(BigDecimal amount) {
+        this.balance = this.balance.add(amount);
+    }
 }
