@@ -42,6 +42,14 @@ ls:
     app-key: ${LS_APP_KEY:}
     app-secret: ${LS_APP_SECRET:}
 
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /api-docs
+
 logging:
   level:
     com.shinhan.eclipse: INFO
