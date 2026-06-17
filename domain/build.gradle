@@ -1,3 +1,4 @@
 dependencies {
     implementation project(':common')
+    api 'org.springframework.modulith:spring-modulith-api'
 }

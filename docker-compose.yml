@@ -1,4 +1,11 @@
 services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: eclipse_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+
   mysql:
     image: mysql:8.0
     container_name: eclipse_mysql
