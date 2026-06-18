@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -23,6 +24,7 @@ import java.util.List;
 public class DailyCandleJob {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final CandleSyncService candleSyncService;
 
@@ -62,7 +64,7 @@ public class DailyCandleJob {
      * - 나머지 → 어제
      */
     private LocalDate resolveTargetDate() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(KST);
         if (today.getDayOfWeek() == DayOfWeek.SATURDAY) {
             return today.minusDays(1); // 금요일
         }

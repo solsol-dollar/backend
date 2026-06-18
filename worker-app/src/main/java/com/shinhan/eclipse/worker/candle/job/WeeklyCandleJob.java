@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -21,13 +22,14 @@ import java.util.List;
 public class WeeklyCandleJob {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final CandleSyncService candleSyncService;
 
     @Scheduled(cron = "0 0 8 * * SAT", zone = "Asia/Seoul")
     public void run() {
         // 전주 월요일 ~ 금요일
-        LocalDate today    = LocalDate.now();                          // 토요일
+        LocalDate today    = LocalDate.now(KST);                       // 토요일
         LocalDate lastFri  = today.minusDays(1);                       // 금요일 (주봉 마지막 거래일)
         LocalDate lastMon  = lastFri.minusDays(4);                     // 월요일
         String sdate = lastMon.format(DATE_FMT);

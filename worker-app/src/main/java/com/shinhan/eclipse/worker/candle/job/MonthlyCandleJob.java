@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -22,13 +23,14 @@ import java.util.List;
 public class MonthlyCandleJob {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final CandleSyncService candleSyncService;
 
     @Scheduled(cron = "0 0 9 1 * *", zone = "Asia/Seoul")
     public void run() {
         // 전월 1일 ~ 말일
-        YearMonth prevMonth = YearMonth.now().minusMonths(1);
+        YearMonth prevMonth = YearMonth.now(KST).minusMonths(1);
         LocalDate sdate     = prevMonth.atDay(1);
         LocalDate edate     = prevMonth.atEndOfMonth();
 
