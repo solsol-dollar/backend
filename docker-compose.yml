@@ -3,7 +3,7 @@ services:
     image: mysql:8.0
     container_name: eclipse_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: eclipse123
       MYSQL_DATABASE: ${DB_NAME:-eclipse}
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
