@@ -19,6 +19,7 @@ import java.util.Optional;
 public class WorkerKisRestClient {
 
     private static final String EXCD_NAS = "NAS";
+    private static final String EXCD_AMS = "AMS";  // NYSE Arca / AMEX
 
     private final WorkerKisProperties   props;
     private final WorkerKisTokenManager tokenManager;
@@ -41,12 +42,18 @@ public class WorkerKisRestClient {
      * @param bymd  조회 기준일 (YYYYMMDD) — 해당 날짜부터 과거 최대 100건 반환
      * @param keyb  연속 조회 키 (최초 요청 시 "")
      */
-    public Optional<KisDailyPriceResponse> getDailyCandles(String symb, String gubn,
-                                                            String bymd, String keyb) {
+    private String excdOf(String exchangeName) {
+        if (exchangeName != null && exchangeName.contains("NYSE Arca")) return EXCD_AMS;
+        if (exchangeName != null && exchangeName.contains("NYSE")) return "NYS";
+        return EXCD_NAS;
+    }
+
+    public Optional<KisDailyPriceResponse> getDailyCandles(String symb, String exchangeName,
+                                                            String gubn, String bymd, String keyb) {
         String uri = UriComponentsBuilder
                 .fromPath("/uapi/overseas-price/v1/quotations/dailyprice")
                 .queryParam("AUTH",  "")
-                .queryParam("EXCD",  EXCD_NAS)
+                .queryParam("EXCD",  excdOf(exchangeName))
                 .queryParam("SYMB",  symb)
                 .queryParam("GUBN",  gubn)
                 .queryParam("BYMD",  bymd)

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 5년치 초기 적재 잡 (수동 1회 실행).
@@ -48,7 +49,19 @@ public class HistoricalBackfillJob implements ApplicationRunner {
         String sdate = fiveYearsAgo.format(DATE_FMT);
         String edate = today.format(DATE_FMT);
 
-        List<InvestmentProduct> products = candleSyncService.findActiveProducts();
+        // --tickers=AAPL,MSFT 옵션이 있으면 해당 종목만, 없으면 전체 ACTIVE 종목
+        List<InvestmentProduct> allProducts = candleSyncService.findActiveProducts();
+        List<InvestmentProduct> products;
+        if (args.containsOption("tickers")) {
+            Set<String> filter = Set.of(
+                    args.getOptionValues("tickers").get(0).toUpperCase().split(","));
+            products = allProducts.stream()
+                    .filter(p -> filter.contains(p.getTicker()))
+                    .toList();
+            log.info("타깃 종목 필터 적용: {}", filter);
+        } else {
+            products = allProducts;
+        }
         log.info("대상 종목 수: {}", products.size());
 
         // 1단계: 일봉

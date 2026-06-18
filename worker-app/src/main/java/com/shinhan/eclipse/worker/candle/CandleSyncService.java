@@ -69,7 +69,7 @@ public class CandleSyncService {
                              String sdate, String edate) {
         String kisGubn = toKisGubn(gubun);
         Optional<KisDailyPriceResponse> respOpt = kisRestClient.getDailyCandles(
-                product.getTicker(), kisGubn, edate, "");
+                product.getTicker(), product.getExchangeName(), kisGubn, edate, "");
 
         if (respOpt.isEmpty()) {
             log.warn("KIS 기간별시세 응답 없음 [ticker={}, gubn={}, edate={}]",
@@ -110,7 +110,7 @@ public class CandleSyncService {
 
         do {
             Optional<KisDailyPriceResponse> respOpt = kisRestClient.getDailyCandles(
-                    product.getTicker(), kisGubn, bymd, "");
+                    product.getTicker(), product.getExchangeName(), kisGubn, bymd, "");
 
             if (respOpt.isEmpty()) {
                 log.warn("KIS 기간별시세 페이지 응답 없음 [ticker={}, bymd={}]",
