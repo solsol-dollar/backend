@@ -33,6 +33,7 @@ class SecuritiesControllerTest {
     @Autowired ObjectMapper objectMapper;
 
     @MockBean SecuritiesService securitiesService;
+    @MockBean ChartService chartService;
 
     // ── SEC-001 ──────────────────────────────────────────────────────────────
 
@@ -142,5 +143,65 @@ class SecuritiesControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].ticker").value("NVDA"))
                 .andExpect(jsonPath("$.data[0].reason").value("AI/데이터센터 수혜주"));
+    }
+
+    // ── SEC-006 ──────────────────────────────────────────────────────────────
+
+    @Test
+    void getChart_1M_일봉_응답_반환() throws Exception {
+        ChartResponse.CandleItem candle = new ChartResponse.CandleItem(
+                "20260601", null,
+                new BigDecimal("185.00"), new BigDecimal("190.00"),
+                new BigDecimal("183.50"), new BigDecimal("188.00"),
+                45000000L, "2"
+        );
+        ChartResponse chartResponse = new ChartResponse("AAPL", "1M", "DAY", List.of(candle));
+        given(chartService.getChart(1L, "1M")).willReturn(chartResponse);
+
+        mockMvc.perform(get("/api/v1/securities/products/1/chart")
+                        .param("period", "1M"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.ticker").value("AAPL"))
+                .andExpect(jsonPath("$.data.period").value("1M"))
+                .andExpect(jsonPath("$.data.candleType").value("DAY"))
+                .andExpect(jsonPath("$.data.candles[0].date").value("20260601"))
+                .andExpect(jsonPath("$.data.candles[0].close").value(188.00));
+    }
+
+    @Test
+    void getChart_1D_분봉_time_필드_포함() throws Exception {
+        ChartResponse.CandleItem candle = new ChartResponse.CandleItem(
+                "20260617", "093000",
+                new BigDecimal("193.00"), new BigDecimal("194.00"),
+                new BigDecimal("192.50"), new BigDecimal("193.80"),
+                1234567L, null
+        );
+        ChartResponse chartResponse = new ChartResponse("AAPL", "1D", "MINUTE", List.of(candle));
+        given(chartService.getChart(1L, "1D")).willReturn(chartResponse);
+
+        mockMvc.perform(get("/api/v1/securities/products/1/chart")
+                        .param("period", "1D"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.candleType").value("MINUTE"))
+                .andExpect(jsonPath("$.data.candles[0].time").value("093000"));
+    }
+
+    @Test
+    void getChart_잘못된_period_400_반환() throws Exception {
+        mockMvc.perform(get("/api/v1/securities/products/1/chart")
+                        .param("period", "INVALID"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
+    }
+
+    @Test
+    void getChart_period_기본값_1M() throws Exception {
+        ChartResponse chartResponse = new ChartResponse("AAPL", "1M", "DAY", List.of());
+        given(chartService.getChart(1L, "1M")).willReturn(chartResponse);
+
+        mockMvc.perform(get("/api/v1/securities/products/1/chart"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period").value("1M"));
     }
 }

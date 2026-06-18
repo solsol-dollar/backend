@@ -42,6 +42,12 @@ ls:
     app-key: ${LS_APP_KEY:}
     app-secret: ${LS_APP_SECRET:}
 
+kis:
+  securities:
+    base-url: ${KIS_BASE_URL:https://openapi.koreainvestment.com:9443}
+    app-key: ${KIS_APP_KEY:}
+    app-secret: ${KIS_APP_SECRET:}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui
