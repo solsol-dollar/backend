@@ -1,5 +1,6 @@
 package com.shinhan.eclipse.service.securities.internal;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
@@ -28,11 +29,14 @@ class SecuritiesServiceImplTest {
     @Mock ProductRepository    productRepository;
     @Mock HoldingRepository    holdingRepository;
     @Mock QuoteCache           quoteCache;
-    @Mock LsRestClient         lsRestClient;
+    @Mock LsRestClient         lsRestClient;   // 유지 (LS 코드 보존)
+    @Mock KisRestClient        kisRestClient;
     @Mock ChatClient           chatClient;
     @Mock MyPageService        myPageService;
 
     @InjectMocks SecuritiesServiceImpl service;
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
 
@@ -88,16 +92,33 @@ class SecuritiesServiceImplTest {
     }
 
     @Test
-    void getProduct_캐시_미스시_REST_폴백을_시도한다() {
+    void getProduct_캐시_미스시_KIS_REST_폴백을_시도한다() {
         InvestmentProduct p = productFixture(1L, "NVDA");
         given(productRepository.findById(1L)).willReturn(Optional.of(p));
         given(quoteCache.get("NVDA")).willReturn(Optional.empty());
-        given(lsRestClient.getCurrentPrice("NVDA", "NASDAQ")).willReturn(Optional.empty());
+        given(kisRestClient.getCurrentPrice("NVDA", "NASDAQ")).willReturn(Optional.empty());
 
         ProductDetail result = service.getProduct(1L);
 
         assertThat(result.ticker()).isEqualTo("NVDA");
         assertThat(result.price()).isNull();
+    }
+
+    @Test
+    void getProduct_KIS_현재가_폴백으로_시세를_반환한다() throws Exception {
+        InvestmentProduct p = productFixture(1L, "NVDA");
+        given(productRepository.findById(1L)).willReturn(Optional.of(p));
+        given(quoteCache.get("NVDA")).willReturn(Optional.empty());
+
+        KisQuoteDto.PriceDetailResponse resp = MAPPER.readValue(
+                "{\"rt_cd\":\"0\",\"output\":{\"last\":\"876.50\",\"base\":\"870.00\",\"tvol\":\"5000000\"}}",
+                KisQuoteDto.PriceDetailResponse.class);
+        given(kisRestClient.getCurrentPrice("NVDA", "NASDAQ")).willReturn(Optional.of(resp));
+
+        ProductDetail result = service.getProduct(1L);
+
+        assertThat(result.ticker()).isEqualTo("NVDA");
+        assertThat(result.price()).isEqualByComparingTo("876.50");
     }
 
     @Test
@@ -111,16 +132,45 @@ class SecuritiesServiceImplTest {
     // ── SEC-003: getOrderBook ────────────────────────────────────────────────
 
     @Test
-    void getOrderBook_LS_API_응답이_없으면_빈_호가를_반환한다() {
+    void getOrderBook_KIS_API_응답이_없으면_빈_호가를_반환한다() {
         InvestmentProduct p = productFixture(1L, "AAPL");
         given(productRepository.findById(1L)).willReturn(Optional.of(p));
-        given(lsRestClient.getOrderBook("AAPL", "NASDAQ")).willReturn(Optional.empty());
+        given(kisRestClient.getOrderBook("AAPL", "NASDAQ")).willReturn(Optional.empty());
 
         OrderBookResponse result = service.getOrderBook(1L);
 
         assertThat(result.ticker()).isEqualTo("AAPL");
         assertThat(result.askLevels()).isEmpty();
         assertThat(result.bidLevels()).isEmpty();
+    }
+
+    @Test
+    void getOrderBook_KIS_호가_정상_반환한다() throws Exception {
+        InvestmentProduct p = productFixture(1L, "AAPL");
+        given(productRepository.findById(1L)).willReturn(Optional.of(p));
+
+        String json = """
+                {"rt_cd":"0","output1":{"last":"193.50"},
+                 "output2":{"pask1":"193.60","pask2":"193.70","pask3":"0","pask4":"0","pask5":"0",
+                             "pask6":"0","pask7":"0","pask8":"0","pask9":"0","pask10":"0",
+                             "pbid1":"193.40","pbid2":"193.30","pbid3":"0","pbid4":"0","pbid5":"0",
+                             "pbid6":"0","pbid7":"0","pbid8":"0","pbid9":"0","pbid10":"0",
+                             "vask1":500,"vask2":300,"vask3":0,"vask4":0,"vask5":0,
+                             "vask6":0,"vask7":0,"vask8":0,"vask9":0,"vask10":0,
+                             "vbid1":700,"vbid2":400,"vbid3":0,"vbid4":0,"vbid5":0,
+                             "vbid6":0,"vbid7":0,"vbid8":0,"vbid9":0,"vbid10":0}}
+                """;
+        KisQuoteDto.AskingPriceResponse resp = MAPPER.readValue(json, KisQuoteDto.AskingPriceResponse.class);
+        given(kisRestClient.getOrderBook("AAPL", "NASDAQ")).willReturn(Optional.of(resp));
+
+        OrderBookResponse result = service.getOrderBook(1L);
+
+        assertThat(result.ticker()).isEqualTo("AAPL");
+        assertThat(result.price()).isEqualByComparingTo("193.50");
+        assertThat(result.askLevels()).hasSize(2);
+        assertThat(result.bidLevels()).hasSize(2);
+        assertThat(result.askLevels().get(0).price()).isEqualByComparingTo("193.60");
+        assertThat(result.bidLevels().get(0).price()).isEqualByComparingTo("193.40");
     }
 
     // ── SEC-004: getHoldings ─────────────────────────────────────────────────

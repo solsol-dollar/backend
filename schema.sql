@@ -413,6 +413,31 @@ CREATE TABLE `idle_dollar_triggers` (
 
 
 -- =====================================================================
+-- 6-1. 주가 캔들 (차트 데이터)
+-- =====================================================================
+
+CREATE TABLE `price_candles` (
+    `id`          BIGINT        NOT NULL AUTO_INCREMENT,
+    `product_id`  BIGINT        NOT NULL,
+    `candle_type` VARCHAR(10)   NOT NULL  COMMENT 'DAY / WEEK / MONTH / YEAR',
+    `candle_at`   DATE          NOT NULL  COMMENT '캔들 기준일 (주봉=해당주 마지막 거래일, 월봉=말일)',
+    `open_price`  DECIMAL(18,8) NOT NULL,
+    `high_price`  DECIMAL(18,8) NOT NULL,
+    `low_price`   DECIMAL(18,8) NOT NULL,
+    `close_price` DECIMAL(18,8) NOT NULL,
+    `volume`      BIGINT,
+    `amount`      DECIMAL(24,4),
+    `sign`        VARCHAR(1)             COMMENT '등락구분 (2:상승 3:보합 5:하락)',
+    `created_at`  DATETIME      NOT NULL,
+    `updated_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `status`      VARCHAR(20)   NOT NULL DEFAULT 'ACTIVE',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `UQ_candle` (`product_id`, `candle_type`, `candle_at`),
+    KEY `IDX_candle_lookup` (`product_id`, `candle_type`, `candle_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- =====================================================================
 -- 7. 외래 키 (FK) 제약
 --    ON DELETE / ON UPDATE 는 기본(RESTRICT) - 운영 정책 확정 후 조정
 -- =====================================================================

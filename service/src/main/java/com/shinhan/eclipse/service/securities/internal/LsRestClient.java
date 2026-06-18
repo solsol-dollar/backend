@@ -25,7 +25,7 @@ class LsRestClient {
     private WebClient client() {
         return WebClient.builder()
                 .baseUrl(props.getBaseUrl())
-                .defaultHeader("Content-Type", "application/json;charset=UTF-8")
+                .defaultHeader("Content-Type", "application/json")
                 .defaultHeader("tr_cont", "N")
                 .defaultHeader("tr_cont_key", "")
                 .defaultHeader("mac_address", "")
@@ -106,6 +106,98 @@ class LsRestClient {
         );
         return post("/overseas-stock/market-data", "g3106", body, LsOrderBookDto.class)
                 .filter(LsOrderBookDto::isSuccess);
+    }
+
+    /** g3203 — 분봉 조회 (당일, ncnt=5 고정) */
+    Optional<LsChartDto.G3203Response> getMinuteCandles(String ticker, String date) {
+        String exchcd = EXCHCD_NASDAQ;
+        Map<String, Object> body = Map.of(
+                "g3203InBlock", Map.of(
+                        "symbol",    ticker,
+                        "exchcd",    exchcd,
+                        "ncnt",      "5",
+                        "qrycnt",    500,
+                        "comp_yn",   "N",
+                        "sdate",     date,
+                        "edate",     date
+                )
+        );
+        return post("/overseas-stock/market-data", "g3203", body, LsChartDto.G3203Response.class);
+    }
+
+    /**
+     * g3204 — 일/주/월/년봉 조회 (연속조회 포함).
+     *
+     * @param keysymbol  exchcd + symbol (예: "82AAPL              ")
+     * @param exchcd     거래소 코드 (82=NASDAQ, 81=NYSE)
+     * @param symbol     종목 코드 (예: "AAPL")
+     * @param gubun      캔들 단위 (2=일, 3=주, 4=월, 5=년)
+     * @param sdate      조회 시작일 (YYYYMMDD)
+     * @param edate      조회 종료일 (YYYYMMDD)
+     * @param ctsDate    연속조회 키 (최초 요청 시 "")
+     * @param ctsInfo    연속조회 정보 (최초 요청 시 "")
+     * @return G3204Response (hasMore() == true 이면 연속 요청 필요)
+     */
+    Optional<LsChartDto.G3204Response> getDailyCandles(String keysymbol, String exchcd, String symbol,
+                                                        String gubun, String sdate, String edate,
+                                                        String ctsDate, String ctsInfo) {
+        boolean isContinue = ctsDate != null && !ctsDate.isBlank();
+        Map<String, Object> inBlock = new java.util.LinkedHashMap<>();
+        inBlock.put("sujung",    "Y");
+        inBlock.put("delaygb",   "0");
+        inBlock.put("keysymbol", keysymbol);
+        inBlock.put("exchcd",    exchcd);
+        inBlock.put("symbol",    symbol);
+        inBlock.put("gubun",     gubun);
+        inBlock.put("qrycnt",    500);
+        inBlock.put("comp_yn",   "N");
+        inBlock.put("sdate",     sdate);
+        inBlock.put("edate",     edate);
+        inBlock.put("cts_date",  ctsDate != null ? ctsDate : "");
+        inBlock.put("cts_info",  ctsInfo  != null ? ctsInfo  : "");
+        Map<String, Object> body = Map.of("g3204InBlock", inBlock);
+        try {
+            // tr_cont 헤더를 응답에서 추출해야 하므로 직접 exchange() 사용
+            LsChartDto.G3204Response[] holder = new LsChartDto.G3204Response[1];
+            String[] trContHolder = new String[]{""};
+
+            client()
+                    .post()
+                    .uri("/overseas-stock/market-data")
+                    .header("Authorization", "Bearer " + tokenManager.getAccessToken())
+                    .header("tr_cd",       "g3204")
+                    .header("tr_cont",     isContinue ? "Y" : "N")
+                    .header("tr_cont_key", ctsDate != null ? ctsDate : "")
+                    .header("mac_address", "")
+                    .bodyValue(body)
+                    .exchangeToMono(resp -> {
+                        String trCont = resp.headers().asHttpHeaders()
+                                .getFirst("tr_cont");
+                        trContHolder[0] = trCont != null ? trCont : "";
+                        return resp.bodyToMono(LsChartDto.G3204Response.class);
+                    })
+                    .doOnNext(r -> {
+                        holder[0] = r;
+                        if (r != null) r.setTrCont(trContHolder[0]);
+                    })
+                    .block();
+
+            return Optional.ofNullable(holder[0]);
+
+        } catch (WebClientResponseException e) {
+            log.warn("LS API 호출 실패 [g3204] status={} body={}", e.getStatusCode(), e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 401) tokenManager.invalidate();
+            return Optional.empty();
+        } catch (Exception e) {
+            log.warn("LS API 호출 오류 [g3204]: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /** NASDAQ keysymbol 생성 (82 + ticker, 20자리 패딩) */
+    static String buildKeysymbol(String exchcd, String ticker) {
+        String raw = exchcd + ticker;
+        return String.format("%-20s", raw);
     }
 
     /** g3190 — 마스터 조회 (전체 페이지 수집) */

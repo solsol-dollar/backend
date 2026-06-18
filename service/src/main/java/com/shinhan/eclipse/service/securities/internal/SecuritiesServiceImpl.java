@@ -29,7 +29,8 @@ class SecuritiesServiceImpl implements SecuritiesService {
     private final ProductRepository    productRepository;
     private final HoldingRepository    holdingRepository;
     private final QuoteCache           quoteCache;
-    private final LsRestClient         lsRestClient;
+    private final LsRestClient         lsRestClient;   // 유지 (LS 코드 보존)
+    private final KisRestClient        kisRestClient;
     private final ChatClient           chatClient;
     private final MyPageService        myPageService;
 
@@ -49,17 +50,20 @@ class SecuritiesServiceImpl implements SecuritiesService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "종목을 찾을 수 없습니다: " + id));
 
         QuoteSnapshot quote = quoteCache.get(product.getTicker()).orElseGet(() -> {
-            // Redis 미스 시 REST 폴백 (장 중에만 데이터 반환)
-            return lsRestClient.getCurrentPrice(product.getTicker(), product.getExchangeName())
-                    .map(dto -> new QuoteSnapshot(
-                            product.getTicker(),
-                            dto.getOutBlock().getPrice(),
-                            dto.getOutBlock().getDiff(),
-                            dto.getOutBlock().getRate(),
-                            dto.getOutBlock().getVolume() != null ? dto.getOutBlock().getVolume() : 0L,
-                            dto.getOutBlock().getSign(),
-                            java.time.Instant.now()
-                    ))
+            // Redis 미스 시 KIS REST 폴백
+            return kisRestClient.getCurrentPrice(product.getTicker(), product.getExchangeName())
+                    .map(dto -> {
+                        KisQuoteDto.PriceDetailResponse.Output o = dto.getOutput();
+                        return new QuoteSnapshot(
+                                product.getTicker(),
+                                o.getLast(),
+                                o.diff(),
+                                o.rate(),
+                                o.volume(),
+                                o.sign(),
+                                java.time.Instant.now()
+                        );
+                    })
                     .orElse(null);
         });
 
@@ -72,9 +76,12 @@ class SecuritiesServiceImpl implements SecuritiesService {
         InvestmentProduct product = productRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "종목을 찾을 수 없습니다: " + id));
 
-        return lsRestClient.getOrderBook(product.getTicker(), product.getExchangeName())
+        return kisRestClient.getOrderBook(product.getTicker(), product.getExchangeName())
+                .filter(dto -> dto.getOutput2() != null)
                 .map(dto -> {
-                    LsOrderBookDto.OutBlock b = dto.getOutBlock();
+                    KisQuoteDto.AskingPriceResponse.Output2 b = dto.getOutput2();
+                    BigDecimal price = dto.getOutput1() != null ? dto.getOutput1().getLast() : null;
+
                     List<BigDecimal> askPrices  = b.askPrices();
                     List<Long>       askVolumes = b.askVolumes();
                     List<BigDecimal> bidPrices  = b.bidPrices();
@@ -92,7 +99,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
                                     bidVolumes.get(i) != null ? bidVolumes.get(i) : 0L))
                             .toList();
 
-                    return new OrderBookResponse(product.getTicker(), b.getPrice(), ask, bid);
+                    return new OrderBookResponse(product.getTicker(), price, ask, bid);
                 })
                 .orElse(new OrderBookResponse(product.getTicker(), null, List.of(), List.of()));
     }
