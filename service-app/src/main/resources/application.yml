@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: eclipse-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3307/eclipse?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
@@ -30,6 +34,27 @@ spring:
           model: claude-sonnet-4-6
           temperature: 0.2
           max-tokens: 2048
+
+ls:
+  securities:
+    base-url: ${LS_BASE_URL:https://openapi.ls-sec.co.kr:8080}
+    ws-url: ${LS_WS_URL:wss://openapi.ls-sec.co.kr:9443/websocket}
+    app-key: ${LS_APP_KEY:}
+    app-secret: ${LS_APP_SECRET:}
+
+kis:
+  securities:
+    base-url: ${KIS_BASE_URL:https://openapi.koreainvestment.com:9443}
+    app-key: ${KIS_APP_KEY:}
+    app-secret: ${KIS_APP_SECRET:}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /api-docs
 
 logging:
   level:
