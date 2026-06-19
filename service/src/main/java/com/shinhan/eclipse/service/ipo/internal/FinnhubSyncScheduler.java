@@ -32,13 +32,15 @@ class FinnhubSyncScheduler {
     private String fmpApiKey;
 
     private final IpoRepository ipoRepository;
+    private final RestClient finnhubClient = RestClient.builder().baseUrl(BASE_URL).build();
+    private final RestClient fmpClient = RestClient.builder().baseUrl(FMP_BASE_URL).build();
 
     private record IpoResponse(List<IpoItem> ipoCalendar) {}
     private record IpoItem(String symbol, String name, String date, String exchange,
                            String price, String status, Long numberOfShares, Long totalSharesValue) {}
     private record FmpProfile(String sector, String industry) {}
 
-    @Scheduled(cron = "0 16 10 * * *")
+    @Scheduled(cron = "0 0 1 * * *")
     public void sync() {
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("FINNHUB_API_KEY가 설정되지 않았습니다.");
@@ -65,8 +67,6 @@ class FinnhubSyncScheduler {
     private List<Ipo> fetchFromFinnhub() {
         LocalDate start = LocalDate.of(2026, 1, 1);
         LocalDate end   = LocalDate.of(2026, 12, 31);
-        RestClient client = RestClient.builder().baseUrl(BASE_URL).build();
-
         List<Ipo> result = new java.util.ArrayList<>();
         LocalDate from = start;
         while (from.isBefore(end)) {
@@ -75,7 +75,7 @@ class FinnhubSyncScheduler {
 
             LocalDate finalFrom = from;
             LocalDate finalTo   = to;
-            IpoResponse response = client.get()
+            IpoResponse response = finnhubClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/calendar/ipo")
                             .queryParam("from", finalFrom.toString())
@@ -135,10 +135,7 @@ class FinnhubSyncScheduler {
     private String fetchSector(String ticker) {
         if (fmpApiKey == null || fmpApiKey.isBlank()) return null;
         try {
-            FmpProfile[] profiles = RestClient.builder()
-                    .baseUrl(FMP_BASE_URL)
-                    .build()
-                    .get()
+            FmpProfile[] profiles = fmpClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/profile")
                             .queryParam("symbol", ticker)
