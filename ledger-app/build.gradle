@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation project(':auth')
     implementation project(':ledger')
     implementation project(':domain')
     implementation project(':common')

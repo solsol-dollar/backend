@@ -11,6 +11,7 @@ public enum ErrorCode {
     INVALID_INPUT("C001", "잘못된 입력입니다.", 400),
     NOT_FOUND("C002", "리소스를 찾을 수 없습니다.", 404),
     INTERNAL_ERROR("C003", "서버 내부 오류입니다.", 500),
+    UNAUTHORIZED("C004", "인증에 실패했습니다.", 401),
 
     // Ledger
     INSUFFICIENT_BALANCE("L001", "잔액이 부족합니다.", 422),

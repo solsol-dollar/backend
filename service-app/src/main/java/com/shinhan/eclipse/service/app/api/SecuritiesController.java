@@ -1,12 +1,13 @@
 package com.shinhan.eclipse.service.app.api;
 
+import com.shinhan.eclipse.auth.dto.AuthUser;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.resolver.UserHeader;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.service.securities.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,14 +45,14 @@ public class SecuritiesController {
 
     /** SEC-004: 보유 종목 + 손익 */
     @GetMapping("/holdings")
-    public ResponseEntity<ApiResponse<List<HoldingItem>>> getHoldings(@UserHeader Long userId) {
-        return ResponseEntity.ok(ApiResponse.success(securitiesService.getHoldings(userId)));
+    public ResponseEntity<ApiResponse<List<HoldingItem>>> getHoldings(@AuthenticationPrincipal AuthUser authUser) {
+        return ResponseEntity.ok(ApiResponse.success(securitiesService.getHoldings(authUser.userId())));
     }
 
     /** SEC-005: AI 추천 */
     @GetMapping("/recommended")
-    public ResponseEntity<ApiResponse<List<RecommendedProduct>>> getRecommended(@UserHeader Long userId) {
-        return ResponseEntity.ok(ApiResponse.success(securitiesService.getRecommended(userId)));
+    public ResponseEntity<ApiResponse<List<RecommendedProduct>>> getRecommended(@AuthenticationPrincipal AuthUser authUser) {
+        return ResponseEntity.ok(ApiResponse.success(securitiesService.getRecommended(authUser.userId())));
     }
 
     /** SEC-006: 차트 조회 */

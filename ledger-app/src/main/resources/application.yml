@@ -23,6 +23,11 @@ spring:
       externalization:
         enabled: false
 
+jwt:
+  public-key: classpath:keys/public.pem
+  expiration-ms: 3600000
+  provider-enabled: false
+
 logging:
   level:
     com.shinhan.eclipse: INFO

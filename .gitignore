@@ -19,3 +19,6 @@ out/
 *.env.local
 application-*.yml
 !application-local.yml
+
+### RSA Keys
+**/keys/private.pem
