@@ -1,6 +1,6 @@
 package com.shinhan.eclipse.auth.jwt;
 
-import com.shinhan.eclipse.auth.dto.AuthUser;
+import com.shinhan.eclipse.auth.AuthUser;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;

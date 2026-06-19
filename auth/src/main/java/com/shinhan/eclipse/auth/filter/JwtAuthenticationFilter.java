@@ -1,6 +1,6 @@
 package com.shinhan.eclipse.auth.filter;
 
-import com.shinhan.eclipse.auth.dto.AuthUser;
+import com.shinhan.eclipse.auth.AuthUser;
 import com.shinhan.eclipse.auth.jwt.JwtTokenVerifier;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

@@ -1,6 +1,6 @@
 package com.shinhan.eclipse.ledger.app.api;
 
-import com.shinhan.eclipse.auth.dto.AuthUser;
+import com.shinhan.eclipse.auth.AuthUser;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

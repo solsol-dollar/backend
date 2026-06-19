@@ -1,6 +1,6 @@
 package com.shinhan.eclipse.service.app.auth.service;
 
-import com.shinhan.eclipse.auth.dto.AuthUser;
+import com.shinhan.eclipse.auth.AuthUser;
 import com.shinhan.eclipse.auth.jwt.JwtProperties;
 import com.shinhan.eclipse.auth.jwt.JwtTokenProvider;
 import com.shinhan.eclipse.common.exception.BusinessException;

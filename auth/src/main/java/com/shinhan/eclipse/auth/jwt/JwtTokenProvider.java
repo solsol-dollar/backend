@@ -3,7 +3,7 @@ package com.shinhan.eclipse.auth.jwt;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
-import com.shinhan.eclipse.auth.dto.AuthUser;
+import com.shinhan.eclipse.auth.AuthUser;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
 

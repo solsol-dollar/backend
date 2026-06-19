@@ -1,6 +1,6 @@
 package com.shinhan.eclipse.service.app.api;
 
-import com.shinhan.eclipse.auth.dto.AuthUser;
+import com.shinhan.eclipse.auth.AuthUser;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.service.securities.TradeOrderRequest;
 import com.shinhan.eclipse.service.securities.TradeOrderResponse;
