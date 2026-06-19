@@ -28,6 +28,12 @@ jwt:
   expiration-ms: 3600000
   provider-enabled: false
 
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+  api-docs:
+    path: /api-docs
+
 logging:
   level:
     com.shinhan.eclipse: INFO
