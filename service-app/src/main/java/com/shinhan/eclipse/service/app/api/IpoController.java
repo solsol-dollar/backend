@@ -1,5 +1,7 @@
 package com.shinhan.eclipse.service.app.api;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.common.resolver.UserHeader;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.service.ipo.*;
@@ -22,6 +24,8 @@ public class IpoController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @UserHeader Long userId) {
+        if (page < 0) throw new BusinessException(ErrorCode.INVALID_INPUT, "page는 0 이상이어야 합니다.");
+        if (size < 1 || size > 100) throw new BusinessException(ErrorCode.INVALID_INPUT, "size는 1~100 사이어야 합니다.");
         return ResponseEntity.ok(ApiResponse.success(
                 ipoExplorationService.getIpos(status, favoriteOnly, userId, page, size)));
     }
@@ -46,10 +50,10 @@ public class IpoController {
 
     /** IPO-004: 찜 삭제 */
     @DeleteMapping("/{ipoId}/favorites")
-    public ResponseEntity<Void> removeFavorite(
+    public ResponseEntity<ApiResponse<Void>> removeFavorite(
             @PathVariable Long ipoId,
             @UserHeader Long userId) {
         ipoExplorationService.removeFavorite(userId, ipoId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success());
     }
 }

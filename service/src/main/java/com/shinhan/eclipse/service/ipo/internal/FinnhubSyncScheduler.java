@@ -174,7 +174,8 @@ class FinnhubSyncScheduler {
     private BigDecimal[] parsePrice(String price) {
         if (price == null || price.isBlank()) return new BigDecimal[]{null, null};
         if (price.contains("-")) {
-            String[] parts = price.split("-");
+            String[] parts = price.split("-", 2);
+            if (parts.length < 2) return new BigDecimal[]{null, null};
             try {
                 return new BigDecimal[]{new BigDecimal(parts[0].trim()), new BigDecimal(parts[1].trim())};
             } catch (NumberFormatException e) {

@@ -1,5 +1,7 @@
 package com.shinhan.eclipse.service.ipo.internal;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.ipo.FavoriteIpo;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.service.ipo.*;
@@ -7,15 +9,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 class IpoExplorationServiceImpl implements IpoExplorationService {
 
     private final IpoRepository ipoRepository;
@@ -40,24 +43,29 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     @Override
     public IpoDetailResult getIpoDetail(Long ipoId, Long userId) {
         Ipo ipo = ipoRepository.findById(ipoId)
-                .orElseThrow(() -> new NoSuchElementException("IPO not found: " + ipoId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.IPO_NOT_FOUND));
         boolean isFavorite = favoriteIpoRepository.findByUserIdAndIpoId(userId, ipoId).isPresent();
         return toDetail(ipo, isFavorite);
     }
 
     @Override
+    @Transactional
     public FavoriteIpoResponse addFavorite(Long userId, Long ipoId) {
+        if (!ipoRepository.existsById(ipoId)) {
+            throw new BusinessException(ErrorCode.IPO_NOT_FOUND);
+        }
         if (favoriteIpoRepository.findByUserIdAndIpoId(userId, ipoId).isPresent()) {
-            throw new IllegalStateException("Already favorited");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 찜한 IPO입니다.");
         }
         FavoriteIpo saved = favoriteIpoRepository.save(FavoriteIpo.create(userId, ipoId));
         return new FavoriteIpoResponse(saved.getIpoId(), true, saved.getCreatedAt());
     }
 
     @Override
+    @Transactional
     public void removeFavorite(Long userId, Long ipoId) {
         FavoriteIpo favorite = favoriteIpoRepository.findByUserIdAndIpoId(userId, ipoId)
-                .orElseThrow(() -> new NoSuchElementException("Favorite not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "찜 정보를 찾을 수 없습니다."));
         favoriteIpoRepository.delete(favorite);
     }
 
