@@ -1,40 +1,86 @@
 package com.shinhan.eclipse.service.app.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shinhan.eclipse.auth.AuthUser;
+import com.shinhan.eclipse.auth.config.JwtConfig;
+import com.shinhan.eclipse.auth.config.SecurityConfig;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.resolver.UserIdArgumentResolver;
-import com.shinhan.eclipse.service.app.config.WebMvcConfig;
 import com.shinhan.eclipse.service.securities.TradeOrderRequest;
 import com.shinhan.eclipse.service.securities.TradeOrderResponse;
 import com.shinhan.eclipse.service.securities.TradeOrderService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.data.web.SpringDataWebAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = TradeOrderController.class,
-        excludeAutoConfiguration = SpringDataWebAutoConfiguration.class)
-@Import({WebMvcConfig.class, UserIdArgumentResolver.class})
+@WebMvcTest(
+        controllers = TradeOrderController.class,
+        excludeAutoConfiguration = {
+                SecurityAutoConfiguration.class,
+                SecurityFilterAutoConfiguration.class,
+                UserDetailsServiceAutoConfiguration.class,
+                SpringDataWebAutoConfiguration.class
+        },
+        excludeFilters = {
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = SecurityConfig.class),
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JwtConfig.class)
+        }
+)
+@Import(TradeOrderControllerTest.TestConfig.class)
 @MockBean(JpaMetamodelMappingContext.class)
 class TradeOrderControllerTest {
+
+    @TestConfiguration
+    static class TestConfig implements WebMvcConfigurer {
+        @Override
+        public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+            resolvers.add(new AuthenticationPrincipalArgumentResolver());
+        }
+    }
 
     @Autowired MockMvc      mockMvc;
     @Autowired ObjectMapper objectMapper;
 
     @MockBean TradeOrderService tradeOrderService;
+
+    @BeforeEach
+    void setUp() {
+        AuthUser user = new AuthUser(1L, "김하늘", "USER");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, List.of()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
     // ── ORD-001 ──────────────────────────────────────────────────────────────
 
@@ -48,7 +94,6 @@ class TradeOrderControllerTest {
         given(tradeOrderService.placeOrder(eq(1L), any(TradeOrderRequest.class))).willReturn(resp);
 
         mockMvc.perform(post("/api/v1/trade-orders")
-                        .header("X-User-Id", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -68,7 +113,6 @@ class TradeOrderControllerTest {
         given(tradeOrderService.placeOrder(eq(1L), any(TradeOrderRequest.class))).willReturn(resp);
 
         mockMvc.perform(post("/api/v1/trade-orders")
-                        .header("X-User-Id", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -83,7 +127,6 @@ class TradeOrderControllerTest {
                 .willThrow(new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "종목을 찾을 수 없습니다: 999"));
 
         mockMvc.perform(post("/api/v1/trade-orders")
-                        .header("X-User-Id", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isNotFound())
@@ -98,7 +141,6 @@ class TradeOrderControllerTest {
                 .willThrow(new BusinessException(ErrorCode.INSUFFICIENT_BALANCE));
 
         mockMvc.perform(post("/api/v1/trade-orders")
-                        .header("X-User-Id", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isUnprocessableEntity())
@@ -112,7 +154,6 @@ class TradeOrderControllerTest {
                 .willThrow(new BusinessException(ErrorCode.INVALID_ORDER, "유효하지 않은 주문 방향: HOLD"));
 
         mockMvc.perform(post("/api/v1/trade-orders")
-                        .header("X-User-Id", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
@@ -121,7 +162,7 @@ class TradeOrderControllerTest {
     }
 
     @Test
-    void X_User_Id_없으면_기본값_1로_처리() throws Exception {
+    void JWT_인증으로_주문_처리() throws Exception {
         TradeOrderRequest req = new TradeOrderRequest(10L, 99L, "BUY", 1, BigDecimal.TEN);
         TradeOrderResponse resp = new TradeOrderResponse(
                 102L, "COMPLETED", "TSLA", "BUY", 1,

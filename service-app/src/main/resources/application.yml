@@ -35,6 +35,12 @@ spring:
           temperature: 0.2
           max-tokens: 2048
 
+jwt:
+  private-key: ${JWT_PRIVATE_KEY_PATH:classpath:keys/private.pem}
+  public-key: ${JWT_PUBLIC_KEY_PATH:classpath:keys/public.pem}
+  expiration-ms: 3600000
+  provider-enabled: true
+
 ls:
   securities:
     base-url: ${LS_BASE_URL:https://openapi.ls-sec.co.kr:8080}
