@@ -11,6 +11,7 @@ import com.shinhan.eclipse.service.app.auth.internal.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class AuthService {
     private final TokenIssuer tokenIssuer;
     private final BCryptPasswordEncoder passwordEncoder;
 
+    @Transactional(readOnly = true)
     public SimpleLoginResponse login(SimpleLoginRequest request) {
         User matched = userRepository.findAll().stream()
                 .filter(u -> passwordEncoder.matches(request.simplePassword(), u.getSimplePassword()))

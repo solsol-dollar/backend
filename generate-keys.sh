@@ -7,6 +7,7 @@ LEDGER_KEYS=ledger-app/src/main/resources/keys
 mkdir -p "$SERVICE_KEYS" "$LEDGER_KEYS"
 
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$SERVICE_KEYS/private.pem"
+chmod 600 "$SERVICE_KEYS/private.pem"
 openssl rsa -pubout -in "$SERVICE_KEYS/private.pem" -out "$SERVICE_KEYS/public.pem"
 cp "$SERVICE_KEYS/public.pem" "$LEDGER_KEYS/public.pem"
 

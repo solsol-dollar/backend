@@ -24,7 +24,7 @@ spring:
         enabled: false
 
 jwt:
-  public-key: classpath:keys/public.pem
+  public-key: ${JWT_PUBLIC_KEY_PATH:classpath:keys/public.pem}
   expiration-ms: 3600000
   provider-enabled: false
 

@@ -32,6 +32,8 @@ public class RsaKeyLoader {
     }
 
     private static String read(Resource resource) throws Exception {
-        return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        try (var is = resource.getInputStream()) {
+            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 }

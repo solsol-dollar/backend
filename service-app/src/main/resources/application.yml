@@ -36,8 +36,8 @@ spring:
           max-tokens: 2048
 
 jwt:
-  private-key: classpath:keys/private.pem
-  public-key: classpath:keys/public.pem
+  private-key: ${JWT_PRIVATE_KEY_PATH:classpath:keys/private.pem}
+  public-key: ${JWT_PUBLIC_KEY_PATH:classpath:keys/public.pem}
   expiration-ms: 3600000
   provider-enabled: true
 
