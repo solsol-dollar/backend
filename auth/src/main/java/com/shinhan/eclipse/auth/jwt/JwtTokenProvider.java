@@ -4,6 +4,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.shinhan.eclipse.auth.AuthUser;
+import com.shinhan.eclipse.auth.TokenIssuer;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
 
@@ -11,7 +12,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 
-public class JwtTokenProvider {
+public class JwtTokenProvider implements TokenIssuer {
 
     private final JwtEncoder encoder;
     private final long expirationMs;
@@ -22,6 +23,12 @@ public class JwtTokenProvider {
         this.expirationMs = expirationMs;
     }
 
+    @Override
+    public long getExpirationMs() {
+        return expirationMs;
+    }
+
+    @Override
     public String issue(AuthUser user) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()

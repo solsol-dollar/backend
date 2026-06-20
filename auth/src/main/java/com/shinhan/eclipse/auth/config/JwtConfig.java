@@ -1,5 +1,6 @@
 package com.shinhan.eclipse.auth.config;
 
+import com.shinhan.eclipse.auth.TokenIssuer;
 import com.shinhan.eclipse.auth.filter.JwtAuthenticationFilter;
 import com.shinhan.eclipse.auth.jwt.JwtProperties;
 import com.shinhan.eclipse.auth.jwt.JwtTokenProvider;
@@ -28,7 +29,7 @@ public class JwtConfig {
 
     @Bean
     @ConditionalOnProperty(name = "jwt.provider-enabled", havingValue = "true")
-    public JwtTokenProvider jwtTokenProvider() throws Exception {
+    public TokenIssuer jwtTokenProvider() throws Exception {
         return new JwtTokenProvider(
                 RsaKeyLoader.loadPublicKey(resourceLoader, props.getPublicKey()),
                 RsaKeyLoader.loadPrivateKey(resourceLoader, props.getPrivateKey()),
