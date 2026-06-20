@@ -18,7 +18,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SecuritiesController {
 
-    private static final Set<String> VALID_PERIODS = Set.of("1D", "1W", "1M", "3M", "6M", "1Y", "5Y");
+    private static final Set<String> VALID_PERIODS = Set.of("5MIN", "1D", "1W", "1M");
 
     private final SecuritiesService securitiesService;
     private final ChartService chartService;
@@ -62,7 +62,7 @@ public class SecuritiesController {
             @RequestParam(defaultValue = "1M") String period) {
         if (!VALID_PERIODS.contains(period)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT,
-                    "유효하지 않은 period: " + period + ". 허용 값: 1D, 1W, 1M, 3M, 6M, 1Y, 5Y");
+                    "유효하지 않은 period: " + period + ". 허용 값: 5MIN, 1D, 1W, 1M");
         }
         return ResponseEntity.ok(ApiResponse.success(chartService.getChart(id, period)));
     }

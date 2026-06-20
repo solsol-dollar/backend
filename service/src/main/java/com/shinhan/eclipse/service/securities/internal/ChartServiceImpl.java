@@ -33,25 +33,19 @@ class ChartServiceImpl implements ChartService {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final Duration MINUTE_CACHE_TTL = Duration.ofSeconds(86400);
 
-    // period → candleType 매핑
+    // period → candleType 매핑 (period = 봉 단위)
     private static final Map<String, String> PERIOD_TO_CANDLE_TYPE = Map.of(
-            "1D", "MINUTE",
-            "1W", "DAY",
-            "1M", "DAY",
-            "3M", "WEEK",
-            "6M", "WEEK",
-            "1Y", "MONTH",
-            "5Y", "MONTH"
+            "5MIN", "MINUTE",
+            "1D",   "DAY",
+            "1W",   "WEEK",
+            "1M",   "MONTH"
     );
 
-    // period → 조회 기간(일) — 여유분 포함
+    // period → DB 조회 기간(일)
     private static final Map<String, Integer> PERIOD_TO_DAYS = Map.of(
-            "1W",  10,
-            "1M",  30,
-            "3M",  90,
-            "6M",  180,
-            "1Y",  365,
-            "5Y",  1825
+            "1D",  365,
+            "1W",  1825,
+            "1M",  1825
     );
 
     private final ProductRepository      productRepository;
@@ -73,7 +67,7 @@ class ChartServiceImpl implements ChartService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "지원하지 않는 period: " + period);
         }
 
-        if ("1D".equals(period)) {
+        if ("5MIN".equals(period)) {
             return getMinuteChart(product, period);
         } else {
             return getDailyChart(product, period, candleType);

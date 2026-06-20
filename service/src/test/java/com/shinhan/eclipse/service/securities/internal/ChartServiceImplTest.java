@@ -56,10 +56,10 @@ class ChartServiceImplTest {
                 .isInstanceOf(BusinessException.class);
     }
 
-    // ── getChart 1W: DB 조회 ──────────────────────────────────────────────────
+    // ── getChart 1D: 일봉 ────────────────────────────────────────────────────
 
     @Test
-    void getChart_1W_DB에서_일봉_반환() {
+    void getChart_1D_DB에서_일봉_반환() {
         InvestmentProduct product = makeProduct("AAPL");
         PriceCandle candle = makePriceCandle(null, "DAY", LocalDate.of(2026, 6, 10));
 
@@ -68,7 +68,7 @@ class ChartServiceImplTest {
                 any(), eq("DAY"), any(LocalDate.class), any(LocalDate.class)))
                 .willReturn(List.of(candle));
 
-        ChartResponse response = chartService.getChart(1L, "1W");
+        ChartResponse response = chartService.getChart(1L, "1D");
 
         assertThat(response.getTicker()).isEqualTo("AAPL");
         assertThat(response.getCandleType()).isEqualTo("DAY");
@@ -77,10 +77,10 @@ class ChartServiceImplTest {
         assertThat(response.getCandles().get(0).getTime()).isNull();
     }
 
-    // ── getChart 3M: 주봉 ─────────────────────────────────────────────────────
+    // ── getChart 1W: 주봉 ────────────────────────────────────────────────────
 
     @Test
-    void getChart_3M_주봉_반환() {
+    void getChart_1W_DB에서_주봉_반환() {
         InvestmentProduct product = makeProduct("NVDA");
         PriceCandle candle = makePriceCandle(null, "WEEK", LocalDate.of(2026, 4, 4));
 
@@ -89,32 +89,32 @@ class ChartServiceImplTest {
                 any(), eq("WEEK"), any(LocalDate.class), any(LocalDate.class)))
                 .willReturn(List.of(candle));
 
-        ChartResponse response = chartService.getChart(1L, "3M");
+        ChartResponse response = chartService.getChart(1L, "1W");
 
         assertThat(response.getCandleType()).isEqualTo("WEEK");
         assertThat(response.getCandles()).hasSize(1);
     }
 
-    // ── getChart 1Y: 월봉 ─────────────────────────────────────────────────────
+    // ── getChart 1M: 월봉 ────────────────────────────────────────────────────
 
     @Test
-    void getChart_1Y_월봉_반환() {
+    void getChart_1M_DB에서_월봉_반환() {
         InvestmentProduct product = makeProduct("MSFT");
         given(productRepository.findById(1L)).willReturn(Optional.of(product));
         given(priceCandleRepository.findByProductIdAndCandleTypeAndCandleAtBetween(
                 any(), eq("MONTH"), any(LocalDate.class), any(LocalDate.class)))
                 .willReturn(List.of());
 
-        ChartResponse response = chartService.getChart(1L, "1Y");
+        ChartResponse response = chartService.getChart(1L, "1M");
 
         assertThat(response.getCandleType()).isEqualTo("MONTH");
         assertThat(response.getCandles()).isEmpty();
     }
 
-    // ── getChart 1D: Redis HIT ────────────────────────────────────────────────
+    // ── getChart 5MIN: Redis HIT ──────────────────────────────────────────────
 
     @Test
-    void getChart_1D_Redis_캐시_HIT() throws Exception {
+    void getChart_5MIN_Redis_캐시_HIT() throws Exception {
         InvestmentProduct product = makeProduct("AAPL");
         String today = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
         String redisKey = "chart:min:5:AAPL:" + today;
@@ -132,7 +132,7 @@ class ChartServiceImplTest {
         given(redisTemplate.opsForValue()).willReturn(valueOps);
         given(valueOps.get(redisKey)).willReturn(json);
 
-        ChartResponse response = chartService.getChart(1L, "1D");
+        ChartResponse response = chartService.getChart(1L, "5MIN");
 
         assertThat(response.getCandleType()).isEqualTo("MINUTE");
         assertThat(response.getCandles()).hasSize(1);
@@ -140,10 +140,10 @@ class ChartServiceImplTest {
         verify(kisRestClient, never()).getMinuteCandles(any(), any());
     }
 
-    // ── getChart 1D: Redis MISS → KIS 폴백 ──────────────────────────────────
+    // ── getChart 5MIN: Redis MISS → KIS 폴백 ─────────────────────────────────
 
     @Test
-    void getChart_1D_Redis_MISS_KIS_폴백() throws Exception {
+    void getChart_5MIN_Redis_MISS_KIS_폴백() throws Exception {
         InvestmentProduct product = makeProduct("AAPL");
 
         KisChartDto.MinuteChartResponse kisResp = new ObjectMapper()
@@ -155,14 +155,14 @@ class ChartServiceImplTest {
         given(kisRestClient.getMinuteCandles(eq("AAPL"), any()))
                 .willReturn(Optional.of(kisResp));
 
-        ChartResponse response = chartService.getChart(1L, "1D");
+        ChartResponse response = chartService.getChart(1L, "5MIN");
 
         assertThat(response.getCandleType()).isEqualTo("MINUTE");
         assertThat(response.getCandles()).isEmpty();
     }
 
     @Test
-    void getChart_1D_KIS_분봉_데이터_반환() throws Exception {
+    void getChart_5MIN_KIS_분봉_데이터_반환() throws Exception {
         InvestmentProduct product = makeProduct("AAPL");
         String json = """
                 {"rt_cd":"0","output2":[
@@ -177,7 +177,7 @@ class ChartServiceImplTest {
         given(kisRestClient.getMinuteCandles(eq("AAPL"), any()))
                 .willReturn(Optional.of(kisResp));
 
-        ChartResponse response = chartService.getChart(1L, "1D");
+        ChartResponse response = chartService.getChart(1L, "5MIN");
 
         assertThat(response.getCandleType()).isEqualTo("MINUTE");
         assertThat(response.getCandles()).hasSize(2);
