@@ -66,6 +66,13 @@ eximbank:
   base-url: ${EXIMBANK_BASE_URL:https://oapi.koreaexim.go.kr}
   auth-key: ${EXIMBANK_AUTH_KEY:}
 
+finnhub:
+  base-url: https://finnhub.io/api/v1
+  api-key: ${FINNHUB_API_KEY:}
+
+fmp:
+  api-key: ${FMP_API_KEY:}
+
 logging:
   level:
     com.shinhan.eclipse: INFO
