@@ -17,4 +17,11 @@ public class FavoriteIpo extends BaseEntity {
 
     @Column(nullable = false)
     private Long ipoId;
+
+    public static FavoriteIpo create(Long userId, Long ipoId) {
+        FavoriteIpo f = new FavoriteIpo();
+        f.userId = userId;
+        f.ipoId = ipoId;
+        return f;
+    }
 }

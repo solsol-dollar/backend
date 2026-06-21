@@ -48,4 +48,38 @@ public class Ipo extends BaseEntity {
 
     @Column(nullable = false, length = 30)
     private String ipoStatus = "UPCOMING";
+
+    public static Ipo create(
+            String ticker,
+            String companyName,
+            String exchangeName,
+            String sector,
+            LocalDate subscriptionStartDate,
+            LocalDate subscriptionEndDate,
+            LocalDate listingDate,
+            LocalDate refundDate,
+            LocalDate depositDate,
+            BigDecimal offerPriceMin,
+            BigDecimal offerPriceMax,
+            BigDecimal confirmedOfferPrice,
+            BigDecimal minimumSubscriptionAmount,
+            String ipoStatus
+    ) {
+        Ipo ipo = new Ipo();
+        ipo.ticker = ticker;
+        ipo.companyName = companyName;
+        ipo.exchangeName = exchangeName;
+        ipo.sector = sector;
+        ipo.subscriptionStartDate = subscriptionStartDate;
+        ipo.subscriptionEndDate = subscriptionEndDate;
+        ipo.listingDate = listingDate;
+        ipo.refundDate = refundDate;
+        ipo.depositDate = depositDate;
+        ipo.offerPriceMin = offerPriceMin;
+        ipo.offerPriceMax = offerPriceMax;
+        ipo.confirmedOfferPrice = confirmedOfferPrice;
+        ipo.minimumSubscriptionAmount = minimumSubscriptionAmount;
+        ipo.ipoStatus = ipoStatus;
+        return ipo;
+    }
 }
