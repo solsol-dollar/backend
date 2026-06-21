@@ -28,7 +28,18 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest(classes = LedgerApplication.class)
+@SpringBootTest(
+        classes = LedgerApplication.class,
+        properties = {
+                // CI 환경변수(SPRING_DATASOURCE_*)가 application.yml보다 우선순위가 높아 H2 설정을 덮어쓰는 것을 방지
+                "spring.datasource.url=jdbc:h2:mem:eclipse-test;MODE=MySQL;DB_CLOSE_DELAY=-1",
+                "spring.datasource.driver-class-name=org.h2.Driver",
+                "spring.datasource.username=sa",
+                "spring.datasource.password=",
+                "spring.jpa.hibernate.ddl-auto=create-drop",
+                "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
+        }
+)
 class SubscriptionFacadeImplTest {
 
     @Autowired
