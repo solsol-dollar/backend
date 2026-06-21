@@ -61,4 +61,30 @@ public class IpoSubscription extends BaseEntity {
     private String resultStatus;
 
     private LocalDateTime confirmedAt;
+
+    public static IpoSubscription request(Long userId, Long ipoId, Long securitiesAccountId,
+                                           Integer shares, BigDecimal offerPrice) {
+        IpoSubscription subscription = new IpoSubscription();
+        subscription.userId = userId;
+        subscription.ipoId = ipoId;
+        subscription.securitiesAccountId = securitiesAccountId;
+        subscription.requestedShares = shares;
+        subscription.offerPrice = offerPrice;
+        subscription.subscriptionAmount = offerPrice.multiply(BigDecimal.valueOf(shares));
+        subscription.subscribedAt = LocalDateTime.now();
+        return subscription;
+    }
+
+    public boolean isRequested() {
+        return "REQUESTED".equals(this.subscriptionStatus);
+    }
+
+    public void confirm() {
+        this.subscriptionStatus = "CONFIRMED";
+        this.confirmedAt = LocalDateTime.now();
+    }
+
+    public void cancel() {
+        this.subscriptionStatus = "CANCELLED";
+    }
 }

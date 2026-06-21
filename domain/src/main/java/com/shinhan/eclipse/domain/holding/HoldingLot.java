@@ -41,4 +41,19 @@ public class HoldingLot extends BaseEntity {
 
     @Column(nullable = false)
     private LocalDateTime acquiredAt;
+
+    public static HoldingLot ofBuy(Long holdingId, Long userId, Long productId,
+                                    Long tradeOrderId, Integer quantity, BigDecimal price) {
+        HoldingLot lot = new HoldingLot();
+        lot.holdingId = holdingId;
+        lot.userId = userId;
+        lot.productId = productId;
+        lot.sourceType = "TRADE_ORDER";
+        lot.sourceId = tradeOrderId;
+        lot.quantity = quantity;
+        lot.remainingQuantity = quantity;
+        lot.acquisitionPrice = price;
+        lot.acquiredAt = LocalDateTime.now();
+        return lot;
+    }
 }
