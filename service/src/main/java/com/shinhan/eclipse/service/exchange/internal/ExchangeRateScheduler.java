@@ -1,0 +1,82 @@
+package com.shinhan.eclipse.service.exchange.internal;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.time.MonthDay;
+import java.util.Set;
+
+/**
+ * 수출입은행 환율은 영업일 오전에 하루 한 번 고시된다.
+ * 평일 10:00에 1회 갱신하고, 공휴일은 스킵한다 (주말은 cron 표현식으로 제외).
+ * 한국 공휴일 목록은 연도별로 업데이트 필요 (현재 2025·2026 하드코딩).
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+class ExchangeRateScheduler {
+
+    private final ExchangeRateApiClient apiClient;
+    private final ExchangeRateCache     rateCache;
+
+    /** 평일 오전 10시 1회 갱신 */
+    @Scheduled(cron = "0 0 10 * * MON-FRI")
+    void refreshDaily() {
+        if (isKoreanHoliday()) {
+            log.info("[환율 갱신] 공휴일 — 스킵");
+            return;
+        }
+        log.info("[환율 갱신] 시작");
+        try {
+            apiClient.fetchOne("USD").ifPresentOrElse(
+                    rate -> {
+                        rateCache.put(rate);
+                        log.info("[환율 갱신] 완료: USD={}", rate.baseRate());
+                    },
+                    () -> log.warn("[환율 갱신] API 응답 없음 — 기존 캐시 유지")
+            );
+
+        } catch (Exception e) {
+            log.error("[환율 갱신] 실패: {}", e.getMessage());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 공휴일 판별 (2025·2026 한국 법정공휴일 — 음력 기반 날짜는 고정 변환값 사용)
+    // -----------------------------------------------------------------------
+
+    private static final Set<MonthDay> FIXED_HOLIDAYS = Set.of(
+            MonthDay.of(1,  1),   // 신정
+            MonthDay.of(3,  1),   // 삼일절
+            MonthDay.of(5,  5),   // 어린이날
+            MonthDay.of(6,  6),   // 현충일
+            MonthDay.of(8, 15),   // 광복절
+            MonthDay.of(10, 3),   // 개천절
+            MonthDay.of(10, 9),   // 한글날
+            MonthDay.of(12, 25)   // 성탄절
+    );
+
+    private static final Set<LocalDate> LUNAR_HOLIDAYS = Set.of(
+            // 설날 연휴 2025 (1/28~1/30)
+            LocalDate.of(2025, 1, 28), LocalDate.of(2025, 1, 29), LocalDate.of(2025, 1, 30),
+            // 부처님 오신 날 2025 (5/6 — 어린이날과 겹쳐 대체휴일)
+            LocalDate.of(2025, 5,  6),
+            // 추석 연휴 2025 (10/5~10/7)
+            LocalDate.of(2025, 10, 5), LocalDate.of(2025, 10, 6), LocalDate.of(2025, 10, 7),
+            // 설날 연휴 2026 (2/16~2/18)
+            LocalDate.of(2026, 2, 16), LocalDate.of(2026, 2, 17), LocalDate.of(2026, 2, 18),
+            // 부처님 오신 날 2026 (5/24)
+            LocalDate.of(2026, 5, 24),
+            // 추석 연휴 2026 (9/24~9/26)
+            LocalDate.of(2026, 9, 24), LocalDate.of(2026, 9, 25), LocalDate.of(2026, 9, 26)
+    );
+
+    private boolean isKoreanHoliday() {
+        LocalDate today = LocalDate.now();
+        return FIXED_HOLIDAYS.contains(MonthDay.from(today))
+                || LUNAR_HOLIDAYS.contains(today);
+    }
+}
