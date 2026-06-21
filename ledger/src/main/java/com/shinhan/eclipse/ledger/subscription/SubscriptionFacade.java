@@ -1,11 +1,12 @@
 package com.shinhan.eclipse.ledger.subscription;
 
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
-import java.math.BigDecimal;
 import java.util.List;
 
 public interface SubscriptionFacade {
-    IpoSubscription requestSubscription(Long userId, Long ipoId, Long securitiesAccountId, Integer shares, BigDecimal offerPrice);
+    /** draft 는 IpoSubscription.request(...) 로 만든, 아직 저장되지 않은 엔티티 */
+    IpoSubscription requestSubscription(IpoSubscription draft);
     IpoSubscription confirmSubscription(Long subscriptionId, Long userId);
-    List<IpoSubscription> getSubscriptions(Long userId);
+    void cancelSubscription(Long subscriptionId, Long userId);
+    List<IpoSubscription> getSubscriptions(Long userId, Long ipoId, String status);
 }
