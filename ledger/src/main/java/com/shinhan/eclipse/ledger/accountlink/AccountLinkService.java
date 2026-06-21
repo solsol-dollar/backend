@@ -15,5 +15,6 @@ public interface AccountLinkService {
     /** 청약 확정 등 잔액 차감 전 비관적 락으로 계좌를 잠금 조회. */
     FinancialAccount lockAccount(Long userId, Long accountId);
 
-    void deduct(Long accountId, BigDecimal amount);
+    /** 소유/연동 검증 + 비관적 락 후 차감. */
+    void deduct(Long userId, Long accountId, BigDecimal amount);
 }

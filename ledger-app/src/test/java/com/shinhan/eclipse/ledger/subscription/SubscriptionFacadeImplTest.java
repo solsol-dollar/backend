@@ -182,10 +182,10 @@ class SubscriptionFacadeImplTest {
         executor.submit(() -> runConfirm(saved.getId(), readyLatch, startLatch, result1));
         executor.submit(() -> runConfirm(saved.getId(), readyLatch, startLatch, result2));
 
-        readyLatch.await(5, TimeUnit.SECONDS);
+        assertThat(readyLatch.await(5, TimeUnit.SECONDS)).as("두 스레드가 준비되지 못함").isTrue();
         startLatch.countDown();
         executor.shutdown();
-        executor.awaitTermination(5, TimeUnit.SECONDS);
+        assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).as("스레드가 제한 시간 내에 종료되지 않음").isTrue();
 
         List<Object> results = List.of(result1.get(), result2.get());
         long successCount = results.stream().filter(r -> r instanceof IpoSubscription).count();

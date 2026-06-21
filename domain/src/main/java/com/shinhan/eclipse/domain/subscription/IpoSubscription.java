@@ -1,6 +1,8 @@
 package com.shinhan.eclipse.domain.subscription;
 
 import com.shinhan.eclipse.common.entity.BaseEntity;
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -64,6 +66,12 @@ public class IpoSubscription extends BaseEntity {
 
     public static IpoSubscription request(Long userId, Long ipoId, Long securitiesAccountId,
                                            Integer shares, BigDecimal offerPrice) {
+        if (shares == null || shares <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "shares는 1 이상이어야 합니다.");
+        }
+        if (offerPrice == null || offerPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "offerPrice는 0보다 커야 합니다.");
+        }
         IpoSubscription subscription = new IpoSubscription();
         subscription.userId = userId;
         subscription.ipoId = ipoId;

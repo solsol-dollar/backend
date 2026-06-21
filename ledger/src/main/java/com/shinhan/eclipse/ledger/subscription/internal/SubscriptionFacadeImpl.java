@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -36,6 +37,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
         Ipo ipo = ipoRepository.findById(draft.getIpoId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         validateSubscriptionPeriod(ipo);
+        validateOfferPrice(ipo, draft.getOfferPrice());
 
         FinancialAccount account = accountLinkService.getLinkedAccount(draft.getUserId(), draft.getSecuritiesAccountId());
         if (!account.hasSufficientBalance(draft.getSubscriptionAmount())) {
@@ -69,7 +71,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        accountLinkService.deduct(account.getId(), subscription.getSubscriptionAmount());
+        accountLinkService.deduct(userId, account.getId(), subscription.getSubscriptionAmount());
         subscription.confirm();
 
         eventPublisher.publishEvent(new SubscriptionConfirmedEvent(
@@ -119,6 +121,20 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
         LocalDate today = LocalDate.now();
         if (today.isBefore(ipo.getSubscriptionStartDate()) || today.isAfter(ipo.getSubscriptionEndDate())) {
             throw new BusinessException(ErrorCode.SUBSCRIPTION_PERIOD_INVALID);
+        }
+    }
+
+    /** 클라이언트가 보낸 offerPrice가 서버 기준 공모가와 일치하는지 검증 (변조 방지). */
+    private void validateOfferPrice(Ipo ipo, BigDecimal offerPrice) {
+        if (ipo.getConfirmedOfferPrice() != null) {
+            if (offerPrice.compareTo(ipo.getConfirmedOfferPrice()) != 0) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT, "공모가가 일치하지 않습니다.");
+            }
+            return;
+        }
+        if (ipo.getOfferPriceMin() != null && offerPrice.compareTo(ipo.getOfferPriceMin()) < 0
+                || ipo.getOfferPriceMax() != null && offerPrice.compareTo(ipo.getOfferPriceMax()) > 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "공모가가 희망 범위를 벗어났습니다.");
         }
     }
 }

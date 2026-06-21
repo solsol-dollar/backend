@@ -48,12 +48,12 @@ public class SubscriptionController {
 
     // SUB-003
     @DeleteMapping("/{subscriptionId}")
-    public ResponseEntity<Void> cancelSubscription(
+    public ResponseEntity<ApiResponse<Void>> cancelSubscription(
             @UserHeader Long userId,
             @PathVariable("subscriptionId") Long subscriptionId) {
         log.info("청약 취소 요청: userId={}, subscriptionId={}", userId, subscriptionId);
         subscriptionFacade.cancelSubscription(subscriptionId, userId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.success());
     }
 
     // SUB-004
