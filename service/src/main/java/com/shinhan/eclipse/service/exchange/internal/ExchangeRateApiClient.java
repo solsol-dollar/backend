@@ -15,7 +15,9 @@ import org.springframework.web.reactive.function.client.WebClientException;
 import reactor.netty.http.client.HttpClient;
 
 import javax.net.ssl.SSLException;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -30,8 +32,10 @@ import java.util.Optional;
 @RequiredArgsConstructor
 class ExchangeRateApiClient {
 
-    private static final String              DATA_TYPE        = "AP01";
-    private static final DateTimeFormatter   DATE_FORMATTER   = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final String            DATA_TYPE      = "AP01";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final ZoneId            KST            = ZoneId.of("Asia/Seoul");
+    private static final Duration          TIMEOUT        = Duration.ofSeconds(10);
 
     private final ExchangeProperties props;
     private WebClient webClient;
@@ -44,6 +48,7 @@ class ExchangeRateApiClient {
                     .trustManager(InsecureTrustManagerFactory.INSTANCE)
                     .build();
             HttpClient httpClient = HttpClient.create()
+                    .responseTimeout(TIMEOUT)
                     .secure(spec -> spec.sslContext(sslContext));
             this.webClient = WebClient.builder()
                     .baseUrl(props.getBaseUrl())
@@ -64,19 +69,18 @@ class ExchangeRateApiClient {
                     .uri(uri -> uri
                             .path("/site/program/financial/exchangeJSON")
                             .queryParam("authkey", props.getAuthKey())
-                            .queryParam("searchdate", LocalDate.now().format(DATE_FORMATTER))
+                            .queryParam("searchdate", LocalDate.now(KST).format(DATE_FORMATTER))
                             .queryParam("data", DATA_TYPE)
                             .build())
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<List<ExchangeRateApiDto>>() {})
-                    .block();
+                    .block(TIMEOUT);
 
             if (dtos == null || dtos.isEmpty()) {
                 log.warn("수출입은행 API 응답이 비어 있습니다 (주말·공휴일 가능성)");
                 return Optional.empty();
             }
 
-            // result != 1 인 항목(오류코드) 필터링
             List<ExchangeRateInfo> rates = dtos.stream()
                     .filter(ExchangeRateApiDto::isSuccess)
                     .map(ExchangeRateApiDto::toInfo)

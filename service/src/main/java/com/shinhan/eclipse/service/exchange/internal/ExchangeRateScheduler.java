@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.MonthDay;
+import java.time.ZoneId;
 import java.util.Set;
 
 /**
@@ -22,8 +23,10 @@ class ExchangeRateScheduler {
     private final ExchangeRateApiClient apiClient;
     private final ExchangeRateCache     rateCache;
 
-    /** 평일 오전 10시 1회 갱신 */
-    @Scheduled(cron = "0 0 10 * * MON-FRI")
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
+    /** 평일 오전 10시 1회 갱신 (KST 기준) */
+    @Scheduled(cron = "0 0 10 * * MON-FRI", zone = "Asia/Seoul")
     void refreshDaily() {
         if (isKoreanHoliday()) {
             log.info("[환율 갱신] 공휴일 — 스킵");
@@ -75,7 +78,7 @@ class ExchangeRateScheduler {
     );
 
     private boolean isKoreanHoliday() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(KST);
         return FIXED_HOLIDAYS.contains(MonthDay.from(today))
                 || LUNAR_HOLIDAYS.contains(today);
     }

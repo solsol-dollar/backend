@@ -5,6 +5,7 @@ import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.ledger.exchange.ExchangeExecutionService;
 import com.shinhan.eclipse.ledger.exchange.ExchangeRequest;
 import com.shinhan.eclipse.ledger.exchange.ExchangeResult;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,7 +23,7 @@ public class ExchangeController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<ExchangeResult>> execute(
-            @RequestBody ExchangeRequest request,
+            @Valid @RequestBody ExchangeRequest request,
             @AuthenticationPrincipal AuthUser authUser) {
         return ResponseEntity.ok(ApiResponse.success(exchangeExecutionService.execute(request, authUser.userId())));
     }

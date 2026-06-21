@@ -51,7 +51,10 @@ class ExchangeExecutionServiceImpl implements ExchangeExecutionService {
 
         // KRW→USD: 고객이 달러 구매 → 은행 매도율(tts) 적용
         // USD→KRW: 고객이 달러 판매 → 은행 매수율(ttb) 적용
-        BigDecimal appliedRate  = krwToUsd ? rate.sellingRate() : rate.buyingRate();
+        BigDecimal appliedRate = krwToUsd ? rate.sellingRate() : rate.buyingRate();
+        if (appliedRate == null || appliedRate.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.EXCHANGE_RATE_UNAVAILABLE, "유효하지 않은 환율입니다.");
+        }
         BigDecimal targetAmount = krwToUsd
                 ? request.sourceAmount().divide(appliedRate, 4, RoundingMode.HALF_UP)
                 : request.sourceAmount().multiply(appliedRate).setScale(4, RoundingMode.HALF_UP);

@@ -1,6 +1,8 @@
 package com.shinhan.eclipse.service.exchange.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.common.exchange.ExchangeRateInfo;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -42,15 +44,23 @@ class ExchangeRateApiDto {
         return new ExchangeRateInfo(
                 currencyCode,
                 currencyName,
-                parse(dealBasR),
-                parse(ttb),
-                parse(tts),
+                parse(dealBasR, "deal_bas_r"),
+                parse(ttb, "ttb"),
+                parse(tts, "tts"),
                 Instant.now()
         );
     }
 
-    private static BigDecimal parse(String raw) {
-        if (raw == null || raw.isBlank()) return BigDecimal.ZERO;
-        return new BigDecimal(raw.replace(",", "").trim());
+    private static BigDecimal parse(String raw, String fieldName) {
+        if (raw == null || raw.isBlank()) {
+            throw new BusinessException(ErrorCode.EXCHANGE_RATE_UNAVAILABLE,
+                    "환율 응답 필드 누락: " + fieldName);
+        }
+        try {
+            return new BigDecimal(raw.replace(",", "").trim());
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ErrorCode.EXCHANGE_RATE_UNAVAILABLE,
+                    "환율 응답 필드 파싱 실패: " + fieldName);
+        }
     }
 }

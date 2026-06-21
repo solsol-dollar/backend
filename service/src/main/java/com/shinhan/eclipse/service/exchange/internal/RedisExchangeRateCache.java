@@ -10,28 +10,30 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
  * Cache-Aside 패턴으로 환율 정보를 Redis에 저장한다.
- * TTL을 25시간으로 설정하여 주말·공휴일 이후에도 마지막 환율을 폴백으로 사용할 수 있다.
+ * TTL을 72시간으로 설정하여 금요일 10시 갱신 후 월요일까지 폴백 사용 가능.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 class RedisExchangeRateCache implements ExchangeRateCache {
 
-    private static final String KEY_PREFIX = ExchangeRateKeys.RATE_KEY_PREFIX;
-    private static final Duration TTL = Duration.ofHours(25);
+    private static final String   KEY_PREFIX = ExchangeRateKeys.RATE_KEY_PREFIX;
+    private static final Duration TTL        = Duration.ofHours(72);
 
     private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper        objectMapper;
 
     @Override
     public void put(ExchangeRateInfo info) {
         try {
+            String key  = KEY_PREFIX + info.currencyCode().toUpperCase(Locale.ROOT);
             String json = objectMapper.writeValueAsString(info);
-            redisTemplate.opsForValue().set(KEY_PREFIX + info.currencyCode(), json, TTL);
+            redisTemplate.opsForValue().set(key, json, TTL);
         } catch (JsonProcessingException e) {
             log.warn("환율 캐시 직렬화 실패 [{}]: {}", info.currencyCode(), e.getMessage());
         }
@@ -39,7 +41,8 @@ class RedisExchangeRateCache implements ExchangeRateCache {
 
     @Override
     public Optional<ExchangeRateInfo> get(String currencyCode) {
-        String json = redisTemplate.opsForValue().get(KEY_PREFIX + currencyCode);
+        String key  = KEY_PREFIX + currencyCode.toUpperCase(Locale.ROOT);
+        String json = redisTemplate.opsForValue().get(key);
         if (json == null) return Optional.empty();
         try {
             return Optional.of(objectMapper.readValue(json, ExchangeRateInfo.class));

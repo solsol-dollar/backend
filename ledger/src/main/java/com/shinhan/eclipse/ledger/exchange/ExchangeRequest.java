@@ -1,8 +1,12 @@
 package com.shinhan.eclipse.ledger.exchange;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 import java.math.BigDecimal;
 
 public record ExchangeRequest(
-        String     direction,   // "KRW_TO_USD" or "USD_TO_KRW"
-        BigDecimal sourceAmount
+        @NotBlank String direction,
+        @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal sourceAmount
 ) {}

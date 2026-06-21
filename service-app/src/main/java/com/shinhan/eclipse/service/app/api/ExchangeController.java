@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Locale;
+
 @RestController
 @RequestMapping("/api/v1/exchange")
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class ExchangeController {
     @GetMapping("/rate")
     public ResponseEntity<ApiResponse<ExchangeRateInfo>> getExchangeRate(
             @RequestParam(defaultValue = "USD") String currency) {
-        return ResponseEntity.ok(ApiResponse.success(exchangeService.getExchangeRate(currency)));
+        return ResponseEntity.ok(ApiResponse.success(
+                exchangeService.getExchangeRate(currency.trim().toUpperCase(Locale.ROOT))));
     }
 }
