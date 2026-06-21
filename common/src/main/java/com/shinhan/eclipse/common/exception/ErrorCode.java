@@ -19,6 +19,11 @@ public enum ErrorCode {
     SUBSCRIPTION_PERIOD_INVALID("L003", "청약 기간이 아닙니다.", 422),
     SUBSCRIPTION_NOT_FOUND("L004", "청약 정보를 찾을 수 없습니다.", 404),
     ACCOUNT_NOT_LINKED("L005", "연동된 계좌가 없습니다.", 422),
+    ALLOCATION_NOT_FOUND("L006", "배정 결과가 없습니다.", 404),
+    RETURN_PLAN_ALREADY_EXISTS("L007", "이미 생성된 리턴 플랜이 있습니다.", 409),
+    RETURN_PLAN_NOT_FOUND("L008", "리턴 플랜을 찾을 수 없습니다.", 404),
+    RATIO_SUM_INVALID("L009", "비율의 합이 100이 아닙니다.", 422),
+    RETURN_PLAN_CONFLICT("L010", "이미 확정된 리턴 플랜입니다.", 409),
 
     // Service
     AI_ANALYSIS_FAILED("S001", "AI 분석에 실패했습니다.", 503),
