@@ -51,6 +51,10 @@ public class FinancialAccount extends BaseEntity {
 
     private LocalDateTime linkedAt;
 
+    public boolean hasSufficientBalance(BigDecimal amount) {
+        return this.balance.compareTo(amount) >= 0;
+    }
+
     public void deductBalance(BigDecimal amount) {
         if (this.balance.compareTo(amount) < 0) throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         this.balance = this.balance.subtract(amount);
