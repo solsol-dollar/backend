@@ -19,6 +19,7 @@ public enum ErrorCode {
     SUBSCRIPTION_PERIOD_INVALID("L003", "청약 기간이 아닙니다.", 422),
     SUBSCRIPTION_NOT_FOUND("L004", "청약 정보를 찾을 수 없습니다.", 404),
     ACCOUNT_NOT_LINKED("L005", "연동된 계좌가 없습니다.", 422),
+    ACCOUNT_NOT_FOUND("L006", "계좌를 찾을 수 없습니다.", 404),
 
     // Service
     AI_ANALYSIS_FAILED("S001", "AI 분석에 실패했습니다.", 503),
