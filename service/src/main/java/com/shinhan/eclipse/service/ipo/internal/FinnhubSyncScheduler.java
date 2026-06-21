@@ -99,11 +99,11 @@ class FinnhubSyncScheduler {
                         .filter(item -> item.date() != null && !item.date().isBlank())
                         .filter(item -> item.price() != null && !item.price().isBlank())
                         .filter(item -> !isSpac(item))
+                        .filter(item -> !EXCLUDED_TICKERS.contains(item.symbol()))
                         .map(this::toIpo)
                         .filter(ipo -> ipo.getConfirmedOfferPrice() != null)
                         .filter(ipo -> ipo.getConfirmedOfferPrice().compareTo(BigDecimal.TEN) >= 0)
                         .filter(ipo -> !"Shell Companies".equals(ipo.getSector()))
-                        .filter(ipo -> !"Financial - Conglomerates".equals(ipo.getSector()))
                         .filter(ipo -> ipo.getSector() != null
                                 || (ipo.getListingDate() != null && ipo.getListingDate().isAfter(LocalDate.now())))
                         .forEach(result::add);
