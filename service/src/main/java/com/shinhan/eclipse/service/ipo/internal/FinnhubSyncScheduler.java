@@ -25,6 +25,14 @@ class FinnhubSyncScheduler {
     private static final String BASE_URL = "https://finnhub.io/api/v1";
     private static final String FMP_BASE_URL = "https://financialmodelingprep.com/stable";
 
+    private static final Set<String> EXCLUDED_TICKERS = Set.of(
+            "CAES", "RACC",                                         // 껍데기 금융 지주사
+            "YSS", "SHAZ", "EROC", "HMH", "EROK",                 // 정체불명
+            "WHK", "SSMR", "GMTL", "SBMT", "REA", "ELMT",         // 소규모 광물/채굴
+            "FCBM", "AGBK",                                         // 지역 소형 은행
+            "YSWY", "PPHC"                                          // 낮은 관심 기타
+    );
+
     @Value("${finnhub.api-key:}")
     private String apiKey;
 
@@ -40,7 +48,7 @@ class FinnhubSyncScheduler {
                            String price, String status, Long numberOfShares, Long totalSharesValue) {}
     private record FmpProfile(String sector, String industry) {}
 
-    @Scheduled(cron = "0 0 1 * * *")
+    @Scheduled(cron = "0 * * * * *")
     public void sync() {
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("FINNHUB_API_KEY가 설정되지 않았습니다.");
@@ -90,7 +98,12 @@ class FinnhubSyncScheduler {
                         .filter(item -> "expected".equals(item.status()) || "priced".equals(item.status()))
                         .filter(item -> item.date() != null && !item.date().isBlank())
                         .filter(item -> item.price() != null && !item.price().isBlank())
+                        .filter(item -> !isSpac(item))
                         .map(this::toIpo)
+                        .filter(ipo -> ipo.getConfirmedOfferPrice() != null)
+                        .filter(ipo -> ipo.getConfirmedOfferPrice().compareTo(BigDecimal.TEN) >= 0)
+                        .filter(ipo -> !"Shell Companies".equals(ipo.getSector()))
+                        .filter(ipo -> !"Financial - Conglomerates".equals(ipo.getSector()))
                         .filter(ipo -> ipo.getSector() != null
                                 || (ipo.getListingDate() != null && ipo.getListingDate().isAfter(LocalDate.now())))
                         .forEach(result::add);
@@ -169,6 +182,14 @@ class FinnhubSyncScheduler {
             candidate = candidate.minusDays(1);
         }
         return candidate;
+    }
+
+    private boolean isSpac(IpoItem item) {
+        boolean isPricedAt10 = "10.00".equals(item.price()) || "10".equals(item.price());
+        String name = item.name() != null ? item.name().toLowerCase() : "";
+        boolean hasAcquisitionName = name.contains("acquisition") || name.contains("capital corp");
+        boolean hasUnitTicker = item.symbol() != null && item.symbol().endsWith("U");
+        return isPricedAt10 && (hasAcquisitionName || hasUnitTicker);
     }
 
     private BigDecimal[] parsePrice(String price) {

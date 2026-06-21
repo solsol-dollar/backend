@@ -18,9 +18,9 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
   batch:
     job:
-      enabled: false
+      enabled: false        # 시작 시 자동 실행 방지 — Scheduler가 트리거
     jdbc:
-      initialize-schema: always
+      initialize-schema: always   # Spring Batch 메타데이터 테이블 자동 생성
   ai:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}
