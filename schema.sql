@@ -18,6 +18,7 @@ CREATE TABLE `users` (
 	`email`	VARCHAR(100)	NULL	COMMENT 'SSO 연동 시 존재 (현재 NULL 허용 - 정책 확정 후 NOT NULL 검토)',
 	`phone_number`	VARCHAR(30)	NULL,
 	`onboarding_status`	VARCHAR(30)	NOT NULL	DEFAULT 'REQUIRED',
+	`simple_password`	VARCHAR(255)	NULL	COMMENT '간편 비밀번호 BCrypt 해시',
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',

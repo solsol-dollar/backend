@@ -7,10 +7,15 @@
 SET @now = NOW();
 
 -- ---------------------------------------------------------------------
--- 1. 테스트 유저 (id=1)
+-- 1. 목 유저 3명 (간편 비밀번호 BCrypt 해시)
+--    김하늘: 123456 / 이서준: 654321 / 박지민: 111111
 -- ---------------------------------------------------------------------
-INSERT IGNORE INTO users (id, name, email, phone_number, onboarding_status, created_at, updated_at, status)
-VALUES (1, '테스트유저', 'test@eclipse.dev', '010-0000-0000', 'COMPLETED', @now, @now, 'ACTIVE');
+INSERT IGNORE INTO users (id, name, email, phone_number, onboarding_status, simple_password, created_at, updated_at, status)
+VALUES
+    (1, '김하늘', 'kim@eclipse.dev',  '010-1111-1111', 'COMPLETED', '$2a$10$pSFAP6RtRspRqB4zmpNZWOCBkT1HYzlcSsamx5f5EfqiJfgR1ZvaK', @now, @now, 'ACTIVE'),
+    (2, '이서준', 'lee@eclipse.dev',  '010-2222-2222', 'COMPLETED', '$2a$10$YckxBJxddvv6XcyZ0U2NH.YyD6sOKMLF1SEOBZtRfBmMYb5kzr9qq', @now, @now, 'ACTIVE'),
+    (3, '박지민', 'park@eclipse.dev', '010-3333-3333', 'COMPLETED', '$2a$10$qmwLYEVLCrbRFLBsKgPNuO.RDFvHT.Ikjvhl5fEDZcPuHKSbdIwhu', @now, @now, 'ACTIVE');
+
 
 -- ---------------------------------------------------------------------
 -- 2. 외화증권 계좌 (id=1, USD $50,000)

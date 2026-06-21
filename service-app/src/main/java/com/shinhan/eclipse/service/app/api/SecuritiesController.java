@@ -1,12 +1,13 @@
 package com.shinhan.eclipse.service.app.api;
 
+import com.shinhan.eclipse.auth.AuthUser;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.resolver.UserHeader;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.service.securities.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +18,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SecuritiesController {
 
-    private static final Set<String> VALID_PERIODS = Set.of("1D", "1W", "1M", "3M", "6M", "1Y", "5Y");
+    private static final Set<String> VALID_PERIODS = Set.of("5MIN", "1D", "1W", "1M");
 
     private final SecuritiesService securitiesService;
     private final ChartService chartService;
@@ -44,14 +45,14 @@ public class SecuritiesController {
 
     /** SEC-004: 보유 종목 + 손익 */
     @GetMapping("/holdings")
-    public ResponseEntity<ApiResponse<List<HoldingItem>>> getHoldings(@UserHeader Long userId) {
-        return ResponseEntity.ok(ApiResponse.success(securitiesService.getHoldings(userId)));
+    public ResponseEntity<ApiResponse<List<HoldingItem>>> getHoldings(@AuthenticationPrincipal AuthUser authUser) {
+        return ResponseEntity.ok(ApiResponse.success(securitiesService.getHoldings(authUser.userId())));
     }
 
     /** SEC-005: AI 추천 */
     @GetMapping("/recommended")
-    public ResponseEntity<ApiResponse<List<RecommendedProduct>>> getRecommended(@UserHeader Long userId) {
-        return ResponseEntity.ok(ApiResponse.success(securitiesService.getRecommended(userId)));
+    public ResponseEntity<ApiResponse<List<RecommendedProduct>>> getRecommended(@AuthenticationPrincipal AuthUser authUser) {
+        return ResponseEntity.ok(ApiResponse.success(securitiesService.getRecommended(authUser.userId())));
     }
 
     /** SEC-006: 차트 조회 */
@@ -61,7 +62,7 @@ public class SecuritiesController {
             @RequestParam(defaultValue = "1M") String period) {
         if (!VALID_PERIODS.contains(period)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT,
-                    "유효하지 않은 period: " + period + ". 허용 값: 1D, 1W, 1M, 3M, 6M, 1Y, 5Y");
+                    "유효하지 않은 period: " + period + ". 허용 값: 5MIN, 1D, 1W, 1M");
         }
         return ResponseEntity.ok(ApiResponse.success(chartService.getChart(id, period)));
     }
