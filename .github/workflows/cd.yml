@@ -5,8 +5,10 @@
 #   EC2_USER         — EC2 접속 사용자 (ubuntu)
 #   EC2_SSH_KEY      — jooeon-key-pair.pem 전체 내용
 #   GHCR_PAT         — GitHub PAT (read:packages 권한) — EC2에서 이미지 pull용
-#   ENV_FILE         — .env 파일 전체 내용 (멀티라인 Secret)
-#   JWT_PRIVATE_KEY  — private.pem 전체 내용 (멀티라인 Secret)
+#
+# 환경변수/시크릿은 AWS Secrets Manager에서 EC2가 직접 조회합니다:
+#   eclipse/prod/env             — .env 파일 전체 내용
+#   eclipse/prod/jwt-private-key — JWT RSA private key
 
 name: CD
 
@@ -88,27 +90,33 @@ jobs:
           source: "docker-compose.yml,nginx/"
           target: "/app/eclipse/"
 
-      - name: Write .env and JWT key, then deploy
+      - name: Fetch secrets from AWS Secrets Manager, then deploy
         uses: appleboy/ssh-action@v1.0.3
         env:
           GHCR_PAT: ${{ secrets.GHCR_PAT }}
           GITHUB_ACTOR: ${{ github.actor }}
-          ENV_FILE: ${{ secrets.ENV_FILE }}
-          JWT_PRIVATE_KEY: ${{ secrets.JWT_PRIVATE_KEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: GHCR_PAT,GITHUB_ACTOR,ENV_FILE,JWT_PRIVATE_KEY
+          envs: GHCR_PAT,GITHUB_ACTOR
           script: |
             mkdir -p /app/eclipse/keys
 
-            # .env 파일 (GitHub Secret → EC2)
-            echo "$ENV_FILE" > /app/eclipse/.env
+            # .env (AWS Secrets Manager → EC2)
+            aws secretsmanager get-secret-value \
+              --secret-id eclipse/prod/env \
+              --region ap-northeast-2 \
+              --query SecretString \
+              --output text > /app/eclipse/.env
             chmod 600 /app/eclipse/.env
 
-            # JWT private key (GitHub Secret → EC2)
-            echo "$JWT_PRIVATE_KEY" > /app/eclipse/keys/private.pem
+            # JWT private key (AWS Secrets Manager → EC2)
+            aws secretsmanager get-secret-value \
+              --secret-id eclipse/prod/jwt-private-key \
+              --region ap-northeast-2 \
+              --query SecretString \
+              --output text > /app/eclipse/keys/private.pem
             chmod 600 /app/eclipse/keys/private.pem
 
             # GHCR 로그인 → 이미지 pull → 재시작
