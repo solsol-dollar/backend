@@ -31,6 +31,6 @@ public class AuthService {
         String token = tokenIssuer.issue(
                 new AuthUser(matched.getId(), matched.getName(), "USER"));
 
-        return new SimpleLoginResponse(token, "Bearer", tokenIssuer.getExpirationMs() / 1000);
+        return new SimpleLoginResponse(token, "Bearer", tokenIssuer.getExpirationMs() / 1000, matched.getOnboardingStatus());
     }
 }
