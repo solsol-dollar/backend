@@ -49,6 +49,16 @@ public class Ipo extends BaseEntity {
     @Column(nullable = false, length = 30)
     private String ipoStatus = "UPCOMING";
 
+    private Long numberOfShares;
+
+    @Column(length = 500)
+    private String logoUrl;
+
+    public void updateFmpData(String logoUrl, Long numberOfShares) {
+        if (logoUrl != null) this.logoUrl = logoUrl;
+        if (numberOfShares != null) this.numberOfShares = numberOfShares;
+    }
+
     public static Ipo create(
             String ticker,
             String companyName,
@@ -63,7 +73,9 @@ public class Ipo extends BaseEntity {
             BigDecimal offerPriceMax,
             BigDecimal confirmedOfferPrice,
             BigDecimal minimumSubscriptionAmount,
-            String ipoStatus
+            String ipoStatus,
+            Long numberOfShares,
+            String logoUrl
     ) {
         Ipo ipo = new Ipo();
         ipo.ticker = ticker;
@@ -80,6 +92,8 @@ public class Ipo extends BaseEntity {
         ipo.confirmedOfferPrice = confirmedOfferPrice;
         ipo.minimumSubscriptionAmount = minimumSubscriptionAmount;
         ipo.ipoStatus = ipoStatus;
+        ipo.numberOfShares = numberOfShares;
+        ipo.logoUrl = logoUrl;
         return ipo;
     }
 }

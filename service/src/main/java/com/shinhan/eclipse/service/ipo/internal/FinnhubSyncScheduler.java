@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -27,10 +28,10 @@ class FinnhubSyncScheduler {
 
     private static final Set<String> EXCLUDED_TICKERS = Set.of(
             "CAES", "RACC",                                         // 껍데기 금융 지주사
-            "YSS", "SHAZ", "EROC", "HMH", "EROK",                 // 정체불명
-            "WHK", "SSMR", "GMTL", "SBMT", "REA", "ELMT",         // 소규모 광물/채굴
-            "FCBM", "AGBK",                                         // 지역 소형 은행
-            "YSWY", "PPHC"                                          // 낮은 관심 기타
+            "EROC", "HMH", "EROK", "MOBI", "COAG", "FISN", "ELOX", "FRBT",
+            "WHK", "SSMR", "GMTL", "SBMT", "ELMT",         // 소규모 광물/채굴
+            "FCBM",                                          // 지역 소형 은행
+            "PPHC"                                          // 낮은 관심 기타
     );
 
     @Value("${finnhub.api-key:}")
@@ -46,7 +47,8 @@ class FinnhubSyncScheduler {
     private record IpoResponse(List<IpoItem> ipoCalendar) {}
     private record IpoItem(String symbol, String name, String date, String exchange,
                            String price, String status, Long numberOfShares, Long totalSharesValue) {}
-    private record FmpProfile(String sector, String industry) {}
+    private record FmpProfile(String sector, String industry, String image) {}
+    private record FmpData(String sector, String logoUrl) {}
 
     @Scheduled(cron = "0 0 1 * * *")
     public void sync() {
@@ -55,7 +57,9 @@ class FinnhubSyncScheduler {
             return;
         }
 
-        List<Ipo> fetched = fetchFromFinnhub();
+        List<Ipo> fetched = fetchFromFinnhub().stream()
+                .collect(Collectors.toMap(Ipo::getTicker, i -> i, (a, b) -> a))
+                .values().stream().toList();
         if (fetched.isEmpty()) return;
 
         List<String> tickers = fetched.stream().map(Ipo::getTicker).toList();
@@ -75,7 +79,7 @@ class FinnhubSyncScheduler {
     private List<Ipo> fetchFromFinnhub() {
         LocalDate start = LocalDate.of(2026, 1, 1);
         LocalDate end   = LocalDate.of(2026, 12, 31);
-        List<Ipo> result = new java.util.ArrayList<>();
+        List<Ipo> result = new ArrayList<>();
         LocalDate from = start;
         while (from.isBefore(end)) {
             LocalDate to = from.plusMonths(4).isAfter(end) ? end : from.plusMonths(4);
@@ -100,31 +104,35 @@ class FinnhubSyncScheduler {
                         .filter(item -> item.price() != null && !item.price().isBlank())
                         .filter(item -> !isSpac(item))
                         .filter(item -> !EXCLUDED_TICKERS.contains(item.symbol()))
+                        .filter(item -> {
+                            BigDecimal[] p = parsePrice(item.price());
+                            BigDecimal confirmed = calcConfirmedPrice(p[0], p[1]);
+                            return confirmed != null && confirmed.compareTo(BigDecimal.TEN) >= 0;
+                        })
                         .map(this::toIpo)
                         .filter(ipo -> ipo.getConfirmedOfferPrice() != null)
-                        .filter(ipo -> ipo.getConfirmedOfferPrice().compareTo(BigDecimal.TEN) >= 0)
                         .filter(ipo -> !"Shell Companies".equals(ipo.getSector()))
                         .filter(ipo -> ipo.getSector() != null
                                 || (ipo.getListingDate() != null && ipo.getListingDate().isAfter(LocalDate.now())))
                         .forEach(result::add);
             }
-            from = to;
+            from = to.plusDays(1);
         }
         return result;
     }
 
     private Ipo toIpo(IpoItem item) {
-        LocalDate listingDate  = item.date() != null ? LocalDate.parse(item.date()) : null;
-        BigDecimal[] prices    = parsePrice(item.price());
-        String ipoStatus       = "priced".equals(item.status()) ? "OPEN" : "UPCOMING";
+        LocalDate listingDate     = item.date() != null ? LocalDate.parse(item.date()) : null;
+        BigDecimal[] prices       = parsePrice(item.price());
+        String ipoStatus          = "priced".equals(item.status()) ? "OPEN" : "UPCOMING";
         BigDecimal confirmedPrice = calcConfirmedPrice(prices[0], prices[1]);
-        String sector          = fetchSector(item.symbol());
+        FmpData fmpData           = fetchFmpData(item.symbol());
 
         return Ipo.create(
                 item.symbol(),
                 item.name(),
                 item.exchange(),
-                sector,
+                fmpData.sector(),
                 listingDate != null ? calcSubscriptionStartDate(listingDate) : null,
                 listingDate != null ? listingDate.minusDays(1) : null,
                 listingDate,
@@ -134,7 +142,9 @@ class FinnhubSyncScheduler {
                 prices[1],
                 confirmedPrice,
                 BigDecimal.valueOf(100),
-                ipoStatus
+                ipoStatus,
+                item.numberOfShares(),
+                fmpData.logoUrl()
         );
     }
 
@@ -145,8 +155,8 @@ class FinnhubSyncScheduler {
         return min != null ? min : max;
     }
 
-    private String fetchSector(String ticker) {
-        if (fmpApiKey == null || fmpApiKey.isBlank()) return null;
+    private FmpData fetchFmpData(String ticker) {
+        if (fmpApiKey == null || fmpApiKey.isBlank()) return new FmpData(null, null);
         try {
             FmpProfile[] profiles = fmpClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -156,12 +166,12 @@ class FinnhubSyncScheduler {
                             .build())
                     .retrieve()
                     .body(FmpProfile[].class);
-            if (profiles == null || profiles.length == 0) return null;
+            if (profiles == null || profiles.length == 0) return new FmpData(null, null);
             FmpProfile p = profiles[0];
-            return p.industry() != null ? p.industry() : p.sector();
+            return new FmpData(p.industry() != null ? p.industry() : p.sector(), p.image());
         } catch (Exception e) {
-            log.warn("FMP 섹터 조회 실패: {}", ticker);
-            return null;
+            log.warn("FMP 데이터 조회 실패: {}", ticker);
+            return new FmpData(null, null);
         }
     }
 

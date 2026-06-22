@@ -118,6 +118,8 @@ CREATE TABLE `ipos` (
 	`confirmed_offer_price`	DECIMAL(18,4)	NULL,
 	`minimum_subscription_amount`	DECIMAL(18,4)	NULL,
 	`ipo_status`	VARCHAR(30)	NOT NULL	DEFAULT 'UPCOMING',
+	`number_of_shares`	BIGINT	NULL,
+	`logo_url`	VARCHAR(500)	NULL,
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
@@ -145,7 +147,9 @@ CREATE TABLE `ipo_news` (
 	`source`	VARCHAR(100)	NULL,
 	`published_at`	DATETIME	NULL,
 	`url`	VARCHAR(500)	NULL,
-	`summary`	TEXT	NULL,
+	`content`	TEXT	NULL	COMMENT 'EODHD 영어 원문',
+	`title_ko`	VARCHAR(255)	NULL	COMMENT '한국어 제목',
+	`summary`	TEXT	NULL	COMMENT '한국어 요약 (IPO-007 노출)',
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
@@ -454,11 +458,14 @@ ALTER TABLE `investment_profiles`
 
 -- IPO 관련
 ALTER TABLE `ipos`
-	ADD CONSTRAINT `FK_ipos_product` FOREIGN KEY (`product_id`) REFERENCES `investment_products` (`id`);
+	ADD CONSTRAINT `FK_ipos_product` FOREIGN KEY (`product_id`) REFERENCES `investment_products` (`id`),
+	ADD UNIQUE KEY `uq_ipos_ticker` (`ticker`);
 ALTER TABLE `ipo_risk_scores`
 	ADD CONSTRAINT `FK_ipo_risk_scores_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`);
 ALTER TABLE `ipo_news`
-	ADD CONSTRAINT `FK_ipo_news_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`);
+	ADD CONSTRAINT `FK_ipo_news_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`),
+	ADD UNIQUE KEY `uq_url`  (`url`(255)),
+	ADD UNIQUE KEY `uq_news` (`title`(191), `published_at`);
 ALTER TABLE `favorite_ipos`
 	ADD CONSTRAINT `FK_favorite_ipos_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
 	ADD CONSTRAINT `FK_favorite_ipos_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`);

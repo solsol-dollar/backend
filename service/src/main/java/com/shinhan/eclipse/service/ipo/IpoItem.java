@@ -14,5 +14,6 @@ public record IpoItem(
         BigDecimal offerPriceMin,
         BigDecimal offerPriceMax,
         BigDecimal confirmedOfferPrice,
-        boolean isFavorite
+        boolean isFavorite,
+        String logoUrl
 ) {}

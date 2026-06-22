@@ -1,4 +1,4 @@
-package com.shinhan.eclipse.worker.dto;
+package com.shinhan.eclipse.worker.ipo.dto;
 
 import java.time.LocalDateTime;
 
@@ -7,5 +7,6 @@ public record NewsItem(
         String title,
         String url,
         String source,
-        LocalDateTime publishedAt
+        LocalDateTime publishedAt,
+        String content
 ) {}

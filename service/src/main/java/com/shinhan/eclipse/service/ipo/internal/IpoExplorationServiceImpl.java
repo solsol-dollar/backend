@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -76,21 +77,24 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
         List<Long> ipoIds = favorites.stream().map(FavoriteIpo::getIpoId).toList();
         if (ipoIds.isEmpty()) return List.of();
 
-        List<Ipo> ipos = ipoRepository.findAllById(ipoIds);
+        Map<Long, Ipo> ipoMap = ipoRepository.findAllById(ipoIds).stream()
+                .collect(Collectors.toMap(Ipo::getId, ipo -> ipo));
 
         List<FavoriteIpoItem> result = favorites.stream()
-                .flatMap(fav -> ipos.stream()
-                        .filter(ipo -> ipo.getId().equals(fav.getIpoId()))
-                        .map(ipo -> new FavoriteIpoItem(
-                                fav.getId(),
-                                ipo.getId(),
-                                ipo.getTicker(),
-                                ipo.getCompanyName(),
-                                computeStatus(ipo),
-                                ipo.getSubscriptionStartDate(),
-                                ipo.getSubscriptionEndDate(),
-                                ipo.getConfirmedOfferPrice()
-                        )))
+                .filter(fav -> ipoMap.containsKey(fav.getIpoId()))
+                .map(fav -> {
+                    Ipo ipo = ipoMap.get(fav.getIpoId());
+                    return new FavoriteIpoItem(
+                            fav.getId(),
+                            ipo.getId(),
+                            ipo.getTicker(),
+                            ipo.getCompanyName(),
+                            computeStatus(ipo),
+                            ipo.getSubscriptionStartDate(),
+                            ipo.getSubscriptionEndDate(),
+                            ipo.getConfirmedOfferPrice()
+                    );
+                })
                 .toList();
 
         if (limit != null && limit > 0 && result.size() > limit) {
@@ -125,7 +129,8 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                 ipo.getOfferPriceMin(),
                 ipo.getOfferPriceMax(),
                 ipo.getConfirmedOfferPrice(),
-                isFavorite
+                isFavorite,
+                ipo.getLogoUrl()
         );
     }
 
@@ -146,7 +151,9 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                 ipo.getOfferPriceMax(),
                 ipo.getConfirmedOfferPrice(),
                 ipo.getMinimumSubscriptionAmount(),
-                isFavorite
+                isFavorite,
+                ipo.getNumberOfShares(),
+                ipo.getLogoUrl()
         );
     }
 }
