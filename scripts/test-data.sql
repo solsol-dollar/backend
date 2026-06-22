@@ -29,6 +29,24 @@ INSERT IGNORE INTO financial_accounts (
     '신한 외화증권 계좌', '****-****-1234', 'USD', 50000.0000,
     NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
 );
+INSERT IGNORE INTO financial_accounts (
+    id, user_id, account_type, institution_type, institution_name,
+    account_name, account_number_masked, currency, balance,
+    interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
+) VALUES (
+    2, 1, 'DEPOSIT', 'BANK', '신한은행',
+    '신한 외화예금 계좌', '****-****-5678', 'USD', 10000.0000,
+    NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
+);
+INSERT IGNORE INTO financial_accounts (
+    id, user_id, account_type, institution_type, institution_name,
+    account_name, account_number_masked, currency, balance,
+    interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
+) VALUES (
+    3, 1, 'SAVINGS', 'BANK', '신한은행',
+    '신한 외화적금 계좌', '****-****-9012', 'USD', 0.0000,
+    3.5000, '2027-06-22', TRUE, @now, @now, @now, 'ACTIVE'
+);
 
 -- ---------------------------------------------------------------------
 -- 3. 원화증권 계좌 (id=2, KRW 5,000,000원 — 환전 출금용)
