@@ -24,7 +24,7 @@ public class IpoNewsSyncScheduler {
         this.ipoNewsJob = ipoNewsFetchOnlyJob;
     }
 
-    @Scheduled(cron = "0 8 19 * * *")
+    @Scheduled(cron = "0 0 3 * * *")
     public void triggerIpoNewsSync() {
         try {
             JobParameters params = new JobParametersBuilder()

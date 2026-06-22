@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,6 +18,7 @@ public interface IpoNewsRepository extends JpaRepository<IpoNews, Long> {
     @Query("SELECT MAX(n.publishedAt) FROM IpoNews n WHERE n.ipoId = :ipoId")
     Optional<LocalDateTime> findMaxPublishedAt(@Param("ipoId") Long ipoId);
 
+    @Transactional
     @Modifying(clearAutomatically = true)
     @Query(value = """
             INSERT IGNORE INTO ipo_news
@@ -39,6 +41,7 @@ public interface IpoNewsRepository extends JpaRepository<IpoNews, Long> {
             """, nativeQuery = true)
     List<IpoNews> findTop3ForTranslation(@Param("ipoId") Long ipoId);
 
+    @Transactional
     @Modifying(clearAutomatically = true)
     @Query(value = "UPDATE ipo_news SET title_ko = :titleKo, summary = :summary, updated_at = NOW() WHERE id = :id",
            nativeQuery = true)

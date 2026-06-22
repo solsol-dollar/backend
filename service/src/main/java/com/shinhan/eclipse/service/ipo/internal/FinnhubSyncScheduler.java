@@ -78,8 +78,8 @@ class FinnhubSyncScheduler {
     }
 
     private List<Ipo> fetchFromFinnhub() {
-        LocalDate start = LocalDate.of(2026, 1, 1);
-        LocalDate end   = LocalDate.of(2026, 12, 31);
+        LocalDate start = LocalDate.now().withDayOfYear(1);
+        LocalDate end   = LocalDate.now().withMonth(12).withDayOfMonth(31);
         List<Ipo> result = new ArrayList<>();
         LocalDate from = start;
         while (from.isBefore(end)) {

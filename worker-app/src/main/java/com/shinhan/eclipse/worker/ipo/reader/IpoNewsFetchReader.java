@@ -4,6 +4,7 @@ import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.worker.ipo.dto.NewsItem;
 import com.shinhan.eclipse.worker.ipo.repository.IpoNewsRepository;
 import com.shinhan.eclipse.worker.ipo.repository.WorkerIpoRepository;
+import com.shinhan.eclipse.worker.ipo.util.EodhdNewsUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.StepExecution;
@@ -15,14 +16,10 @@ import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 @Slf4j
 @Component
@@ -30,10 +27,6 @@ import java.util.Set;
 public class IpoNewsFetchReader implements ItemReader<NewsItem> {
 
     private static final String BASE_URL = "https://eodhd.com";
-    private static final ZoneId ET = ZoneId.of("America/New_York");
-    private static final Set<String> MIN_CONTENT_TICKERS = Set.of("SPCX", "APC");
-    private static final DateTimeFormatter EODHD_DATE_FORMAT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
 
     @Value("${eodhd.api-key:}")
     private String apiKey;
@@ -113,71 +106,15 @@ public class IpoNewsFetchReader implements ItemReader<NewsItem> {
         LocalDate windowEnd   = ipo.getListingDate() != null ? ipo.getListingDate().minusDays(1) : null;
 
         return Arrays.stream(articles)
-                .filter(a -> {
-                    if (a.content() == null || a.content().isBlank()) return false;
-                    return !MIN_CONTENT_TICKERS.contains(ipo.getTicker()) || a.content().length() >= 500;
-                })
+                .filter(a -> a.content() != null && a.content().length() >= 500)
                 .filter(a -> {
                     if (windowStart == null || a.date() == null) return true;
-                    LocalDate articleDate = parseDateET(a.date());
+                    LocalDate articleDate = EodhdNewsUtil.parseDateET(a.date());
                     if (articleDate == null) return false;
                     return !articleDate.isBefore(windowStart) && !articleDate.isAfter(windowEnd);
                 })
-                .map(a -> new NewsItem(ipo.getId(), a.title(), a.link(), extractSource(a.link()), parseDate(a.date()), a.content()))
+                .map(a -> new NewsItem(ipo.getId(), a.title(), a.link(), EodhdNewsUtil.extractSource(a.link()), EodhdNewsUtil.parseDate(a.date()), a.content()))
                 .toList();
-    }
-
-    private String extractSource(String link) {
-        if (link == null || link.isBlank()) return null;
-        try {
-            String host = new java.net.URI(link).getHost();
-            if (host == null) return null;
-            if (host.startsWith("www.")) host = host.substring(4);
-            return switch (host) {
-                case "finance.yahoo.com" -> "Yahoo Finance";
-                case "nasdaq.com"        -> "Nasdaq";
-                case "seekingalpha.com"  -> "Seeking Alpha";
-                case "benzinga.com"      -> "Benzinga";
-                case "globenewswire.com" -> "GlobeNewsWire";
-                case "marketwatch.com"   -> "MarketWatch";
-                case "reuters.com"       -> "Reuters";
-                case "bloomberg.com"     -> "Bloomberg";
-                case "cnbc.com"          -> "CNBC";
-                case "wsj.com"           -> "Wall Street Journal";
-                case "businesswire.com"  -> "Business Wire";
-                case "prnewswire.com"    -> "PR Newswire";
-                default                  -> host;
-            };
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private LocalDateTime parseDate(String date) {
-        if (date == null) return null;
-        try {
-            return OffsetDateTime.parse(date, EODHD_DATE_FORMAT).toLocalDateTime();
-        } catch (Exception e) {
-            try {
-                return OffsetDateTime.parse(date).toLocalDateTime();
-            } catch (Exception e2) {
-                log.warn("날짜 파싱 실패: {}", date);
-                return null;
-            }
-        }
-    }
-
-    private LocalDate parseDateET(String date) {
-        if (date == null) return null;
-        try {
-            return OffsetDateTime.parse(date, EODHD_DATE_FORMAT).atZoneSameInstant(ET).toLocalDate();
-        } catch (Exception e) {
-            try {
-                return OffsetDateTime.parse(date).atZoneSameInstant(ET).toLocalDate();
-            } catch (Exception e2) {
-                return null;
-            }
-        }
     }
 
     private record EodhdArticle(String date, String title, String content, String link) {}
