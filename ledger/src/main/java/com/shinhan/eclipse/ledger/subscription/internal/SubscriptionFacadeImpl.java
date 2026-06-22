@@ -5,6 +5,7 @@ import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
+import java.util.Optional;
 import com.shinhan.eclipse.ledger.accountlink.AccountLinkService;
 import com.shinhan.eclipse.ledger.event.SubscriptionConfirmedEvent;
 import com.shinhan.eclipse.ledger.subscription.SubscriptionFacade;
@@ -115,6 +116,37 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
             return subscriptionRepository.findByUserIdAndSubscriptionStatus(userId, status);
         }
         return subscriptionRepository.findByUserId(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public IpoSubscription getSubscriptionResult(Long subscriptionResultId, Long userId) {
+        return subscriptionRepository.findByIdAndUserId(subscriptionResultId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<IpoSubscription> getSubscriptionResults(Long userId, Long subscriptionId) {
+        if (subscriptionId != null) {
+            return subscriptionRepository.findByIdAndUserId(subscriptionId, userId)
+                    .map(List::of)
+                    .orElse(List.of());
+        }
+        return subscriptionRepository.findByUserId(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Ipo getIpo(Long ipoId) {
+        return ipoRepository.findById(ipoId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Ipo> findNextUpcomingIpo() {
+        return ipoRepository.findFirstByIpoStatusOrderBySubscriptionStartDateAsc("UPCOMING");
     }
 
     private void validateSubscriptionPeriod(Ipo ipo) {

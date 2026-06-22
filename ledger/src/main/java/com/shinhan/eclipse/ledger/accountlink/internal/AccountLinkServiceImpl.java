@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +22,12 @@ class AccountLinkServiceImpl implements AccountLinkService {
     public List<FinancialAccount> getLinkedAccounts(Long userId) {
         // TODO: 구현
         throw new UnsupportedOperationException("TODO");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<FinancialAccount> findAccountByType(Long userId, String accountType) {
+        return financialAccountRepository.findFirstByUserIdAndAccountType(userId, accountType);
     }
 
     @Override
