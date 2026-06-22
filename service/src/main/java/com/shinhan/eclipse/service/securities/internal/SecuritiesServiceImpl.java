@@ -2,6 +2,7 @@ package com.shinhan.eclipse.service.securities.internal;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
+import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
 import com.shinhan.eclipse.domain.user.InvestmentProfile;
@@ -10,15 +11,21 @@ import com.shinhan.eclipse.service.securities.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -26,21 +33,79 @@ import java.util.Optional;
 @RequiredArgsConstructor
 class SecuritiesServiceImpl implements SecuritiesService {
 
-    private final ProductRepository    productRepository;
-    private final HoldingRepository    holdingRepository;
-    private final QuoteCache           quoteCache;
-    private final LsRestClient         lsRestClient;   // 유지 (LS 코드 보존)
-    private final KisRestClient        kisRestClient;
-    private final ChatClient           chatClient;
-    private final MyPageService        myPageService;
+    private final ProductRepository         productRepository;
+    private final HoldingRepository         holdingRepository;
+    private final FinancialAccountRepository accountRepository;
+    private final PriceCandleRepository     priceCandleRepository;
+    private final QuoteCache                quoteCache;
+    private final LsRestClient              lsRestClient;   // 유지 (LS 코드 보존)
+    private final KisRestClient             kisRestClient;
+    private final ChatClient                chatClient;
+    private final MyPageService             myPageService;
+
+    @Value("${eclipse.fx.usd-krw:1368.5}")
+    private BigDecimal usdKrw;
 
     // ── SEC-001: 종목 목록 ──────────────────────────────────────────────────
     @Override
-    public List<ProductListItem> listProducts(String type, String keyword) {
-        return productRepository.searchProducts(type, keyword)
-                .stream()
-                .map(p -> ProductListItem.of(p, quoteCache.get(p.getTicker()).orElse(null)))
+    public List<ProductListItem> listProducts(String type, String keyword, String sort) {
+        List<InvestmentProduct> products = productRepository.searchProducts(type, keyword);
+
+        List<Long> ids = products.stream().map(InvestmentProduct::getId).toList();
+
+        // 최신 일봉 캔들 벌크 조회 (거래량/거래대금 보강용)
+        Map<Long, com.shinhan.eclipse.domain.product.PriceCandle> candleMap =
+                priceCandleRepository.findLatestDailyByProductIds(ids)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                com.shinhan.eclipse.domain.product.PriceCandle::getProductId,
+                                c -> c
+                        ));
+
+        // 스파크라인용 최근 30일 종가 (product_id, close_price)
+        LocalDate sparkFrom = LocalDate.now().minusDays(30);
+        Map<Long, List<BigDecimal>> sparkMap =
+                priceCandleRepository.findDailyClosePricesForSpark(ids, sparkFrom)
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                row -> ((Number) row[0]).longValue(),
+                                Collectors.mapping(row -> (BigDecimal) row[1], Collectors.toList())
+                        ));
+
+        Comparator<ProductListItem> comparator = buildSortComparator(sort);
+        return products.stream()
+                .map(p -> ProductListItem.of(
+                        p,
+                        quoteCache.get(p.getTicker()).orElse(null),
+                        candleMap.get(p.getId()),
+                        sparkMap.getOrDefault(p.getId(), List.of())
+                ))
+                .sorted(comparator)
                 .toList();
+    }
+
+    private Comparator<ProductListItem> buildSortComparator(String sort) {
+        Comparator<Long> nullSafeId = Comparator.nullsLast(Comparator.naturalOrder());
+        if (sort == null) return Comparator.comparing(ProductListItem::id, nullSafeId);
+        return switch (sort) {
+            case "TRADING_VALUE" -> Comparator.comparing(
+                    ProductListItem::tradeAmount,
+                    Comparator.nullsLast(Comparator.reverseOrder())
+            );
+            case "TRADING_VOLUME" -> Comparator.comparing(
+                    ProductListItem::volume,
+                    Comparator.nullsLast(Comparator.reverseOrder())
+            );
+            case "RISE" -> Comparator.comparing(
+                    ProductListItem::changeRate,
+                    Comparator.nullsLast(Comparator.reverseOrder())
+            );
+            case "FALL" -> Comparator.comparing(
+                    ProductListItem::changeRate,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+            default -> Comparator.comparing(ProductListItem::id, nullSafeId);
+        };
     }
 
     // ── SEC-002: 종목 상세 ──────────────────────────────────────────────────
@@ -49,23 +114,11 @@ class SecuritiesServiceImpl implements SecuritiesService {
         InvestmentProduct product = productRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "종목을 찾을 수 없습니다: " + id));
 
-        QuoteSnapshot quote = quoteCache.get(product.getTicker()).orElseGet(() -> {
-            // Redis 미스 시 KIS REST 폴백
-            return kisRestClient.getCurrentPrice(product.getTicker(), product.getExchangeName())
-                    .map(dto -> {
-                        KisQuoteDto.PriceDetailResponse.Output o = dto.getOutput();
-                        return new QuoteSnapshot(
-                                product.getTicker(),
-                                o.getLast(),
-                                o.diff(),
-                                o.rate(),
-                                o.volume(),
-                                o.sign(),
-                                java.time.Instant.now()
-                        );
-                    })
-                    .orElse(null);
-        });
+        QuoteSnapshot quote = quoteCache.get(product.getTicker()).orElseGet(() ->
+                kisRestClient.getCurrentPrice(product.getTicker(), product.getExchangeName())
+                        .map(dto -> kisToSnapshot(product.getTicker(), dto))
+                        .orElse(null)
+        );
 
         return ProductDetail.of(product, quote);
     }
@@ -104,11 +157,15 @@ class SecuritiesServiceImpl implements SecuritiesService {
                 .orElse(new OrderBookResponse(product.getTicker(), null, List.of(), List.of()));
     }
 
-    // ── SEC-004: 보유 종목 + 손익 ──────────────────────────────────────────
+    // ── SEC-004: 보유 종목 + 손익 (래퍼 포함) ────────────────────────────────
     @Override
-    public List<HoldingItem> getHoldings(Long userId) {
+    public HoldingsSummary getHoldings(Long userId) {
         List<Holding> holdings = holdingRepository.findByUserIdAndStatus(userId, "ACTIVE");
-        List<HoldingItem> result = new ArrayList<>();
+        List<HoldingItem> holdingItems = new ArrayList<>();
+
+        BigDecimal totalCurrentValueUsd = BigDecimal.ZERO;
+        BigDecimal totalCostUsd         = BigDecimal.ZERO;
+        BigDecimal dayChangeUsd         = BigDecimal.ZERO;
 
         for (Holding h : holdings) {
             Optional<InvestmentProduct> productOpt = productRepository.findById(h.getProductId());
@@ -117,7 +174,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
             InvestmentProduct p = productOpt.get();
             QuoteSnapshot quote = quoteCache.get(p.getTicker()).orElse(null);
 
-            BigDecimal currentPrice    = quote != null ? quote.price() : null;
+            BigDecimal currentPrice    = quote != null ? quote.price()  : null;
             BigDecimal evaluatedAmount = null;
             BigDecimal profitLoss      = null;
             BigDecimal profitLossRate  = null;
@@ -129,15 +186,40 @@ class SecuritiesServiceImpl implements SecuritiesService {
                 profitLossRate  = currentPrice.subtract(h.getAveragePrice())
                         .divide(h.getAveragePrice(), 6, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100));
+
+                totalCurrentValueUsd = totalCurrentValueUsd.add(evaluatedAmount);
             }
 
-            result.add(new HoldingItem(
+            totalCostUsd = totalCostUsd.add(
+                    h.getAveragePrice().multiply(BigDecimal.valueOf(h.getTotalQuantity())));
+
+            BigDecimal change = quote != null ? quote.change() : BigDecimal.ZERO;
+            dayChangeUsd = dayChangeUsd.add(
+                    change.multiply(BigDecimal.valueOf(h.getTotalQuantity())));
+
+            holdingItems.add(new HoldingItem(
                     h.getId(), p.getId(), p.getTicker(), p.getProductName(),
                     p.getExchangeName(), h.getTotalQuantity(), h.getAveragePrice(),
                     h.getCurrency(), currentPrice, evaluatedAmount, profitLoss, profitLossRate
             ));
         }
-        return result;
+
+        List<FinancialAccount> accounts = accountRepository.findByUserId(userId);
+        BigDecimal cashUsd = accounts.stream()
+                .filter(a -> "USD".equals(a.getCurrency()))
+                .map(FinancialAccount::getBalance)
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
+        BigDecimal cashKrw = cashUsd.multiply(usdKrw).setScale(0, RoundingMode.HALF_UP);
+
+        return new HoldingsSummary(
+                totalCurrentValueUsd,
+                totalCostUsd,
+                dayChangeUsd,
+                cashUsd,
+                cashKrw,
+                holdingItems
+        );
     }
 
     // ── SEC-005: AI 추천 ───────────────────────────────────────────────────
@@ -189,6 +271,47 @@ class SecuritiesServiceImpl implements SecuritiesService {
             log.warn("AI 추천 실패, 기본 추천으로 대체: {}", e.getMessage());
             return fallbackRecommendations(products);
         }
+    }
+
+    // ── B-01: 시장 지수 ────────────────────────────────────────────────────
+    @Override
+    public List<MarketIndex> getMarketIndices() {
+        boolean marketOpen = MarketHoursUtil.isUsMarketOpen();
+        MarketIndex spy = resolveIndexSnapshot("SPY", "NYSE", marketOpen);
+        MarketIndex qqq = resolveIndexSnapshot("QQQ", "NAS",  marketOpen);
+        MarketIndex usdKrwIndex = new MarketIndex("USD/KRW", usdKrw, BigDecimal.ZERO, BigDecimal.ZERO, false, false);
+
+        return List.of(spy, qqq, usdKrwIndex);
+    }
+
+    private static final java.util.Map<String, String> INDEX_DISPLAY_NAMES = java.util.Map.of(
+            "SPY", "S&P 500",
+            "QQQ", "나스닥"
+    );
+
+    private MarketIndex resolveIndexSnapshot(String ticker, String exchange, boolean marketOpen) {
+        String displayName = INDEX_DISPLAY_NAMES.getOrDefault(ticker, ticker);
+        QuoteSnapshot snapshot = quoteCache.get(ticker).orElseGet(() ->
+                kisRestClient.getCurrentPrice(ticker, exchange)
+                        .map(dto -> kisToSnapshot(ticker, dto))
+                        .orElse(null)
+        );
+        if (snapshot == null) {
+            return new MarketIndex(displayName, null, BigDecimal.ZERO, BigDecimal.ZERO, false, marketOpen);
+        }
+        return new MarketIndex(
+                displayName,
+                snapshot.price(),
+                snapshot.change(),
+                snapshot.changeRate(),
+                !"-".equals(snapshot.sign()) && snapshot.change().compareTo(BigDecimal.ZERO) >= 0,
+                marketOpen
+        );
+    }
+
+    private QuoteSnapshot kisToSnapshot(String ticker, KisQuoteDto.PriceDetailResponse dto) {
+        KisQuoteDto.PriceDetailResponse.Output o = dto.getOutput();
+        return new QuoteSnapshot(ticker, o.getLast(), o.diff(), o.rate(), o.volume(), o.sign(), Instant.now());
     }
 
     private String safeGetRiskType(Long userId) {

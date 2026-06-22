@@ -28,6 +28,7 @@ subprojects {
             mavenBom "org.springframework.boot:spring-boot-dependencies:3.3.5"
             mavenBom "org.springframework.modulith:spring-modulith-bom:1.2.3"
             mavenBom "org.springframework.ai:spring-ai-bom:1.0.4"
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:2023.0.3"
         }
     }
 

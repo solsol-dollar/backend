@@ -62,12 +62,20 @@ springdoc:
   api-docs:
     path: /api-docs
 
+eximbank:
+  base-url: ${EXIMBANK_BASE_URL:https://oapi.koreaexim.go.kr}
+  auth-key: ${EXIMBANK_AUTH_KEY:}
+
 finnhub:
   base-url: https://finnhub.io/api/v1
   api-key: ${FINNHUB_API_KEY:}
 
 fmp:
   api-key: ${FMP_API_KEY:}
+
+eclipse:
+  ledger:
+    url: ${LEDGER_URL:http://localhost:8080}
 
 logging:
   level:

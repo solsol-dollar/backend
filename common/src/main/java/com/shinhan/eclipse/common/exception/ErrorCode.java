@@ -19,11 +19,12 @@ public enum ErrorCode {
     SUBSCRIPTION_PERIOD_INVALID("L003", "청약 기간이 아닙니다.", 422),
     SUBSCRIPTION_NOT_FOUND("L004", "청약 정보를 찾을 수 없습니다.", 404),
     ACCOUNT_NOT_LINKED("L005", "연동된 계좌가 없습니다.", 422),
-    ALLOCATION_NOT_FOUND("L006", "배정 결과가 없습니다.", 404),
-    RETURN_PLAN_ALREADY_EXISTS("L007", "이미 생성된 리턴 플랜이 있습니다.", 409),
-    RETURN_PLAN_NOT_FOUND("L008", "리턴 플랜을 찾을 수 없습니다.", 404),
-    RATIO_SUM_INVALID("L009", "비율의 합이 100이 아닙니다.", 422),
-    RETURN_PLAN_CONFLICT("L010", "이미 확정된 리턴 플랜입니다.", 409),
+    ACCOUNT_NOT_FOUND("L006", "계좌를 찾을 수 없습니다.", 404),
+    ALLOCATION_NOT_FOUND("L007", "배정 결과가 없습니다.", 404),
+    RETURN_PLAN_ALREADY_EXISTS("L008", "이미 생성된 리턴 플랜이 있습니다.", 409),
+    RETURN_PLAN_NOT_FOUND("L009", "리턴 플랜을 찾을 수 없습니다.", 404),
+    RATIO_SUM_INVALID("L010", "비율의 합이 100이 아닙니다.", 422),
+    RETURN_PLAN_CONFLICT("L011", "이미 확정된 리턴 플랜입니다.", 409),
 
     // Service
     AI_ANALYSIS_FAILED("S001", "AI 분석에 실패했습니다.", 503),
@@ -32,7 +33,11 @@ public enum ErrorCode {
     PRODUCT_NOT_FOUND("S004", "종목을 찾을 수 없습니다.", 404),
     INSUFFICIENT_HOLDING("S005", "보유 수량이 부족합니다.", 422),
     INVALID_ORDER("S006", "유효하지 않은 주문입니다.", 400),
-    QUOTE_UNAVAILABLE("S007", "현재가를 조회할 수 없습니다. 가격을 직접 입력해 주세요.", 422);
+    QUOTE_UNAVAILABLE("S007", "현재가를 조회할 수 없습니다. 가격을 직접 입력해 주세요.", 422),
+
+    // Exchange
+    EXCHANGE_RATE_UNAVAILABLE("E001", "환율 정보를 조회할 수 없습니다.", 503),
+    EXCHANGE_ACCOUNT_NOT_FOUND("E003", "환전 대상 계좌를 찾을 수 없습니다.", 404);
 
     private final String code;
     private final String message;

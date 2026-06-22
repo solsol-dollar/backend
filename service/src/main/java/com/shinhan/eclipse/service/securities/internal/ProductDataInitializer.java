@@ -28,7 +28,10 @@ class ProductDataInitializer {
         }
 
         List<ProductSeedCatalog.Seed> all = Stream.concat(
-                ProductSeedCatalog.NASDAQ_100.stream(),
+                Stream.concat(
+                        ProductSeedCatalog.NASDAQ_100.stream(),
+                        ProductSeedCatalog.SP500_NYSE.stream()
+                ),
                 ProductSeedCatalog.ETF_LIST.stream()
         ).toList();
 
