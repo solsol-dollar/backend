@@ -1,0 +1,14 @@
+.git
+.github
+.gradle
+build
+*/build
+**/.DS_Store
+*.md
+.env
+.env.*
+!.env.example
+nginx
+docs
+scripts
+schema.sql
