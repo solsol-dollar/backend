@@ -31,7 +31,20 @@ INSERT IGNORE INTO financial_accounts (
 );
 
 -- ---------------------------------------------------------------------
--- 3. 종목 시드 (앱 기동 전 수동 실행하는 경우에만 필요)
+-- 3. 원화증권 계좌 (id=2, KRW 5,000,000원 — 환전 출금용)
+-- ---------------------------------------------------------------------
+INSERT IGNORE INTO financial_accounts (
+    id, user_id, account_type, institution_type, institution_name,
+    account_name, account_number_masked, currency, balance,
+    interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
+) VALUES (
+    2, 1, 'SECURITIES', 'SECURITIES', '신한투자증권',
+    '신한 원화증권 계좌', '****-****-5678', 'KRW', 5000000.0000,
+    NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
+);
+
+-- ---------------------------------------------------------------------
+-- 4. 종목 시드 (앱 기동 전 수동 실행하는 경우에만 필요)
 --    ProductDataInitializer 가 이미 삽입했으면 INSERT IGNORE 로 스킵됨
 --    주의: ticker 에 UNIQUE 제약이 없으므로 앱 시드와 중복 삽입되지 않도록
 --          existsByTicker 체크를 앱이 하고 있음 — 여기서는 앱 시드 순서대로 id를 매기지 않음
