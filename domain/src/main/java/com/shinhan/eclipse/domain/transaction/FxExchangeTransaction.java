@@ -45,13 +45,38 @@ public class FxExchangeTransaction extends BaseEntity {
     private String exchangeStatus = "REQUESTED";
 
     @Column(nullable = false, length = 20)
-    private String executionMode = "MOCK";
+    private String executionMode = "REAL";
 
     @Column(nullable = false)
     private LocalDateTime requestedAt;
 
     private LocalDateTime completedAt;
 
-    @Column(length = 255)
-    private String failureReason;
+
+    public static FxExchangeTransaction create(Long userId, Long fromAccountId, Long toAccountId,
+                                               String fromCurrency, String toCurrency,
+                                               BigDecimal exchangeRate, BigDecimal sourceAmount,
+                                               BigDecimal targetAmount) {
+        FxExchangeTransaction tx = new FxExchangeTransaction();
+        tx.userId         = userId;
+        tx.fromAccountId  = fromAccountId;
+        tx.toAccountId    = toAccountId;
+        tx.fromCurrency   = fromCurrency;
+        tx.toCurrency     = toCurrency;
+        tx.exchangeRate   = exchangeRate;
+        tx.sourceAmount   = sourceAmount;
+        tx.targetAmount   = targetAmount;
+        tx.exchangeStatus = "REQUESTED";
+        tx.requestedAt    = LocalDateTime.now();
+        return tx;
+    }
+
+    public void complete(BigDecimal fromBalanceAfter, BigDecimal toBalanceAfter) {
+        this.exchangeStatus   = "COMPLETED";
+        this.fromBalanceAfter = fromBalanceAfter;
+        this.toBalanceAfter   = toBalanceAfter;
+        this.completedAt      = LocalDateTime.now();
+    }
+
+
 }
