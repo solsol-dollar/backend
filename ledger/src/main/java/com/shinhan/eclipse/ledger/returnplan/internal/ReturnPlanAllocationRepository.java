@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 interface ReturnPlanAllocationRepository extends JpaRepository<ReturnPlanAllocation, Long> {
-    List<ReturnPlanAllocation> findByReturnPlanId(Long returnPlanId);
+    List<ReturnPlanAllocation> findByReturnPlanIdOrderByIdAsc(Long returnPlanId);
 
     Optional<ReturnPlanAllocation> findByReturnPlanIdAndDestinationType(Long returnPlanId, String destinationType);
 }

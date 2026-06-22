@@ -19,5 +19,5 @@ interface FinancialAccountRepository extends JpaRepository<FinancialAccount, Lon
     @Query("select a from FinancialAccount a where a.id = :id and a.userId = :userId")
     Optional<FinancialAccount> findByIdAndUserIdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 
-    Optional<FinancialAccount> findFirstByUserIdAndAccountType(Long userId, String accountType);
+    Optional<FinancialAccount> findFirstByUserIdAndAccountTypeAndLinkedTrueOrderByIdAsc(Long userId, String accountType);
 }

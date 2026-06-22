@@ -1,5 +1,7 @@
 package com.shinhan.eclipse.ledger.returnplan;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.common.resolver.UserHeader;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.domain.ipo.Ipo;
@@ -80,6 +82,9 @@ public class ReturnPlanController {
             @UserHeader Long userId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "page는 0 이상, size는 1~100 사이여야 합니다.");
+        }
         Pageable pageable = PageRequest.of(page, size);
         Page<ReturnPlan> plans = returnPlanFacade.getReturnPlans(userId, pageable);
         List<ReturnPlanListItemRes> items = plans

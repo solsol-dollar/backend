@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -57,7 +58,15 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
                 nextIpo == null ? null : nextIpo.getId(),
                 null,
                 fxSavings == null ? null : fxSavings.getInterestRate());
-        ReturnPlan saved = returnPlanRepository.save(plan);
+
+        ReturnPlan saved;
+        try {
+            saved = returnPlanRepository.saveAndFlush(plan);
+        } catch (DataIntegrityViolationException e) {
+            // existsBySubscriptionId 체크와 INSERT 사이의 동시 요청 race condition은
+            // DB unique 제약(subscription_id)이 최종 방어선이 된다.
+            throw new BusinessException(ErrorCode.RETURN_PLAN_ALREADY_EXISTS);
+        }
 
         DESTINATION_TYPES.forEach(type ->
                 allocationRepository.save(ReturnPlanAllocation.initZero(saved.getId(), type)));
@@ -76,7 +85,7 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
     @Override
     @Transactional(readOnly = true)
     public List<ReturnPlanAllocation> getAllocations(Long returnPlanId) {
-        return allocationRepository.findByReturnPlanId(returnPlanId);
+        return allocationRepository.findByReturnPlanIdOrderByIdAsc(returnPlanId);
     }
 
     @Override
@@ -85,7 +94,9 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
         ReturnPlan plan = returnPlanRepository.findByIdAndUserIdForUpdate(returnPlanId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RETURN_PLAN_NOT_FOUND));
 
-        validateRatioSum(items.stream().mapToInt(AllocationItem::ratio).sum());
+        if (!plan.isDraft()) {
+            throw new BusinessException(ErrorCode.RETURN_PLAN_CONFLICT);
+        }
 
         items.forEach(item -> {
             ReturnPlanAllocation allocation = allocationRepository
@@ -93,6 +104,11 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
                     .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT, "지원하지 않는 분배 대상입니다: " + item.destinationType()));
             allocation.updateRatio(item.ratio(), plan.getTotalRefundAmount());
         });
+
+        // 요청에 일부 destinationType이 빠져있어도(과거 비율이 그대로 남는 경우) 합이 깨지지 않는지
+        // 플랜에 속한 전체 allocation 기준으로 재검증한다.
+        List<ReturnPlanAllocation> allAllocations = allocationRepository.findByReturnPlanIdOrderByIdAsc(plan.getId());
+        validateRatioSum(allAllocations.stream().mapToInt(a -> a.getAllocationRatio().intValue()).sum());
 
         log.info("리턴 플랜 비율 수정: returnPlanId={}, userId={}", returnPlanId, userId);
         return plan;
@@ -104,7 +120,7 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
         ReturnPlan plan = returnPlanRepository.findByIdAndUserIdForUpdate(returnPlanId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RETURN_PLAN_NOT_FOUND));
 
-        List<ReturnPlanAllocation> allocations = allocationRepository.findByReturnPlanId(plan.getId());
+        List<ReturnPlanAllocation> allocations = allocationRepository.findByReturnPlanIdOrderByIdAsc(plan.getId());
         validateRatioSum(allocations.stream().mapToInt(a -> a.getAllocationRatio().intValue()).sum());
 
         plan.confirm();
