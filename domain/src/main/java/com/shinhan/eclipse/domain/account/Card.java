@@ -37,4 +37,32 @@ public class Card extends BaseEntity {
     private Boolean linked;
 
     private LocalDateTime linkedAt;
+
+    @Column(nullable = false, length = 20)
+    private String status = "ACTIVE";
+
+    public static Card issue(Long userId, Long linkedAccountId) {
+        Card c = new Card();
+        c.userId = userId;
+        c.linkedAccountId = linkedAccountId;
+        c.cardType = "CHECK_CARD";
+        c.cardStatus = "ACTIVE";
+        c.cardName = "신한 CMA 체크카드";
+        c.cardNumberMasked = generateMaskedNumber();
+        c.issuerName = "신한카드";
+        c.linked = true;
+        c.linkedAt = LocalDateTime.now();
+        c.status = "ACTIVE";
+        return c;
+    }
+
+    public void link() {
+        this.linked = true;
+        this.linkedAt = LocalDateTime.now();
+    }
+
+    private static String generateMaskedNumber() {
+        int suffix = (int) (Math.random() * 9000) + 1000;
+        return "****-****-****-" + suffix;
+    }
 }
