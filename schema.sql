@@ -117,11 +117,13 @@ CREATE TABLE `ipos` (
 	`offer_price_max`	DECIMAL(18,4)	NULL,
 	`confirmed_offer_price`	DECIMAL(18,4)	NULL,
 	`minimum_subscription_amount`	DECIMAL(18,4)	NULL,
+	`total_allocable_shares`	INT	NULL	COMMENT '중개사가 주관사로부터 배정받은 총 공모주식수 (운영자 입력값)',
 	`ipo_status`	VARCHAR(30)	NOT NULL	DEFAULT 'UPCOMING',
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`)
+	PRIMARY KEY (`id`),
+	CONSTRAINT `CK_ipos_total_allocable_shares` CHECK (`total_allocable_shares` IS NULL OR `total_allocable_shares` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [변경] risk_level(VARCHAR) → risk_score(숫자). 등급 문자(A/B/C) 저장 금지.
@@ -211,7 +213,8 @@ CREATE TABLE `return_plans` (
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`)
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `UQ_return_plans_subscription` (`subscription_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `return_plan_allocations` (
@@ -225,7 +228,8 @@ CREATE TABLE `return_plan_allocations` (
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`)
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `UQ_return_plan_allocations_plan_destination` (`return_plan_id`, `destination_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [신규] 리턴 플랜 프리셋 (REQ-07-04) - DB 관리형

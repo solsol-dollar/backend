@@ -1,6 +1,8 @@
 package com.shinhan.eclipse.domain.returnplan;
 
 import com.shinhan.eclipse.common.entity.BaseEntity;
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,7 +13,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor
 @Entity
-@Table(name = "return_plans")
+@Table(name = "return_plans", uniqueConstraints = @UniqueConstraint(columnNames = "subscription_id"))
 public class ReturnPlan extends BaseEntity {
 
     @Column(nullable = false)
@@ -39,4 +41,31 @@ public class ReturnPlan extends BaseEntity {
 
     private LocalDateTime confirmedAt;
     private LocalDateTime executedAt;
+
+    public static ReturnPlan create(Long userId, Long subscriptionId, BigDecimal totalRefundAmount,
+                                     Long nextIpoId, BigDecimal currentSecuritiesBalance, BigDecimal savingsInterestRate) {
+        if (totalRefundAmount == null || totalRefundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.ALLOCATION_NOT_FOUND);
+        }
+        ReturnPlan plan = new ReturnPlan();
+        plan.userId = userId;
+        plan.subscriptionId = subscriptionId;
+        plan.totalRefundAmount = totalRefundAmount;
+        plan.nextIpoId = nextIpoId;
+        plan.currentSecuritiesBalance = currentSecuritiesBalance;
+        plan.savingsInterestRate = savingsInterestRate;
+        return plan;
+    }
+
+    public boolean isDraft() {
+        return "DRAFT".equals(this.planStatus);
+    }
+
+    public void confirm() {
+        if (!isDraft()) {
+            throw new BusinessException(ErrorCode.RETURN_PLAN_CONFLICT);
+        }
+        this.planStatus = "CONFIRMED";
+        this.confirmedAt = LocalDateTime.now();
+    }
 }

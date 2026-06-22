@@ -25,4 +25,8 @@ public class User extends BaseEntity {
 
     @Column(nullable = false)
     private String simplePassword;
+
+    public void completeOnboarding() {
+        this.onboardingStatus = "COMPLETED";
+    }
 }
