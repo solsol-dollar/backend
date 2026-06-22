@@ -27,7 +27,7 @@ class AccountLinkServiceImpl implements AccountLinkService {
     @Override
     @Transactional(readOnly = true)
     public Optional<FinancialAccount> findAccountByType(Long userId, String accountType) {
-        return financialAccountRepository.findFirstByUserIdAndAccountType(userId, accountType);
+        return financialAccountRepository.findFirstByUserIdAndAccountTypeAndLinkedTrueOrderByIdAsc(userId, accountType);
     }
 
     @Override

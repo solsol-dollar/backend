@@ -117,13 +117,11 @@ CREATE TABLE `ipos` (
 	`offer_price_max`	DECIMAL(18,4)	NULL,
 	`confirmed_offer_price`	DECIMAL(18,4)	NULL,
 	`minimum_subscription_amount`	DECIMAL(18,4)	NULL,
-	`total_allocable_shares`	INT	NULL	COMMENT '중개사가 주관사로부터 배정받은 총 공모주식수 (운영자 입력값)',
 	`ipo_status`	VARCHAR(30)	NOT NULL	DEFAULT 'UPCOMING',
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`),
-	CONSTRAINT `CK_ipos_total_allocable_shares` CHECK (`total_allocable_shares` IS NULL OR `total_allocable_shares` >= 0)
+	PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [변경] risk_level(VARCHAR) → risk_score(숫자). 등급 문자(A/B/C) 저장 금지.

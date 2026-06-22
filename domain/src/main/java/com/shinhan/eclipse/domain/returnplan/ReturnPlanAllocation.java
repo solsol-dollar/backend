@@ -14,7 +14,8 @@ import java.util.Set;
 @Getter
 @NoArgsConstructor
 @Entity
-@Table(name = "return_plan_allocations")
+@Table(name = "return_plan_allocations",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"return_plan_id", "destination_type"}))
 public class ReturnPlanAllocation extends BaseEntity {
 
     @Column(nullable = false)
@@ -57,7 +58,7 @@ public class ReturnPlanAllocation extends BaseEntity {
     }
 
     private static void validateDestinationType(String destinationType) {
-        if (!DESTINATION_TYPES.contains(destinationType)) {
+        if (destinationType == null || !DESTINATION_TYPES.contains(destinationType)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "지원하지 않는 분배 대상입니다: " + destinationType);
         }
     }
