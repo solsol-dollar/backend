@@ -32,6 +32,9 @@ jwt:
   expiration-ms: 3600000
   provider-enabled: false
 
+service-app:
+  url: ${SERVICE_APP_URL:http://localhost:8081}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui

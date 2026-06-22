@@ -20,6 +20,9 @@ jwt:
   expiration-ms: 3600000
   provider-enabled: false
 
+service-app:
+  url: http://localhost:8081
+
 logging:
   level:
     com.shinhan.eclipse: INFO

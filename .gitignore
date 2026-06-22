@@ -27,5 +27,3 @@ bin/
 ### RSA Keys
 **/keys/private.pem
 
-### IDE build output
-bin/
