@@ -11,6 +11,7 @@ interface IdleDetectionAccountRepository extends JpaRepository<FinancialAccount,
     @Query("""
             SELECT a FROM FinancialAccount a
             WHERE a.accountType = 'SECURITIES'
+              AND a.currency = 'USD'
               AND a.linked = true
               AND a.balance > 0
               AND a.status = 'ACTIVE'

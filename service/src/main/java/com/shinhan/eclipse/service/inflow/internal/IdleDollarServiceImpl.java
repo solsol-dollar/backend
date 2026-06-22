@@ -3,6 +3,7 @@ package com.shinhan.eclipse.service.inflow.internal;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.inflow.IdleDollarTrigger;
 import com.shinhan.eclipse.service.inflow.IdleDollarService;
+import com.shinhan.eclipse.service.inflow.IdleDollarStatusResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -76,22 +77,38 @@ class IdleDollarServiceImpl implements IdleDollarService {
         return triggerRepository.findByUserIdOrderByDetectedAtDesc(userId);
     }
 
+    @Override
+    public Optional<IdleDollarStatusResponse> getIdleStatus(Long userId) {
+        return triggerRepository.findByUserIdAndTriggerStatus(userId, "TRIGGERED")
+                .map(trigger -> {
+                    int currentIdleDays = resolveLastActivity(trigger.getAccountId())
+                            .map(la -> (int) ChronoUnit.DAYS.between(la.toLocalDate(), LocalDate.now(KST)))
+                            .orElse(trigger.getIdleDays());
+                    return new IdleDollarStatusResponse(
+                            true,
+                            trigger.getAccountId(),
+                            trigger.getIdleBalance(),
+                            currentIdleDays,
+                            trigger.getDetectedAt()
+                    );
+                });
+    }
+
     private int invalidateExistingTriggers(Long accountId) {
-        List<IdleDollarTrigger> triggers =
-                triggerRepository.findByAccountIdAndTriggerStatus(accountId, "TRIGGERED");
-        triggers.forEach(IdleDollarTrigger::invalidate);
-        triggerRepository.saveAll(triggers);
-        if (!triggers.isEmpty()) {
-            log.info("유휴 달러 트리거 무효화 [accountId={}, count={}]", accountId, triggers.size());
-        }
-        return triggers.size();
+        return triggerRepository.findByAccountIdAndTriggerStatus(accountId, "TRIGGERED")
+                .map(trigger -> {
+                    trigger.invalidate();
+                    triggerRepository.save(trigger);
+                    log.info("유휴 달러 트리거 무효화 [accountId={}]", accountId);
+                    return 1;
+                })
+                .orElse(0);
     }
 
     private boolean createTriggerIfAbsent(FinancialAccount account, Optional<LocalDateTime> lastActivity) {
-        // 이미 TRIGGERED 상태 트리거가 존재하면 재생성하지 않음
-        boolean alreadyTriggered = !triggerRepository
-                .findByAccountIdAndTriggerStatus(account.getId(), "TRIGGERED").isEmpty();
-        if (alreadyTriggered) return false;
+        if (triggerRepository.findByAccountIdAndTriggerStatus(account.getId(), "TRIGGERED").isPresent()) {
+            return false;
+        }
 
         int idleDays = lastActivity
                 .map(la -> (int) ChronoUnit.DAYS.between(la.toLocalDate(), LocalDate.now(KST)))
