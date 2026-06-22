@@ -25,22 +25,39 @@ public class TransferTransaction extends BaseEntity {
     private BigDecimal amount;
 
     @Column(nullable = false, length = 10)
-    private String currency = "USD";
+    private String currency;
 
     @Column(nullable = false, length = 30)
     private String transferType;
 
     @Column(nullable = false, length = 30)
-    private String transferStatus = "REQUESTED";
+    private String transferStatus;
 
     @Column(nullable = false, length = 20)
-    private String executionMode = "MOCK";
+    private String executionMode;
 
     @Column(nullable = false)
     private LocalDateTime requestedAt;
 
     private LocalDateTime completedAt;
 
-    @Column(length = 255)
-    private String failureReason;
+    public static TransferTransaction create(Long userId, Long fromAccountId, Long toAccountId,
+                                              String transferType, BigDecimal amount) {
+        TransferTransaction tx = new TransferTransaction();
+        tx.userId         = userId;
+        tx.fromAccountId  = fromAccountId;
+        tx.toAccountId    = toAccountId;
+        tx.transferType   = transferType;
+        tx.amount         = amount;
+        tx.currency       = "USD";
+        tx.transferStatus = "REQUESTED";
+        tx.executionMode  = "REAL";
+        tx.requestedAt    = LocalDateTime.now();
+        return tx;
+    }
+
+    public void complete() {
+        this.transferStatus = "COMPLETED";
+        this.completedAt    = LocalDateTime.now();
+    }
 }

@@ -19,3 +19,13 @@ out/
 *.env.local
 application-*.yml
 !application-local.yml
+
+### IntelliJ bin (컴파일 산출물)
+bin/
+**/bin/
+
+### RSA Keys
+**/keys/private.pem
+
+### IDE build output
+bin/

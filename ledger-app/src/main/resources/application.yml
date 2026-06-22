@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: eclipse-ledger
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3307/eclipse?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
@@ -22,6 +26,17 @@ spring:
     events:
       externalization:
         enabled: false
+
+jwt:
+  public-key: ${JWT_PUBLIC_KEY_PATH:classpath:keys/public.pem}
+  expiration-ms: 3600000
+  provider-enabled: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+  api-docs:
+    path: /api-docs
 
 logging:
   level:
