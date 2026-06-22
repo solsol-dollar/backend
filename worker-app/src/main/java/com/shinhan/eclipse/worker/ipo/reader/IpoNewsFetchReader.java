@@ -16,11 +16,13 @@ import org.springframework.web.client.RestClient;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -28,7 +30,8 @@ import java.util.List;
 public class IpoNewsFetchReader implements ItemReader<NewsItem> {
 
     private static final String BASE_URL = "https://eodhd.com";
-    private static final int MIN_CONTENT_LENGTH = 500;
+    private static final ZoneId ET = ZoneId.of("America/New_York");
+    private static final Set<String> MIN_CONTENT_TICKERS = Set.of("SPCX", "APC");
     private static final DateTimeFormatter EODHD_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
 
@@ -87,6 +90,10 @@ public class IpoNewsFetchReader implements ItemReader<NewsItem> {
                         ? ipo.getListingDate().minusDays(365)
                         : LocalDate.now().minusDays(365));
 
+        LocalDate to = ipo.getListingDate() != null
+                ? ipo.getListingDate().minusDays(1)
+                : LocalDate.now();
+
         EodhdArticle[] articles = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/news")
@@ -95,6 +102,7 @@ public class IpoNewsFetchReader implements ItemReader<NewsItem> {
                         .queryParam("limit", 1000)
                         .queryParam("fmt", "json")
                         .queryParam("from", from.toString())
+                        .queryParam("to", to.toString())
                         .build())
                 .retrieve()
                 .body(EodhdArticle[].class);
@@ -102,13 +110,17 @@ public class IpoNewsFetchReader implements ItemReader<NewsItem> {
         if (articles == null || articles.length == 0) return List.of();
 
         LocalDate windowStart = ipo.getListingDate() != null ? ipo.getListingDate().minusDays(365) : null;
-        LocalDate windowEnd   = ipo.getListingDate() != null ? ipo.getListingDate().plusDays(365)  : null;
+        LocalDate windowEnd   = ipo.getListingDate() != null ? ipo.getListingDate().minusDays(1) : null;
 
         return Arrays.stream(articles)
-                .filter(a -> a.content() != null && a.content().length() >= MIN_CONTENT_LENGTH)
+                .filter(a -> {
+                    if (a.content() == null || a.content().isBlank()) return false;
+                    return !MIN_CONTENT_TICKERS.contains(ipo.getTicker()) || a.content().length() >= 500;
+                })
                 .filter(a -> {
                     if (windowStart == null || a.date() == null) return true;
-                    LocalDate articleDate = parseDate(a.date()).toLocalDate();
+                    LocalDate articleDate = parseDateET(a.date());
+                    if (articleDate == null) return false;
                     return !articleDate.isBefore(windowStart) && !articleDate.isAfter(windowEnd);
                 })
                 .map(a -> new NewsItem(ipo.getId(), a.title(), a.link(), extractSource(a.link()), parseDate(a.date()), a.content()))
@@ -150,6 +162,19 @@ public class IpoNewsFetchReader implements ItemReader<NewsItem> {
                 return OffsetDateTime.parse(date).toLocalDateTime();
             } catch (Exception e2) {
                 log.warn("날짜 파싱 실패: {}", date);
+                return null;
+            }
+        }
+    }
+
+    private LocalDate parseDateET(String date) {
+        if (date == null) return null;
+        try {
+            return OffsetDateTime.parse(date, EODHD_DATE_FORMAT).atZoneSameInstant(ET).toLocalDate();
+        } catch (Exception e) {
+            try {
+                return OffsetDateTime.parse(date).atZoneSameInstant(ET).toLocalDate();
+            } catch (Exception e2) {
                 return null;
             }
         }

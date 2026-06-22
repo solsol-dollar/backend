@@ -106,43 +106,70 @@ ALTER TABLE ipo_news
 
 ## 4. 전체 파이프라인 흐름
 
+> NEWSCORE_AI.md의 4단계 구조를 기준으로 작성. 번역(4-1)은 우리 팀 추가 단계.
+
 ```
-[파이프라인 A — 우리 담당]
+[1단계] 뉴스 수집                                          ✅ 구현 완료
+  EODHD API → ipo_news.content 저장 (영어 원문)
+  매일 새벽 3시 실행
+  IPO별 MAX(published_at) 증분 수집
+  상장일 하루 전까지만 수집
 
-  Step1: 뉴스 수집 (구현 완료)
-    EODHD API → ipo_news.content 저장 (영어 원문)
-    6시간마다 실행, IPO별 MAX(published_at) 증분 수집
+      ↓
 
-        ↓
+[2단계] 벡터 임베딩 저장 (RAG 준비)                        ⬜ 미구현
+  ipo_news.content → text-embedding-3-small (1,536차원)
+  → Vector DB (pgvector) 저장
+  신규 기사(embedding 없는 것)만 처리
+  이후 "의미 기반 검색"을 가능하게 하는 사전 작업
 
-  Step2: 한국어 요약 생성 (구현 완료)
-    IPO별 최신 3건 (summary IS NULL) → Claude Haiku → ipo_news.summary 저장
-    IPO-007 API가 이 summary를 사용자에게 반환
+      ↓
 
-[파이프라인 B — AI팀 담당]
+[3단계] 관련 기사 검색 + AI 분석 (RAG)                     ⬜ 미구현
+  쿼리: "{ticker} IPO news stock market analysis"
+  → 쿼리 임베딩 → Vector DB 코사인 유사도 계산
+  → 유사도 0.3 이상, Top-10 선별
+  → gpt-4o-mini가 선별 기사 읽고 분석
+     감성 방향, 핵심 신호, 위험 요인, 시장 맥락 추출 → signalSummary 생성
+  상세 설계: docs/NEWSCORE_AI.md §3~4 참고
 
-  Step3: 벡터 임베딩
-    ipo_news.content → text-embedding-3-small → pgvector 저장
+    ↓ (병렬)
 
-        ↓
+[3-1단계] 한국어 번역 + 요약 (우리 팀 추가)              
 
-  Step4: RAG + AI 분석
-    관련 기사 검색 → gpt-4o-mini → signalSummary 생성
+  [RAG 연동 후]
+    대상: 3단계 RAG Top-10 결과를 전달받아 최신순 3건 번역
 
-        ↓
+  [번역 처리]
+    모델: Claude (claude-haiku-4-5)
+    입력: 영어 원문 제목(title) + 본문(content)
+    출력: title_ko (한국어 제목), summary (2~3문장 한국어 요약)
+    프롬프트 규칙:
+      - 한국 경제 신문 보도체 (~했다, ~밝혔다, ~예정이다)
+      - 회사명·티커·거래소명은 영어 원문 유지
+      - 달러 금액·주식 수는 숫자로 표현 ($18, $200M, 10,000,000주)
+      - 공모가·조달금액·상장일·거래소 등 핵심 수치 우선 포함
+      - 본문에 없는 정보는 추가 금지
+    저장: ipo_news.title_ko, ipo_news.summary
+    노출: IPO-007 API 응답
 
-  Step5: 점수 계산
-    8가지 요소 가중 합산 → ipo_risk_scores 저장
+      ↓
+
+[4단계] 점수 계산                                          ⬜ 미구현
+  AI 분석 결과(signalSummary) + 뉴스 메타데이터(발행일, 출처, 양)
+  → 8가지 요소 가중 합산 → 0~100점 산출 → ipo_risk_scores 저장
+  상세 설계: docs/NEWSCORE_AI.md §5~6 참고
 ```
 
 ### 현황
 
-| 항목 | 상태 | 담당 |
-|------|------|------|
-| 뉴스 수집 (EODHD) | ✅ 완료 | 우리 |
-| 한국어 요약 생성 | ✅ 완료 | 우리 |
-| 벡터 임베딩 | ⬜ 미확인 | AI팀 협의 필요 |
-| RAG + 분석 + 점수 | ⬜ 미구현 | AI팀 |
+| 단계 | 항목 | 상태 | 비고 |
+|------|------|------|------|
+| 1단계 | 뉴스 수집 (EODHD) | ✅ 완료 | 상장일 하루 전까지 수집 |
+| 2단계 | 벡터 임베딩 저장 | ⬜ 미구현 | pgvector 인프라 구성 필요 |
+| 3단계 | RAG 검색 + AI 분석 | ⬜ 미구현 | 2단계 완료 후 구현 |
+| 3-1단계 | 한국어 번역 + 요약 | ✅ 완료 (RAG 연동 전) | RAG 완료 시 선별 기준 교체 필요 |
+| 4단계 | 점수 계산 | ⬜ 미구현 | AI팀 협의 필요 |
 
 ---
 

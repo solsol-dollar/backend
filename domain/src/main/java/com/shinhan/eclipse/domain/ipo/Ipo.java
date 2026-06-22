@@ -54,6 +54,13 @@ public class Ipo extends BaseEntity {
     @Column(length = 500)
     private String logoUrl;
 
+    @Column(precision = 18, scale = 4)
+    private BigDecimal currentPrice;
+
+    public void updateCurrentPrice(BigDecimal currentPrice) {
+        this.currentPrice = currentPrice;
+    }
+
     public void updateFmpData(String logoUrl, Long numberOfShares) {
         if (logoUrl != null) this.logoUrl = logoUrl;
         if (numberOfShares != null) this.numberOfShares = numberOfShares;

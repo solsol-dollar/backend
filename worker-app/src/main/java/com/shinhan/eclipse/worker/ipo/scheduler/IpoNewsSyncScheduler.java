@@ -5,7 +5,6 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -19,14 +18,13 @@ public class IpoNewsSyncScheduler {
 
     public IpoNewsSyncScheduler(
             JobLauncher jobLauncher,
-            @Qualifier("ipoNewsFetchOnlyJob") Job ipoNewsFetchOnlyJob,
-            @Qualifier("ipoNewsSyncJob") ObjectProvider<Job> ipoNewsSyncJobProvider
+            @Qualifier("ipoNewsFetchOnlyJob") Job ipoNewsFetchOnlyJob
     ) {
         this.jobLauncher = jobLauncher;
-        this.ipoNewsJob = ipoNewsSyncJobProvider.getIfAvailable(() -> ipoNewsFetchOnlyJob);
+        this.ipoNewsJob = ipoNewsFetchOnlyJob;
     }
 
-    @Scheduled(cron = "0 0 */6 * * *")
+    @Scheduled(cron = "0 8 19 * * *")
     public void triggerIpoNewsSync() {
         try {
             JobParameters params = new JobParametersBuilder()

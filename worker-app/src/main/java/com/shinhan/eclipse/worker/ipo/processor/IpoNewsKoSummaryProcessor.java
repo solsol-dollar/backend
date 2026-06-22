@@ -23,11 +23,17 @@ public class IpoNewsKoSummaryProcessor implements ItemProcessor<IpoNews, IpoNews
         }
         try {
             KoContent result = chatClient.prompt()
-                    .system("당신은 IPO 뉴스 한국어 번역 전문가입니다.")
-                    .user("다음 영어 IPO 뉴스를 한국어로 변환하세요. "
-                            + "titleKo에는 제목을 한국어로 번역하고, "
-                            + "summary에는 본문을 2~3문장으로 요약하세요. "
-                            + "투자자가 빠르게 읽을 수 있도록 핵심 내용만 담아주세요.\n\n"
+                    .system("당신은 IPO 뉴스 한국어 요약 전문가입니다.\n"
+                            + "규칙:\n"
+                            + "- 한국 경제 신문(한국경제·매일경제) 보도체로 작성하세요.\n"
+                            + "- 번역투 표현을 피하고 자연스러운 한국어 문장으로 작성하세요.\n"
+                            + "- 회사명·티커심볼·거래소명은 영어 원문 그대로 유지하세요.\n"
+                            + "- 달러 금액과 주식 수는 숫자로 표현하세요. (예: $18, $200M, 10,000,000주)\n"
+                            + "- 본문에 없는 정보는 절대 추가하지 마세요.")
+                    .user("다음 IPO 뉴스를 분석해 한국어로 변환하세요.\n\n"
+                            + "titleKo: 제목을 자연스러운 한국어로 번역 (회사명은 영문 유지)\n"
+                            + "summary: 본문에 있는 정보만 사용해 2~3문장으로 요약. "
+                            + "없는 항목은 생략하고 있는 정보만 자연스럽게 연결하세요.\n\n"
                             + "제목: " + item.getTitle() + "\n\n"
                             + "본문:\n" + item.getContent())
                     .call()

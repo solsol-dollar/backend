@@ -1,12 +1,13 @@
 package com.shinhan.eclipse.service.app.api;
 
+import com.shinhan.eclipse.auth.AuthUser;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.resolver.UserHeader;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.service.ipo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,37 +24,39 @@ public class IpoController {
             @RequestParam(defaultValue = "false") boolean favoriteOnly,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @UserHeader Long userId) {
+            @AuthenticationPrincipal AuthUser authUser) {
         if (page < 0) throw new BusinessException(ErrorCode.INVALID_INPUT, "page는 0 이상이어야 합니다.");
         if (size < 1 || size > 100) throw new BusinessException(ErrorCode.INVALID_INPUT, "size는 1~100 사이어야 합니다.");
+        if (status != null && !status.equals("OPEN") && !status.equals("UPCOMING") && !status.equals("CLOSED"))
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "status는 OPEN, UPCOMING, CLOSED 중 하나여야 합니다.");
         return ResponseEntity.ok(ApiResponse.success(
-                ipoExplorationService.getIpos(status, favoriteOnly, userId, page, size)));
+                ipoExplorationService.getIpos(status, favoriteOnly, authUser.userId(), page, size)));
     }
 
     /** IPO-002: IPO 상세 조회 */
     @GetMapping("/{ipoId}")
     public ResponseEntity<ApiResponse<IpoDetailResult>> getIpoDetail(
             @PathVariable Long ipoId,
-            @UserHeader Long userId) {
+            @AuthenticationPrincipal AuthUser authUser) {
         return ResponseEntity.ok(ApiResponse.success(
-                ipoExplorationService.getIpoDetail(ipoId, userId)));
+                ipoExplorationService.getIpoDetail(ipoId, authUser.userId())));
     }
 
     /** IPO-003: 찜 추가 */
     @PostMapping("/{ipoId}/favorites")
     public ResponseEntity<ApiResponse<FavoriteIpoResponse>> addFavorite(
             @PathVariable Long ipoId,
-            @UserHeader Long userId) {
+            @AuthenticationPrincipal AuthUser authUser) {
         return ResponseEntity.ok(ApiResponse.success(
-                ipoExplorationService.addFavorite(userId, ipoId)));
+                ipoExplorationService.addFavorite(authUser.userId(), ipoId)));
     }
 
     /** IPO-004: 찜 삭제 */
     @DeleteMapping("/{ipoId}/favorites")
     public ResponseEntity<ApiResponse<Void>> removeFavorite(
             @PathVariable Long ipoId,
-            @UserHeader Long userId) {
-        ipoExplorationService.removeFavorite(userId, ipoId);
+            @AuthenticationPrincipal AuthUser authUser) {
+        ipoExplorationService.removeFavorite(authUser.userId(), ipoId);
         return ResponseEntity.ok(ApiResponse.success());
     }
 }

@@ -28,10 +28,11 @@ class FinnhubSyncScheduler {
 
     private static final Set<String> EXCLUDED_TICKERS = Set.of(
             "CAES", "RACC",                                         // 껍데기 금융 지주사
-            "EROC", "HMH", "EROK", "MOBI", "COAG", "FISN", "ELOX", "FRBT",
-            "WHK", "SSMR", "GMTL", "SBMT", "ELMT",         // 소규모 광물/채굴
-            "FCBM",                                          // 지역 소형 은행
-            "PPHC"                                          // 낮은 관심 기타
+            "FISN", "ELOX", "FRBT", "GMTL",                        // 공모가 없음 or 뉴스 부족
+            "PPHC", "AGMB", "PBLS",                                 // 기사 존재 x
+            "SGP",                                                   // EODHD 티커 충돌 (호주 Stockland ASX:SGP)
+            "FPS", "GENB", "ARXS", "KARD", "ODTX", "YSS", "LCLN", "SHAZ",  // 뉴스 부족 (2건 이하)
+            "MOBI", "COAG", "ELMT", "SSMR", "WHK", "EROK"              // 뉴스 부족 (2건 이하)
     );
 
     @Value("${finnhub.api-key:}")
@@ -47,8 +48,8 @@ class FinnhubSyncScheduler {
     private record IpoResponse(List<IpoItem> ipoCalendar) {}
     private record IpoItem(String symbol, String name, String date, String exchange,
                            String price, String status, Long numberOfShares, Long totalSharesValue) {}
-    private record FmpProfile(String sector, String industry, String image) {}
-    private record FmpData(String sector, String logoUrl) {}
+    private record FmpProfile(String sector, String industry) {}
+    private record FmpData(String sector) {}
 
     @Scheduled(cron = "0 0 1 * * *")
     public void sync() {
@@ -144,7 +145,7 @@ class FinnhubSyncScheduler {
                 BigDecimal.valueOf(100),
                 ipoStatus,
                 item.numberOfShares(),
-                fmpData.logoUrl()
+                toTradingViewLogoUrl(item.name())
         );
     }
 
@@ -156,7 +157,7 @@ class FinnhubSyncScheduler {
     }
 
     private FmpData fetchFmpData(String ticker) {
-        if (fmpApiKey == null || fmpApiKey.isBlank()) return new FmpData(null, null);
+        if (fmpApiKey == null || fmpApiKey.isBlank()) return new FmpData(null);
         try {
             FmpProfile[] profiles = fmpClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -166,22 +167,30 @@ class FinnhubSyncScheduler {
                             .build())
                     .retrieve()
                     .body(FmpProfile[].class);
-            if (profiles == null || profiles.length == 0) return new FmpData(null, null);
+            if (profiles == null || profiles.length == 0) return new FmpData(null);
             FmpProfile p = profiles[0];
-            return new FmpData(p.industry() != null ? p.industry() : p.sector(), p.image());
+            return new FmpData(p.industry() != null ? p.industry() : p.sector());
         } catch (Exception e) {
             log.warn("FMP 데이터 조회 실패: {}", ticker);
-            return new FmpData(null, null);
+            return new FmpData(null);
         }
+    }
+
+    private String toTradingViewLogoUrl(String companyName) {
+        if (companyName == null) return null;
+        String slug = companyName
+                .replaceAll("(?i)\\b(inc\\.?|ltd\\.?|corp\\.?|llc\\.?|n\\.v\\.?|\\bnv\\b|pbc|plc|co\\.?)\\b", "")
+                .replaceAll("[^a-zA-Z0-9]+", "-")
+                .toLowerCase()
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
+        return "https://s3-symbol-logo.tradingview.com/" + slug + "--big.svg";
     }
 
     private LocalDate calcDepositDate(LocalDate listingDate) {
         LocalDate candidate = listingDate.plusDays(1);
-        if (candidate.getDayOfWeek() == DayOfWeek.SATURDAY) {
-            candidate = candidate.plusDays(2);
-        } else if (candidate.getDayOfWeek() == DayOfWeek.SUNDAY) {
-            candidate = candidate.plusDays(1);
-        }
+        if (candidate.getDayOfWeek() == DayOfWeek.SATURDAY) return candidate.plusDays(2);
+        if (candidate.getDayOfWeek() == DayOfWeek.SUNDAY)   return candidate.plusDays(1);
         return candidate;
     }
 

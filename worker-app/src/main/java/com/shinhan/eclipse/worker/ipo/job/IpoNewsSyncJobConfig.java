@@ -6,6 +6,7 @@ import com.shinhan.eclipse.worker.ipo.processor.IpoNewsItemConverter;
 import com.shinhan.eclipse.worker.ipo.processor.IpoNewsKoSummaryProcessor;
 import com.shinhan.eclipse.worker.ipo.reader.IpoNewsFetchReader;
 import com.shinhan.eclipse.worker.ipo.reader.IpoNewsKoSummaryReader;
+import com.shinhan.eclipse.worker.ipo.reader.IpoNewsTagReader;
 import com.shinhan.eclipse.worker.ipo.writer.IpoNewsKoSummaryWriter;
 import com.shinhan.eclipse.worker.ipo.writer.IpoNewsWriter;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class IpoNewsSyncJobConfig {
     private final IpoNewsFetchReader ipoNewsFetchReader;
     private final IpoNewsItemConverter ipoNewsItemConverter;
     private final IpoNewsWriter ipoNewsWriter;
+    private final IpoNewsTagReader ipoNewsTagReader;
     private final IpoNewsKoSummaryReader ipoNewsKoSummaryReader;
     private final IpoNewsKoSummaryProcessor ipoNewsKoSummaryProcessor;
     private final IpoNewsKoSummaryWriter ipoNewsKoSummaryWriter;
@@ -44,6 +46,7 @@ public class IpoNewsSyncJobConfig {
     public Job ipoNewsFetchOnlyJob() {
         return new JobBuilder("ipoNewsFetchOnlyJob", jobRepository)
                 .start(ipoNewsSyncStep())
+                .next(ipoNewsTagStep())
                 .build();
     }
 
@@ -52,6 +55,16 @@ public class IpoNewsSyncJobConfig {
         return new StepBuilder("ipoNewsSyncStep", jobRepository)
                 .<NewsItem, IpoNews>chunk(50, transactionManager)
                 .reader(ipoNewsFetchReader)
+                .processor(ipoNewsItemConverter)
+                .writer(ipoNewsWriter)
+                .build();
+    }
+
+    @Bean
+    public Step ipoNewsTagStep() {
+        return new StepBuilder("ipoNewsTagStep", jobRepository)
+                .<NewsItem, IpoNews>chunk(50, transactionManager)
+                .reader(ipoNewsTagReader)
                 .processor(ipoNewsItemConverter)
                 .writer(ipoNewsWriter)
                 .build();

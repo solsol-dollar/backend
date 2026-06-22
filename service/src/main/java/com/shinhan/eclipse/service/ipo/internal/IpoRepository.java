@@ -15,6 +15,9 @@ interface IpoRepository extends JpaRepository<Ipo, Long> {
     @Query("SELECT i.ticker FROM Ipo i WHERE i.ticker IN :tickers")
     Set<String> findExistingTickers(@Param("tickers") List<String> tickers);
 
+    @Query("SELECT i FROM Ipo i WHERE i.listingDate IS NOT NULL AND i.listingDate <= CURRENT_DATE")
+    List<Ipo> findListedIpos();
+
     @Query(value = """
         SELECT i FROM Ipo i
         WHERE (

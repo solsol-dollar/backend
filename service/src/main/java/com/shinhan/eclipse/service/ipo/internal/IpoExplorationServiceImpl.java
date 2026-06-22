@@ -6,11 +6,14 @@ import com.shinhan.eclipse.domain.ipo.FavoriteIpo;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.service.ipo.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -58,8 +61,12 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
         if (favoriteIpoRepository.findByUserIdAndIpoId(userId, ipoId).isPresent()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 찜한 IPO입니다.");
         }
-        FavoriteIpo saved = favoriteIpoRepository.save(FavoriteIpo.create(userId, ipoId));
-        return new FavoriteIpoResponse(saved.getIpoId(), true, saved.getCreatedAt());
+        try {
+            FavoriteIpo saved = favoriteIpoRepository.save(FavoriteIpo.create(userId, ipoId));
+            return new FavoriteIpoResponse(saved.getIpoId(), true, saved.getCreatedAt());
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 찜한 IPO입니다.");
+        }
     }
 
     @Override
@@ -118,6 +125,16 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     }
 
     private IpoItem toItem(Ipo ipo, boolean isFavorite) {
+        BigDecimal currentPrice = ipo.getCurrentPrice();
+        BigDecimal confirmedPrice = ipo.getConfirmedOfferPrice();
+        BigDecimal priceChange = null;
+        BigDecimal priceChangePercent = null;
+        if (currentPrice != null && confirmedPrice != null
+                && confirmedPrice.compareTo(BigDecimal.ZERO) > 0) {
+            priceChange = currentPrice.subtract(confirmedPrice).setScale(4, RoundingMode.HALF_UP);
+            priceChangePercent = priceChange.divide(confirmedPrice, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP);
+        }
         return new IpoItem(
                 ipo.getId(),
                 ipo.getTicker(),
@@ -128,9 +145,12 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                 ipo.getListingDate(),
                 ipo.getOfferPriceMin(),
                 ipo.getOfferPriceMax(),
-                ipo.getConfirmedOfferPrice(),
+                confirmedPrice,
                 isFavorite,
-                ipo.getLogoUrl()
+                ipo.getLogoUrl(),
+                currentPrice,
+                priceChange,
+                priceChangePercent
         );
     }
 
