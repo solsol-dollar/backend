@@ -108,7 +108,7 @@ class ReturnPlanApiTest {
                                   {"destinationType":"FX_ACCOUNT","ratio":20}
                                 ]}"""))
                 .andExpect(status().is4xxClientError())
-                .andExpect(jsonPath("$.code").value("L009"));
+                .andExpect(jsonPath("$.code").value("L010"));
 
         // RP-002: 정상 비율(20/50/30)
         mockMvc.perform(put("/api/v1/return-plans/{id}", returnPlanId)
@@ -140,12 +140,12 @@ class ReturnPlanApiTest {
                 .andExpect(jsonPath("$.data.planStatus").value("CONFIRMED"))
                 .andExpect(jsonPath("$.data.confirmedAt").exists());
 
-        // 이미 확정된 플랜을 다시 확정하면 충돌(L010)
+        // 이미 확정된 플랜을 다시 확정하면 충돌(L011)
         mockMvc.perform(put("/api/v1/return-plans/{id}/confirm", returnPlanId)
                         .with(user("tester"))
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().is4xxClientError())
-                .andExpect(jsonPath("$.code").value("L010"));
+                .andExpect(jsonPath("$.code").value("L011"));
 
         // RP-004: 목록 조회
         mockMvc.perform(get("/api/v1/return-plans")
@@ -155,14 +155,14 @@ class ReturnPlanApiTest {
                 .andExpect(jsonPath("$.data.returnPlans[0].planStatus").value("CONFIRMED"))
                 .andExpect(jsonPath("$.data.returnPlans[0].sourceCompanyName").value("CoreWeave"));
 
-        // 같은 청약으로 다시 생성하면 중복(L007)
+        // 같은 청약으로 다시 생성하면 중복(L008)
         mockMvc.perform(post("/api/v1/return-plans")
                         .with(user("tester"))
                         .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"subscriptionId\":" + subscription.getId() + "}"))
                 .andExpect(status().is4xxClientError())
-                .andExpect(jsonPath("$.code").value("L007"));
+                .andExpect(jsonPath("$.code").value("L008"));
     }
 
     private Long extractReturnPlanId(String json) {
