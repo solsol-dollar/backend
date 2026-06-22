@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.annotation.BeforeStep;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 
 @Slf4j
+@StepScope
 @Component
 @RequiredArgsConstructor
 public class IpoNewsFetchReader implements ItemReader<NewsItem> {
@@ -87,6 +89,11 @@ public class IpoNewsFetchReader implements ItemReader<NewsItem> {
                 ? ipo.getListingDate().minusDays(1)
                 : LocalDate.now();
 
+        if (!from.isBefore(to)) {
+            log.debug("EODHD [{}]: 수집 범위 없음 (from={}, to={})", ipo.getTicker(), from, to);
+            return List.of();
+        }
+
         EodhdArticle[] articles = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/news")
@@ -106,6 +113,7 @@ public class IpoNewsFetchReader implements ItemReader<NewsItem> {
         LocalDate windowEnd   = ipo.getListingDate() != null ? ipo.getListingDate().minusDays(1) : null;
 
         return Arrays.stream(articles)
+                .filter(a -> a.title() != null && !a.title().isBlank())
                 .filter(a -> a.content() != null && a.content().length() >= 500)
                 .filter(a -> {
                     if (windowStart == null || a.date() == null) return true;

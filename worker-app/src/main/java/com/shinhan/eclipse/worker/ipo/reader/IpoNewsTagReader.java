@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.annotation.BeforeStep;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 @Slf4j
+@StepScope
 @Component
 @RequiredArgsConstructor
 public class IpoNewsTagReader implements ItemReader<NewsItem> {
@@ -88,7 +90,13 @@ public class IpoNewsTagReader implements ItemReader<NewsItem> {
                 .max(Comparator.naturalOrder())
                 .orElse(LocalDate.now());
 
-        List<EodhdArticle> allArticles = fetchAllPages(globalFrom, globalTo);
+        List<EodhdArticle> allArticles;
+        try {
+            allArticles = fetchAllPages(globalFrom, globalTo);
+        } catch (Exception e) {
+            log.error("IPO 태그 뉴스 조회 실패, Step 건너뜀: {}", e.getMessage());
+            return List.of();
+        }
         log.info("IPO 태그 기사 전체: {}건 ({} ~ {})", allArticles.size(), globalFrom, globalTo);
 
         List<NewsItem> result = new ArrayList<>();
@@ -159,7 +167,8 @@ public class IpoNewsTagReader implements ItemReader<NewsItem> {
                 .replaceAll("\\s+", " ")
                 .trim();
         String[] parts = cleaned.split("\\s+");
-        return parts.length > 0 && !parts[0].isBlank() ? parts[0] : null;
+        String keyword = parts.length > 0 ? parts[0] : null;
+        return keyword != null && keyword.length() >= 2 ? keyword : null;
     }
 
     private record EodhdArticle(String date, String title, String content, String link) {}

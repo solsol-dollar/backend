@@ -37,6 +37,7 @@ public class IpoNewsSyncJobConfig {
     public Job ipoNewsSyncJob() {
         return new JobBuilder("ipoNewsSyncJob", jobRepository)
                 .start(ipoNewsSyncStep())
+                .next(ipoNewsTagStep())
                 .next(ipoNewsKoSummaryStep())
                 .build();
     }

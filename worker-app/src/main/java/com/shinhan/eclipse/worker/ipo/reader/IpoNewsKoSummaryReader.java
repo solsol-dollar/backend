@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.annotation.BeforeStep;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 
 @Slf4j
+@StepScope
 @Component
 @RequiredArgsConstructor
 public class IpoNewsKoSummaryReader implements ItemReader<IpoNews> {
