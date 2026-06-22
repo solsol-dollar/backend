@@ -7,12 +7,14 @@ import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
 import com.shinhan.eclipse.service.mypage.MyPageService;
 import com.shinhan.eclipse.service.securities.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -30,6 +32,7 @@ class SecuritiesServiceImplTest {
     @Mock ProductRepository          productRepository;
     @Mock HoldingRepository          holdingRepository;
     @Mock FinancialAccountRepository accountRepository;
+    @Mock PriceCandleRepository      priceCandleRepository;
     @Mock QuoteCache                 quoteCache;
     @Mock LsRestClient               lsRestClient;
     @Mock KisRestClient              kisRestClient;
@@ -39,6 +42,11 @@ class SecuritiesServiceImplTest {
     @InjectMocks SecuritiesServiceImpl service;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(service, "usdKrw", new BigDecimal("1368.5"));
+    }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
 
@@ -61,6 +69,8 @@ class SecuritiesServiceImplTest {
         given(productRepository.searchProducts(null, null)).willReturn(List.of(p1, p2));
         given(quoteCache.get("TSLA")).willReturn(Optional.of(quoteFixture("TSLA")));
         given(quoteCache.get("AAPL")).willReturn(Optional.empty());
+        given(priceCandleRepository.findLatestDailyByProductIds(any())).willReturn(List.of());
+        given(priceCandleRepository.findDailyClosePricesForSpark(any(), any())).willReturn(List.of());
 
         List<ProductListItem> result = service.listProducts(null, null, null);
 
@@ -72,6 +82,8 @@ class SecuritiesServiceImplTest {
     @Test
     void listProducts_타입과_키워드로_필터링된다() {
         given(productRepository.searchProducts("OVERSEAS", "TSLA")).willReturn(List.of());
+        given(priceCandleRepository.findLatestDailyByProductIds(any())).willReturn(List.of());
+        given(priceCandleRepository.findDailyClosePricesForSpark(any(), any())).willReturn(List.of());
 
         List<ProductListItem> result = service.listProducts("OVERSEAS", "TSLA", null);
 
@@ -226,7 +238,6 @@ class SecuritiesServiceImplTest {
 
         List<RecommendedProduct> result = service.getRecommended(1L);
 
-        // fallback: AAPL, MSFT 포함
         assertThat(result).extracting(RecommendedProduct::ticker)
                 .containsAnyOf("AAPL", "MSFT");
     }

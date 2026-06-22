@@ -85,7 +85,8 @@ class SecuritiesServiceImpl implements SecuritiesService {
     }
 
     private Comparator<ProductListItem> buildSortComparator(String sort) {
-        if (sort == null) return Comparator.comparing(ProductListItem::id);
+        Comparator<Long> nullSafeId = Comparator.nullsLast(Comparator.naturalOrder());
+        if (sort == null) return Comparator.comparing(ProductListItem::id, nullSafeId);
         return switch (sort) {
             case "TRADING_VALUE" -> Comparator.comparing(
                     ProductListItem::tradeAmount,
@@ -103,7 +104,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
                     ProductListItem::changeRate,
                     Comparator.nullsLast(Comparator.naturalOrder())
             );
-            default -> Comparator.comparing(ProductListItem::id);
+            default -> Comparator.comparing(ProductListItem::id, nullSafeId);
         };
     }
 
