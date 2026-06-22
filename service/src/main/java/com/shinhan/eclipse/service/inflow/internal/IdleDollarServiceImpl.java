@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -21,7 +22,7 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 class IdleDollarServiceImpl implements IdleDollarService {
 
-    private static final int IDLE_THRESHOLD_HOURS = 1;
+    private static final int IDLE_THRESHOLD_DAYS = 14;
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final IdleDollarTriggerRepository triggerRepository;
@@ -40,7 +41,7 @@ class IdleDollarServiceImpl implements IdleDollarService {
         int triggered = 0;
         int skipped = 0;
 
-        LocalDateTime threshold = LocalDateTime.now(KST).minusHours(IDLE_THRESHOLD_HOURS);
+        LocalDateTime threshold = LocalDateTime.now(KST).minusDays(IDLE_THRESHOLD_DAYS);
 
         for (FinancialAccount account : accounts) {
             try {
@@ -93,8 +94,8 @@ class IdleDollarServiceImpl implements IdleDollarService {
         if (alreadyTriggered) return false;
 
         int idleDays = lastActivity
-                .map(la -> (int) ChronoUnit.HOURS.between(la, LocalDateTime.now(KST)))
-                .orElse(IDLE_THRESHOLD_HOURS);
+                .map(la -> (int) ChronoUnit.DAYS.between(la.toLocalDate(), LocalDate.now(KST)))
+                .orElse(IDLE_THRESHOLD_DAYS);
 
         triggerRepository.save(
                 IdleDollarTrigger.detect(account.getUserId(), account.getId(), account.getBalance(), idleDays));
