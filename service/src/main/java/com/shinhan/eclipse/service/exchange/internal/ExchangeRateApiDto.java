@@ -3,7 +3,7 @@ package com.shinhan.eclipse.service.exchange.internal;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.exchange.ExchangeRateInfo;
+import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 

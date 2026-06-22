@@ -2,8 +2,8 @@ package com.shinhan.eclipse.service.exchange.internal;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.shinhan.eclipse.common.exchange.ExchangeRateInfo;
-import com.shinhan.eclipse.common.exchange.ExchangeRateKeys;
+import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
+import com.shinhan.eclipse.common.redis.exchange.ExchangeRateKeys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;

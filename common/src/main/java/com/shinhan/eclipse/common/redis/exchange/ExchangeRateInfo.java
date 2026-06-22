@@ -1,4 +1,4 @@
-package com.shinhan.eclipse.common.exchange;
+package com.shinhan.eclipse.common.redis.exchange;
 
 import java.math.BigDecimal;
 import java.time.Instant;

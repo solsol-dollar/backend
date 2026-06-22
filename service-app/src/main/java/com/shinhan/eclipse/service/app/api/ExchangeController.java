@@ -1,7 +1,7 @@
 package com.shinhan.eclipse.service.app.api;
 
 import com.shinhan.eclipse.common.response.ApiResponse;
-import com.shinhan.eclipse.common.exchange.ExchangeRateInfo;
+import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 import com.shinhan.eclipse.service.exchange.ExchangeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

@@ -25,8 +25,8 @@ class ExchangeRateScheduler {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-    /** 평일 오전 10시 1회 갱신 (KST 기준) */
-    @Scheduled(cron = "0 0 10 * * MON-FRI", zone = "Asia/Seoul")
+    /** 평일 오전 11시 10분 1회 갱신 (KST 기준) */
+    @Scheduled(cron = "0 10 11 * * MON-FRI", zone = "Asia/Seoul")
     void refreshDaily() {
         if (isKoreanHoliday()) {
             log.info("[환율 갱신] 공휴일 — 스킵");

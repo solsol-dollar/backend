@@ -12,7 +12,7 @@ import java.util.Optional;
 interface LedgerExchangeAccountRepository extends JpaRepository<FinancialAccount, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT a FROM FinancialAccount a WHERE a.userId = :userId AND a.currency = :currency AND a.linked = true")
+    @Query("SELECT a FROM FinancialAccount a WHERE a.userId = :userId AND a.currency = :currency AND a.accountType = 'SECURITIES' AND a.linked = true")
     Optional<FinancialAccount> findLinkedAccountWithLock(
             @Param("userId") Long userId,
             @Param("currency") String currency

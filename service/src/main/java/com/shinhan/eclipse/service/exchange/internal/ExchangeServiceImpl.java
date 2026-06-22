@@ -2,7 +2,7 @@ package com.shinhan.eclipse.service.exchange.internal;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.exchange.ExchangeRateInfo;
+import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 import com.shinhan.eclipse.service.exchange.ExchangeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

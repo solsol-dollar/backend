@@ -1,6 +1,6 @@
 package com.shinhan.eclipse.service.exchange.internal;
 
-import com.shinhan.eclipse.common.exchange.ExchangeRateInfo;
+import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;

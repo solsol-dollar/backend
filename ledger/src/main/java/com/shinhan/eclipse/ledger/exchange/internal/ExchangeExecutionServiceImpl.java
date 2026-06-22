@@ -2,7 +2,7 @@ package com.shinhan.eclipse.ledger.exchange.internal;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.exchange.ExchangeRateInfo;
+import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.transaction.FxExchangeTransaction;
 import com.shinhan.eclipse.ledger.exchange.ExchangeExecutionService;
@@ -97,7 +97,7 @@ class ExchangeExecutionServiceImpl implements ExchangeExecutionService {
     private FinancialAccount lockAccount(Long userId, String currency) {
         return accountRepository.findLinkedAccountWithLock(userId, currency)
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXCHANGE_ACCOUNT_NOT_FOUND,
-                        "연동된 " + currency + " 계좌가 없습니다."));
+                        currency + " 환전이 가능한 증권 계좌가 연동되지 않았습니다."));
     }
 
     private void validateDirection(String direction) {
