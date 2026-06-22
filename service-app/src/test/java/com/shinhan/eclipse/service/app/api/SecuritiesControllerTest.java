@@ -86,9 +86,10 @@ class SecuritiesControllerTest {
     void listProducts_200_ApiResponse_래퍼로_반환() throws Exception {
         ProductListItem item = new ProductListItem(
                 1L, "TSLA", "Tesla Inc", "OVERSEAS", "NASDAQ", "USD",
-                "Consumer Discretionary", new BigDecimal("250.00"), new BigDecimal("1.29"), "2"
+                "Consumer Discretionary", new BigDecimal("250.00"), new BigDecimal("1.29"), "2",
+                1000000L, new BigDecimal("250000000"), List.of()
         );
-        given(securitiesService.listProducts(null, null)).willReturn(List.of(item));
+        given(securitiesService.listProducts(null, null, null)).willReturn(List.of(item));
 
         mockMvc.perform(get("/api/v1/securities/products"))
                 .andExpect(status().isOk())
@@ -99,7 +100,7 @@ class SecuritiesControllerTest {
 
     @Test
     void listProducts_타입_키워드_파라미터_전달() throws Exception {
-        given(securitiesService.listProducts("OVERSEAS", "TSLA")).willReturn(List.of());
+        given(securitiesService.listProducts("OVERSEAS", "TSLA", null)).willReturn(List.of());
 
         mockMvc.perform(get("/api/v1/securities/products")
                         .param("type", "OVERSEAS")
@@ -107,7 +108,7 @@ class SecuritiesControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isEmpty());
 
-        org.mockito.Mockito.verify(securitiesService).listProducts("OVERSEAS", "TSLA");
+        org.mockito.Mockito.verify(securitiesService).listProducts("OVERSEAS", "TSLA", null);
     }
 
     // ── SEC-002 ──────────────────────────────────────────────────────────────
@@ -164,12 +165,17 @@ class SecuritiesControllerTest {
                 new BigDecimal("200.00"), "USD", new BigDecimal("250.00"),
                 new BigDecimal("1250.00"), new BigDecimal("250.00"), new BigDecimal("25.00")
         );
-        given(securitiesService.getHoldings(1L)).willReturn(List.of(holding));
+        HoldingsSummary summary = new HoldingsSummary(
+                new BigDecimal("1250.00"), new BigDecimal("1000.00"),
+                new BigDecimal("15.00"), BigDecimal.ZERO, BigDecimal.ZERO,
+                List.of(holding)
+        );
+        given(securitiesService.getHoldings(1L)).willReturn(summary);
 
         mockMvc.perform(get("/api/v1/securities/holdings"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].ticker").value("TSLA"))
-                .andExpect(jsonPath("$.data[0].profitLoss").value(250.00));
+                .andExpect(jsonPath("$.data.holdings[0].ticker").value("TSLA"))
+                .andExpect(jsonPath("$.data.holdings[0].profitLoss").value(250.00));
     }
 
     // ── SEC-005 ──────────────────────────────────────────────────────────────

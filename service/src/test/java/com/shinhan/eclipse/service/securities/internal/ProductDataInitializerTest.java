@@ -37,7 +37,9 @@ class ProductDataInitializerTest {
         ArgumentCaptor<List<InvestmentProduct>> captor = ArgumentCaptor.forClass(List.class);
         verify(productRepository).saveAll(captor.capture());
 
-        int expectedSize = ProductSeedCatalog.NASDAQ_100.size() + ProductSeedCatalog.ETF_LIST.size();
+        int expectedSize = ProductSeedCatalog.NASDAQ_100.size()
+                + ProductSeedCatalog.SP500_NYSE.size()
+                + ProductSeedCatalog.ETF_LIST.size();
         assertThat(captor.getValue()).hasSize(expectedSize);
     }
 

@@ -146,6 +146,7 @@ class FinnhubSyncScheduler {
                 ipoStatus,
                 item.numberOfShares(),
                 toTradingViewLogoUrl(item.name())
+                null // totalAllocableShares: 중개사 계약값, 외부 API에 없음 — 운영자가 별도 입력
         );
     }
 

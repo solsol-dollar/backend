@@ -34,6 +34,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             } catch (Exception ignored) {
                 // 유효하지 않은 토큰 → SecurityContext 비워둠 → 인증 필요 엔드포인트에서 403 반환
             }
+        } else {
+            // 개발 편의: X-User-Id 헤더로 mock 인증
+            String userId = request.getHeader("X-User-Id");
+            if (userId != null) {
+                try {
+                    AuthUser user = new AuthUser(Long.parseLong(userId), "mock-user", "USER");
+                    var auth = new UsernamePasswordAuthenticationToken(
+                            user, null,
+                            List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                } catch (NumberFormatException ignored) {}
+            }
         }
         chain.doFilter(request, response);
     }

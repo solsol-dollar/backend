@@ -51,6 +51,30 @@ public class FinancialAccount extends BaseEntity {
 
     private LocalDateTime linkedAt;
 
+    @Column(nullable = false, length = 20)
+    private String status = "ACTIVE";
+
+    public static FinancialAccount createCmaAccount(Long userId, String accountNumberMasked, String currency) {
+        FinancialAccount a = new FinancialAccount();
+        a.userId = userId;
+        a.accountType = "SECURITIES";
+        a.institutionType = "SECURITIES_FIRM";
+        a.institutionName = "신한투자증권";
+        a.accountName = "CMA 계좌";
+        a.accountNumberMasked = accountNumberMasked;
+        a.currency = currency;
+        a.balance = BigDecimal.ZERO;
+        a.linked = true;
+        a.linkedAt = LocalDateTime.now();
+        a.status = "ACTIVE";
+        return a;
+    }
+
+    public void link() {
+        this.linked = true;
+        this.linkedAt = LocalDateTime.now();
+    }
+
     public boolean hasSufficientBalance(BigDecimal amount) {
         return this.balance.compareTo(amount) >= 0;
     }
