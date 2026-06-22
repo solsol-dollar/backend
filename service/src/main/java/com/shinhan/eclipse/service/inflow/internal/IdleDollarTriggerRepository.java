@@ -7,4 +7,5 @@ import java.util.List;
 
 interface IdleDollarTriggerRepository extends JpaRepository<IdleDollarTrigger, Long> {
     List<IdleDollarTrigger> findByUserIdOrderByDetectedAtDesc(Long userId);
+    List<IdleDollarTrigger> findByAccountIdAndTriggerStatus(Long accountId, String triggerStatus);
 }

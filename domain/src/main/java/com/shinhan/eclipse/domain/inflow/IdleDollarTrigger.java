@@ -37,4 +37,20 @@ public class IdleDollarTrigger extends BaseEntity {
 
     private LocalDateTime notifiedAt;
     private LocalDateTime invalidatedAt;
+
+    public static IdleDollarTrigger detect(Long userId, Long accountId, BigDecimal idleBalance, int idleDays) {
+        IdleDollarTrigger t = new IdleDollarTrigger();
+        t.userId = userId;
+        t.accountId = accountId;
+        t.idleBalance = idleBalance;
+        t.idleDays = idleDays;
+        t.triggerStatus = "TRIGGERED";
+        t.detectedAt = LocalDateTime.now();
+        return t;
+    }
+
+    public void invalidate() {
+        this.triggerStatus = "INVALIDATED";
+        this.invalidatedAt = LocalDateTime.now();
+    }
 }
