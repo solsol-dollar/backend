@@ -88,7 +88,7 @@ class TradeOrderControllerTest {
     void 매수주문_201_반환() throws Exception {
         TradeOrderRequest req = new TradeOrderRequest(10L, 99L, "BUY", 5, new BigDecimal("200.00"));
         TradeOrderResponse resp = new TradeOrderResponse(
-                100L, "COMPLETED", "TSLA", "BUY", 5,
+                100L, "COMPLETED", "TSLA", "Tesla Inc", "BUY", 5,
                 new BigDecimal("200.00"), new BigDecimal("1000.00"), "USD"
         );
         given(tradeOrderService.placeOrder(eq(1L), any(TradeOrderRequest.class))).willReturn(resp);
@@ -107,7 +107,7 @@ class TradeOrderControllerTest {
     void 매도주문_201_반환() throws Exception {
         TradeOrderRequest req = new TradeOrderRequest(10L, 99L, "SELL", 3, new BigDecimal("250.00"));
         TradeOrderResponse resp = new TradeOrderResponse(
-                101L, "COMPLETED", "TSLA", "SELL", 3,
+                101L, "COMPLETED", "TSLA", "Tesla Inc", "SELL", 3,
                 new BigDecimal("250.00"), new BigDecimal("750.00"), "USD"
         );
         given(tradeOrderService.placeOrder(eq(1L), any(TradeOrderRequest.class))).willReturn(resp);
@@ -165,7 +165,7 @@ class TradeOrderControllerTest {
     void JWT_인증으로_주문_처리() throws Exception {
         TradeOrderRequest req = new TradeOrderRequest(10L, 99L, "BUY", 1, BigDecimal.TEN);
         TradeOrderResponse resp = new TradeOrderResponse(
-                102L, "COMPLETED", "TSLA", "BUY", 1,
+                102L, "COMPLETED", "TSLA", "Tesla Inc", "BUY", 1,
                 BigDecimal.TEN, BigDecimal.TEN, "USD"
         );
         given(tradeOrderService.placeOrder(eq(1L), any())).willReturn(resp);

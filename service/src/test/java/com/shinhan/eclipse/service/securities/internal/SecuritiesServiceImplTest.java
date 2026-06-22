@@ -2,16 +2,19 @@ package com.shinhan.eclipse.service.securities.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
 import com.shinhan.eclipse.service.mypage.MyPageService;
 import com.shinhan.eclipse.service.securities.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -26,17 +29,24 @@ import static org.mockito.BDDMockito.given;
 @ExtendWith(MockitoExtension.class)
 class SecuritiesServiceImplTest {
 
-    @Mock ProductRepository    productRepository;
-    @Mock HoldingRepository    holdingRepository;
-    @Mock QuoteCache           quoteCache;
-    @Mock LsRestClient         lsRestClient;   // 유지 (LS 코드 보존)
-    @Mock KisRestClient        kisRestClient;
-    @Mock ChatClient           chatClient;
-    @Mock MyPageService        myPageService;
+    @Mock ProductRepository          productRepository;
+    @Mock HoldingRepository          holdingRepository;
+    @Mock FinancialAccountRepository accountRepository;
+    @Mock PriceCandleRepository      priceCandleRepository;
+    @Mock QuoteCache                 quoteCache;
+    @Mock LsRestClient               lsRestClient;
+    @Mock KisRestClient              kisRestClient;
+    @Mock ChatClient                 chatClient;
+    @Mock MyPageService              myPageService;
 
     @InjectMocks SecuritiesServiceImpl service;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(service, "usdKrw", new BigDecimal("1368.5"));
+    }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
 
@@ -59,8 +69,10 @@ class SecuritiesServiceImplTest {
         given(productRepository.searchProducts(null, null)).willReturn(List.of(p1, p2));
         given(quoteCache.get("TSLA")).willReturn(Optional.of(quoteFixture("TSLA")));
         given(quoteCache.get("AAPL")).willReturn(Optional.empty());
+        given(priceCandleRepository.findLatestDailyByProductIds(any())).willReturn(List.of());
+        given(priceCandleRepository.findDailyClosePricesForSpark(any(), any())).willReturn(List.of());
 
-        List<ProductListItem> result = service.listProducts(null, null);
+        List<ProductListItem> result = service.listProducts(null, null, null);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).price()).isEqualByComparingTo("250.00");
@@ -70,8 +82,10 @@ class SecuritiesServiceImplTest {
     @Test
     void listProducts_타입과_키워드로_필터링된다() {
         given(productRepository.searchProducts("OVERSEAS", "TSLA")).willReturn(List.of());
+        given(priceCandleRepository.findLatestDailyByProductIds(any())).willReturn(List.of());
+        given(priceCandleRepository.findDailyClosePricesForSpark(any(), any())).willReturn(List.of());
 
-        List<ProductListItem> result = service.listProducts("OVERSEAS", "TSLA");
+        List<ProductListItem> result = service.listProducts("OVERSEAS", "TSLA", null);
 
         assertThat(result).isEmpty();
         org.mockito.Mockito.verify(productRepository).searchProducts("OVERSEAS", "TSLA");
@@ -183,11 +197,12 @@ class SecuritiesServiceImplTest {
         given(holdingRepository.findByUserIdAndStatus(1L, "ACTIVE")).willReturn(List.of(holding));
         given(productRepository.findById(10L)).willReturn(Optional.of(p));
         given(quoteCache.get("TSLA")).willReturn(Optional.of(quoteFixture("TSLA")));
+        given(accountRepository.findByUserId(1L)).willReturn(List.of());
 
-        List<HoldingItem> result = service.getHoldings(1L);
+        HoldingsSummary result = service.getHoldings(1L);
 
-        assertThat(result).hasSize(1);
-        HoldingItem item = result.get(0);
+        assertThat(result.holdings()).hasSize(1);
+        HoldingItem item = result.holdings().get(0);
         assertThat(item.ticker()).isEqualTo("TSLA");
         assertThat(item.currentPrice()).isEqualByComparingTo("250.00");
         assertThat(item.evaluatedAmount()).isEqualByComparingTo("1250.00");
@@ -203,11 +218,12 @@ class SecuritiesServiceImplTest {
         given(holdingRepository.findByUserIdAndStatus(1L, "ACTIVE")).willReturn(List.of(holding));
         given(productRepository.findById(10L)).willReturn(Optional.of(p));
         given(quoteCache.get("TSLA")).willReturn(Optional.empty());
+        given(accountRepository.findByUserId(1L)).willReturn(List.of());
 
-        List<HoldingItem> result = service.getHoldings(1L);
+        HoldingsSummary result = service.getHoldings(1L);
 
-        assertThat(result.get(0).profitLoss()).isNull();
-        assertThat(result.get(0).evaluatedAmount()).isNull();
+        assertThat(result.holdings().get(0).profitLoss()).isNull();
+        assertThat(result.holdings().get(0).evaluatedAmount()).isNull();
     }
 
     // ── SEC-005: getRecommended ──────────────────────────────────────────────
@@ -222,7 +238,6 @@ class SecuritiesServiceImplTest {
 
         List<RecommendedProduct> result = service.getRecommended(1L);
 
-        // fallback: AAPL, MSFT 포함
         assertThat(result).extracting(RecommendedProduct::ticker)
                 .containsAnyOf("AAPL", "MSFT");
     }

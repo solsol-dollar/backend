@@ -4,10 +4,11 @@ import java.util.List;
 
 final class ProductSeedCatalog {
 
-    static final String OVERSEAS = "OVERSEAS";
-    static final String ETF      = "ETF";
-    static final String NASDAQ   = "NASDAQ";
-    static final String NYSE     = "NYSE Arca";
+    static final String OVERSEAS   = "OVERSEAS";
+    static final String ETF        = "ETF";
+    static final String NASDAQ     = "NASDAQ";
+    static final String NYSE       = "NYSE";        // S&P 500 주식용
+    static final String NYSE_ARCA  = "NYSE Arca";   // ETF용
 
     record Seed(String ticker, String productName, String sector, String productType, String exchangeName) {}
 
@@ -131,18 +132,148 @@ final class ProductSeedCatalog {
         new Seed("GFS",   "GlobalFoundries Inc",             "Semiconductors",          OVERSEAS, NASDAQ)
     );
 
+    /** S&P 500 구성 종목 중 NASDAQ 100에 없는 NYSE 상장 종목 */
+    static final List<Seed> SP500_NYSE = List.of(
+        // Financials
+        new Seed("JPM",   "JPMorgan Chase & Co",           "Financials",             OVERSEAS, NYSE),
+        new Seed("BAC",   "Bank of America Corp",           "Financials",             OVERSEAS, NYSE),
+        new Seed("WFC",   "Wells Fargo & Co",               "Financials",             OVERSEAS, NYSE),
+        new Seed("C",     "Citigroup Inc",                  "Financials",             OVERSEAS, NYSE),
+        new Seed("GS",    "Goldman Sachs Group Inc",        "Financials",             OVERSEAS, NYSE),
+        new Seed("MS",    "Morgan Stanley",                 "Financials",             OVERSEAS, NYSE),
+        new Seed("BLK",   "BlackRock Inc",                  "Financials",             OVERSEAS, NYSE),
+        new Seed("AXP",   "American Express Co",            "Financials",             OVERSEAS, NYSE),
+        new Seed("V",     "Visa Inc",                       "Financials",             OVERSEAS, NYSE),
+        new Seed("MA",    "Mastercard Inc",                 "Financials",             OVERSEAS, NYSE),
+        new Seed("SCHW",  "Charles Schwab Corp",            "Financials",             OVERSEAS, NYSE),
+        new Seed("BK",    "Bank of New York Mellon Corp",   "Financials",             OVERSEAS, NYSE),
+        new Seed("USB",   "US Bancorp",                     "Financials",             OVERSEAS, NYSE),
+        new Seed("PNC",   "PNC Financial Services Group",   "Financials",             OVERSEAS, NYSE),
+        new Seed("CB",    "Chubb Ltd",                      "Insurance",              OVERSEAS, NYSE),
+        new Seed("MMC",   "Marsh & McLennan Companies",     "Insurance",              OVERSEAS, NYSE),
+        new Seed("TRV",   "Travelers Companies Inc",        "Insurance",              OVERSEAS, NYSE),
+        new Seed("AFL",   "Aflac Inc",                      "Insurance",              OVERSEAS, NYSE),
+        new Seed("MET",   "MetLife Inc",                    "Insurance",              OVERSEAS, NYSE),
+        new Seed("PRU",   "Prudential Financial Inc",       "Insurance",              OVERSEAS, NYSE),
+
+        // Healthcare
+        new Seed("JNJ",   "Johnson & Johnson",              "Healthcare",             OVERSEAS, NYSE),
+        new Seed("UNH",   "UnitedHealth Group Inc",         "Healthcare",             OVERSEAS, NYSE),
+        new Seed("LLY",   "Eli Lilly and Co",               "Healthcare",             OVERSEAS, NYSE),
+        new Seed("ABBV",  "AbbVie Inc",                     "Healthcare",             OVERSEAS, NYSE),
+        new Seed("MRK",   "Merck & Co Inc",                 "Healthcare",             OVERSEAS, NYSE),
+        new Seed("PFE",   "Pfizer Inc",                     "Healthcare",             OVERSEAS, NYSE),
+        new Seed("TMO",   "Thermo Fisher Scientific Inc",   "Healthcare",             OVERSEAS, NYSE),
+        new Seed("ABT",   "Abbott Laboratories",            "Healthcare",             OVERSEAS, NYSE),
+        new Seed("DHR",   "Danaher Corp",                   "Healthcare",             OVERSEAS, NYSE),
+        new Seed("BMY",   "Bristol-Myers Squibb Co",        "Healthcare",             OVERSEAS, NYSE),
+        new Seed("ELV",   "Elevance Health Inc",            "Healthcare",             OVERSEAS, NYSE),
+        new Seed("SYK",   "Stryker Corp",                   "Healthcare",             OVERSEAS, NYSE),
+        new Seed("CVS",   "CVS Health Corp",                "Healthcare",             OVERSEAS, NYSE),
+        new Seed("MDT",   "Medtronic plc",                  "Healthcare",             OVERSEAS, NYSE),
+        new Seed("BSX",   "Boston Scientific Corp",         "Healthcare",             OVERSEAS, NYSE),
+        new Seed("CI",    "Cigna Group",                    "Healthcare",             OVERSEAS, NYSE),
+
+        // Consumer Staples
+        new Seed("WMT",   "Walmart Inc",                    "Consumer Staples",       OVERSEAS, NYSE),
+        new Seed("PG",    "Procter & Gamble Co",            "Consumer Staples",       OVERSEAS, NYSE),
+        new Seed("KO",    "Coca-Cola Co",                   "Consumer Staples",       OVERSEAS, NYSE),
+        new Seed("PM",    "Philip Morris International",    "Consumer Staples",       OVERSEAS, NYSE),
+        new Seed("MO",    "Altria Group Inc",               "Consumer Staples",       OVERSEAS, NYSE),
+        new Seed("CL",    "Colgate-Palmolive Co",           "Consumer Staples",       OVERSEAS, NYSE),
+        new Seed("GIS",   "General Mills Inc",              "Consumer Staples",       OVERSEAS, NYSE),
+        new Seed("K",     "Kellanova",                      "Consumer Staples",       OVERSEAS, NYSE),
+        new Seed("HSY",   "Hershey Co",                     "Consumer Staples",       OVERSEAS, NYSE),
+
+        // Consumer Discretionary
+        new Seed("MCD",   "McDonald's Corp",                "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("NKE",   "Nike Inc",                       "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("LOW",   "Lowe's Companies Inc",           "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("DIS",   "Walt Disney Co",                 "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("GM",    "General Motors Co",              "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("F",     "Ford Motor Co",                  "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("TGT",   "Target Corp",                    "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("HLT",   "Hilton Worldwide Holdings Inc",  "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("YUM",   "Yum Brands Inc",                 "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("RCL",   "Royal Caribbean Cruises Ltd",    "Consumer Discretionary", OVERSEAS, NYSE),
+        new Seed("CCL",   "Carnival Corp",                  "Consumer Discretionary", OVERSEAS, NYSE),
+
+        // Energy
+        new Seed("XOM",   "Exxon Mobil Corp",               "Energy",                 OVERSEAS, NYSE),
+        new Seed("CVX",   "Chevron Corp",                   "Energy",                 OVERSEAS, NYSE),
+        new Seed("COP",   "ConocoPhillips",                 "Energy",                 OVERSEAS, NYSE),
+        new Seed("SLB",   "SLB",                            "Energy",                 OVERSEAS, NYSE),
+        new Seed("EOG",   "EOG Resources Inc",              "Energy",                 OVERSEAS, NYSE),
+        new Seed("PSX",   "Phillips 66",                    "Energy",                 OVERSEAS, NYSE),
+        new Seed("VLO",   "Valero Energy Corp",             "Energy",                 OVERSEAS, NYSE),
+        new Seed("OXY",   "Occidental Petroleum Corp",      "Energy",                 OVERSEAS, NYSE),
+
+        // Industrials
+        new Seed("CAT",   "Caterpillar Inc",                "Industrials",            OVERSEAS, NYSE),
+        new Seed("GE",    "GE Aerospace",                   "Industrials",            OVERSEAS, NYSE),
+        new Seed("RTX",   "RTX Corp",                       "Industrials",            OVERSEAS, NYSE),
+        new Seed("UPS",   "United Parcel Service Inc",      "Industrials",            OVERSEAS, NYSE),
+        new Seed("BA",    "Boeing Co",                      "Industrials",            OVERSEAS, NYSE),
+        new Seed("DE",    "Deere & Co",                     "Industrials",            OVERSEAS, NYSE),
+        new Seed("MMM",   "3M Co",                          "Industrials",            OVERSEAS, NYSE),
+        new Seed("EMR",   "Emerson Electric Co",            "Industrials",            OVERSEAS, NYSE),
+        new Seed("ETN",   "Eaton Corp plc",                 "Industrials",            OVERSEAS, NYSE),
+        new Seed("ITW",   "Illinois Tool Works Inc",        "Industrials",            OVERSEAS, NYSE),
+        new Seed("LMT",   "Lockheed Martin Corp",           "Industrials",            OVERSEAS, NYSE),
+        new Seed("NOC",   "Northrop Grumman Corp",          "Industrials",            OVERSEAS, NYSE),
+        new Seed("GD",    "General Dynamics Corp",          "Industrials",            OVERSEAS, NYSE),
+        new Seed("FDX",   "FedEx Corp",                     "Industrials",            OVERSEAS, NYSE),
+
+        // Technology (NYSE-listed)
+        new Seed("IBM",   "International Business Machines","Technology",             OVERSEAS, NYSE),
+        new Seed("ACN",   "Accenture plc",                  "Technology",             OVERSEAS, NYSE),
+        new Seed("CRM",   "Salesforce Inc",                 "Technology",             OVERSEAS, NYSE),
+        new Seed("NOW",   "ServiceNow Inc",                 "Technology",             OVERSEAS, NYSE),
+        new Seed("ORCL",  "Oracle Corp",                    "Technology",             OVERSEAS, NYSE),
+
+        // Communication (NYSE)
+        new Seed("T",     "AT&T Inc",                       "Communication Services", OVERSEAS, NYSE),
+        new Seed("VZ",    "Verizon Communications Inc",     "Communication Services", OVERSEAS, NYSE),
+        new Seed("CMCSA", "Comcast Corp",                   "Communication Services", OVERSEAS, NYSE),
+
+        // Materials
+        new Seed("LIN",   "Linde plc",                      "Materials",              OVERSEAS, NYSE),
+        new Seed("APD",   "Air Products & Chemicals Inc",   "Materials",              OVERSEAS, NYSE),
+        new Seed("SHW",   "Sherwin-Williams Co",            "Materials",              OVERSEAS, NYSE),
+        new Seed("FCX",   "Freeport-McMoRan Inc",           "Materials",              OVERSEAS, NYSE),
+        new Seed("NEM",   "Newmont Corp",                   "Materials",              OVERSEAS, NYSE),
+        new Seed("ECL",   "Ecolab Inc",                     "Materials",              OVERSEAS, NYSE),
+        new Seed("DD",    "DuPont de Nemours Inc",          "Materials",              OVERSEAS, NYSE),
+
+        // Utilities
+        new Seed("NEE",   "NextEra Energy Inc",             "Utilities",              OVERSEAS, NYSE),
+        new Seed("DUK",   "Duke Energy Corp",               "Utilities",              OVERSEAS, NYSE),
+        new Seed("SO",    "Southern Co",                    "Utilities",              OVERSEAS, NYSE),
+        new Seed("D",     "Dominion Energy Inc",            "Utilities",              OVERSEAS, NYSE),
+        new Seed("SRE",   "Sempra",                         "Utilities",              OVERSEAS, NYSE),
+        new Seed("PCG",   "PG&E Corp",                      "Utilities",              OVERSEAS, NYSE),
+
+        // Real Estate
+        new Seed("AMT",   "American Tower Corp",            "Real Estate",            OVERSEAS, NYSE),
+        new Seed("PLD",   "Prologis Inc",                   "Real Estate",            OVERSEAS, NYSE),
+        new Seed("CCI",   "Crown Castle Inc",               "Real Estate",            OVERSEAS, NYSE),
+        new Seed("SPG",   "Simon Property Group Inc",       "Real Estate",            OVERSEAS, NYSE),
+        new Seed("O",     "Realty Income Corp",             "Real Estate",            OVERSEAS, NYSE),
+        new Seed("WELL",  "Welltower Inc",                  "Real Estate",            OVERSEAS, NYSE)
+    );
+
     /** 인기 해외 ETF */
     static final List<Seed> ETF_LIST = List.of(
         new Seed("QQQ",  "Invesco QQQ Trust",                      "NASDAQ 100 Index",   ETF, NASDAQ),
-        new Seed("SOXX", "iShares Semiconductor ETF",              "Semiconductors",     ETF, NYSE),
-        new Seed("ARKK", "ARK Innovation ETF",                     "Growth/Innovation",  ETF, NYSE),
-        new Seed("SPY",  "SPDR S&P 500 ETF Trust",                 "S&P 500 Index",      ETF, NYSE),
-        new Seed("VOO",  "Vanguard S&P 500 ETF",                   "S&P 500 Index",      ETF, NYSE),
-        new Seed("VTI",  "Vanguard Total Stock Market ETF",        "Total Market",       ETF, NYSE),
-        new Seed("XLK",  "Technology Select Sector SPDR Fund",     "Technology",         ETF, NYSE),
-        new Seed("SCHD", "Schwab US Dividend Equity ETF",          "Dividend",           ETF, NYSE),
-        new Seed("GDX",  "VanEck Gold Miners ETF",                 "Gold Miners",        ETF, NYSE),
-        new Seed("IAU",  "iShares Gold Trust",                     "Gold",               ETF, NYSE)
+        new Seed("SOXX", "iShares Semiconductor ETF",              "Semiconductors",     ETF, NYSE_ARCA),
+        new Seed("ARKK", "ARK Innovation ETF",                     "Growth/Innovation",  ETF, NYSE_ARCA),
+        new Seed("SPY",  "SPDR S&P 500 ETF Trust",                 "S&P 500 Index",      ETF, NYSE_ARCA),
+        new Seed("VOO",  "Vanguard S&P 500 ETF",                   "S&P 500 Index",      ETF, NYSE_ARCA),
+        new Seed("VTI",  "Vanguard Total Stock Market ETF",        "Total Market",       ETF, NYSE_ARCA),
+        new Seed("XLK",  "Technology Select Sector SPDR Fund",     "Technology",         ETF, NYSE_ARCA),
+        new Seed("SCHD", "Schwab US Dividend Equity ETF",          "Dividend",           ETF, NYSE_ARCA),
+        new Seed("GDX",  "VanEck Gold Miners ETF",                 "Gold Miners",        ETF, NYSE_ARCA),
+        new Seed("IAU",  "iShares Gold Trust",                     "Gold",               ETF, NYSE_ARCA)
     );
 
     private ProductSeedCatalog() {}

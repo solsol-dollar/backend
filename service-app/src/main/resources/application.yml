@@ -73,6 +73,10 @@ finnhub:
 fmp:
   api-key: ${FMP_API_KEY:}
 
+eclipse:
+  ledger:
+    url: ${LEDGER_URL:http://localhost:8080}
+
 logging:
   level:
     com.shinhan.eclipse: INFO
