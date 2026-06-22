@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor
 @Entity
-@Table(name = "return_plans")
+@Table(name = "return_plans", uniqueConstraints = @UniqueConstraint(columnNames = "subscription_id"))
 public class ReturnPlan extends BaseEntity {
 
     @Column(nullable = false)
