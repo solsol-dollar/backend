@@ -122,7 +122,8 @@ CREATE TABLE `ipos` (
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`)
+	PRIMARY KEY (`id`),
+	CONSTRAINT `CK_ipos_total_allocable_shares` CHECK (`total_allocable_shares` IS NULL OR `total_allocable_shares` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [변경] risk_level(VARCHAR) → risk_score(숫자). 등급 문자(A/B/C) 저장 금지.
