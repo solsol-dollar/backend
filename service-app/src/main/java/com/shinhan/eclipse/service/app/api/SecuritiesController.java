@@ -27,8 +27,9 @@ public class SecuritiesController {
     @GetMapping("/products")
     public ResponseEntity<ApiResponse<List<ProductListItem>>> listProducts(
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String keyword) {
-        return ResponseEntity.ok(ApiResponse.success(securitiesService.listProducts(type, keyword)));
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sort) {
+        return ResponseEntity.ok(ApiResponse.success(securitiesService.listProducts(type, keyword, sort)));
     }
 
     /** SEC-002: 종목 상세 */
@@ -43,9 +44,9 @@ public class SecuritiesController {
         return ResponseEntity.ok(ApiResponse.success(securitiesService.getOrderBook(id)));
     }
 
-    /** SEC-004: 보유 종목 + 손익 */
+    /** SEC-004: 보유 종목 + 손익 (래퍼 포함) */
     @GetMapping("/holdings")
-    public ResponseEntity<ApiResponse<List<HoldingItem>>> getHoldings(@AuthenticationPrincipal AuthUser authUser) {
+    public ResponseEntity<ApiResponse<HoldingsSummary>> getHoldings(@AuthenticationPrincipal AuthUser authUser) {
         return ResponseEntity.ok(ApiResponse.success(securitiesService.getHoldings(authUser.userId())));
     }
 
@@ -65,5 +66,11 @@ public class SecuritiesController {
                     "유효하지 않은 period: " + period + ". 허용 값: 5MIN, 1D, 1W, 1M");
         }
         return ResponseEntity.ok(ApiResponse.success(chartService.getChart(id, period)));
+    }
+
+    /** B-01: 시장 지수 */
+    @GetMapping("/market/indices")
+    public ResponseEntity<ApiResponse<List<MarketIndex>>> getMarketIndices() {
+        return ResponseEntity.ok(ApiResponse.success(securitiesService.getMarketIndices()));
     }
 }
