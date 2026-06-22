@@ -1,5 +1,7 @@
 package com.shinhan.eclipse.service.inflow.internal;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.inflow.IdleDollarTrigger;
 import com.shinhan.eclipse.service.inflow.IdleDollarService;
@@ -69,15 +71,17 @@ class IdleDollarServiceImpl implements IdleDollarService {
     @Transactional
     public void detectAndNotify(Long userId) {
         // TODO: 특정 사용자 계좌 검사 후 알림 발송
-        throw new UnsupportedOperationException("TODO");
+        throw new BusinessException(ErrorCode.INTERNAL_ERROR, "아직 구현되지 않은 기능입니다.");
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<IdleDollarTrigger> getTriggerHistory(Long userId) {
         return triggerRepository.findByUserIdOrderByDetectedAtDesc(userId);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<IdleDollarStatusResponse> getIdleStatus(Long userId) {
         return triggerRepository.findByUserIdAndTriggerStatus(userId, "TRIGGERED")
                 .map(trigger -> {

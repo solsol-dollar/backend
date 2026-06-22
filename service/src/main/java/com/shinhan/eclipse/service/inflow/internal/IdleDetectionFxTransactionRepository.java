@@ -12,7 +12,7 @@ interface IdleDetectionFxTransactionRepository extends JpaRepository<FxExchangeT
 
     @Query("""
             SELECT MAX(t.requestedAt) FROM FxExchangeTransaction t
-            WHERE t.toAccountId = :accountId AND t.status = 'ACTIVE'
+            WHERE (t.fromAccountId = :accountId OR t.toAccountId = :accountId) AND t.status = 'ACTIVE'
             """)
     Optional<LocalDateTime> findLatestRequestedAt(@Param("accountId") Long accountId);
 }

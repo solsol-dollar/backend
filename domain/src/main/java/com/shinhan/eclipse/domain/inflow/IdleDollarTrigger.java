@@ -7,12 +7,15 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Getter
 @NoArgsConstructor
 @Entity
 @Table(name = "idle_dollar_triggers")
 public class IdleDollarTrigger extends BaseEntity {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     @Column(nullable = false)
     private Long userId;
@@ -45,12 +48,12 @@ public class IdleDollarTrigger extends BaseEntity {
         t.idleBalance = idleBalance;
         t.idleDays = idleDays;
         t.triggerStatus = "TRIGGERED";
-        t.detectedAt = LocalDateTime.now();
+        t.detectedAt = LocalDateTime.now(KST);
         return t;
     }
 
     public void invalidate() {
         this.triggerStatus = "INVALIDATED";
-        this.invalidatedAt = LocalDateTime.now();
+        this.invalidatedAt = LocalDateTime.now(KST);
     }
 }
