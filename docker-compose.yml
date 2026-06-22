@@ -28,6 +28,8 @@ services:
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT:-6379}
       JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH:-classpath:keys/public.pem}
+      SPRINGDOC_SWAGGER_UI_CONFIG_URL: /api/ledger/api-docs/swagger-config
+      SPRINGDOC_SWAGGER_UI_URL: /api/ledger/api-docs
     volumes:
       - ./keys:/app/keys:ro
     restart: unless-stopped
@@ -67,6 +69,8 @@ services:
       LEDGER_URL: http://ledger-app:8080
       JWT_PRIVATE_KEY_PATH: ${JWT_PRIVATE_KEY_PATH:-/app/keys/private.pem}
       JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH:-classpath:keys/public.pem}
+      SPRINGDOC_SWAGGER_UI_CONFIG_URL: /api/service/api-docs/swagger-config
+      SPRINGDOC_SWAGGER_UI_URL: /api/service/api-docs
     volumes:
       - ./keys:/app/keys:ro
     depends_on:
