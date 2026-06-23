@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -63,18 +63,27 @@ class HomeServiceImpl implements HomeService {
         BigDecimal krwInUsd = cmaKrw.divide(exchangeRate, 4, RoundingMode.HALF_UP);
         BigDecimal securitiesTotalUsd = cmaUsd.add(krwInUsd);
 
+        Long usdAccountId = securities.stream()
+                .filter(a -> "USD".equals(a.getCurrency()))
+                .map(FinancialAccount::getId)
+                .findFirst().orElse(null);
+        Long krwAccountId = securities.stream()
+                .filter(a -> "KRW".equals(a.getCurrency()))
+                .map(FinancialAccount::getId)
+                .findFirst().orElse(null);
         String cmaAccountNumber = securities.stream()
                 .map(FinancialAccount::getAccountNumberMasked)
                 .findFirst()
                 .orElse(null);
 
         AssetsSummaryResponse.SecuritiesAsset securitiesAsset =
-                new AssetsSummaryResponse.SecuritiesAsset(cmaAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd);
+                new AssetsSummaryResponse.SecuritiesAsset(usdAccountId, krwAccountId, cmaAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd);
 
         // 예금/적금 계좌
         List<AssetsSummaryResponse.AccountAsset> accountAssets = accounts.stream()
                 .filter(a -> !("SECURITIES".equals(a.getAccountType())))
                 .map(a -> new AssetsSummaryResponse.AccountAsset(
+                        a.getId(),
                         a.getAccountType(),
                         a.getAccountName(),
                         a.getAccountNumberMasked(),
@@ -105,9 +114,29 @@ class HomeServiceImpl implements HomeService {
     @Override
     @Transactional(readOnly = true)
     public List<FavoriteIpoItem> getRandomFavoriteIpos(Long userId) {
-        List<FavoriteIpoItem> all = new ArrayList<>(ipoExplorationService.getFavoriteIpos(userId, null));
-        Collections.shuffle(all);
-        return all.size() <= 2 ? all : all.subList(0, 2);
+        List<FavoriteIpoItem> all = ipoExplorationService.getFavoriteIpos(userId, null);
+        if (all.isEmpty()) return List.of();
+
+        // 1순위: OPEN/UPCOMING → 마감일 가까운 순
+        List<FavoriteIpoItem> result = new ArrayList<>(all.stream()
+                .filter(i -> "OPEN".equals(i.ipoStatus()) || "UPCOMING".equals(i.ipoStatus()))
+                .sorted(Comparator.comparing(FavoriteIpoItem::subscriptionEndDate,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .limit(2)
+                .toList());
+
+        // 2개 미만이면 CLOSED로 나머지 채움 (최신순)
+        if (result.size() < 2) {
+            int needed = 2 - result.size();
+            all.stream()
+                    .filter(i -> "CLOSED".equals(i.ipoStatus()))
+                    .sorted(Comparator.comparing(FavoriteIpoItem::subscriptionEndDate,
+                            Comparator.nullsLast(Comparator.reverseOrder())))
+                    .limit(needed)
+                    .forEach(result::add);
+        }
+
+        return result;
     }
 
     @Override

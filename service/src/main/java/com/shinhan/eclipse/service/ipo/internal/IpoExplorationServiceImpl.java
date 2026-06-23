@@ -110,6 +110,7 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                             ipo.getId(),
                             ipo.getTicker(),
                             ipo.getCompanyName(),
+                            ipo.getLogoUrl(),
                             computeStatus(ipo),
                             ipo.getSubscriptionStartDate(),
                             ipo.getSubscriptionEndDate(),

@@ -20,6 +20,8 @@ public record AssetsSummaryResponse(
     ) {}
 
     public record SecuritiesAsset(
+            Long usdAccountId,
+            Long krwAccountId,
             String accountNumberMasked,
             BigDecimal usdBalance,
             BigDecimal krwBalance,
@@ -27,6 +29,7 @@ public record AssetsSummaryResponse(
     ) {}
 
     public record AccountAsset(
+            Long accountId,
             String accountType,
             String accountName,
             String accountNumberMasked,

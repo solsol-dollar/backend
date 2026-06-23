@@ -51,7 +51,7 @@ class FinnhubSyncScheduler {
     private record FmpProfile(String sector, String industry) {}
     private record FmpData(String sector) {}
 
-    @Scheduled(cron = "0 0 1 * * *")
+    @Scheduled(fixedDelay = Long.MAX_VALUE, initialDelay = 60000)
     public void sync() {
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("FINNHUB_API_KEY가 설정되지 않았습니다.");
