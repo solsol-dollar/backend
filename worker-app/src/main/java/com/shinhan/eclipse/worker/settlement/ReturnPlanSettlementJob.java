@@ -4,11 +4,14 @@ import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
 import com.shinhan.eclipse.worker.settlement.repository.WorkerReturnPlanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -29,13 +32,14 @@ public class ReturnPlanSettlementJob {
 
     private static final int MAX_ATTEMPTS = 3;
     private static final Duration RETRY_BACKOFF = Duration.ofSeconds(1);
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final WorkerReturnPlanRepository returnPlanRepository;
     private final ReturnPlanExecutionClient executionClient;
 
     @Scheduled(cron = "0 0 21 * * *", zone = "Asia/Seoul")
     public void run() {
-        List<ReturnPlan> targets = returnPlanRepository.findDraftPlansDueForSettlement(LocalDate.now());
+        List<ReturnPlan> targets = returnPlanRepository.findDraftPlansDueForSettlement(LocalDate.now(KST));
         if (targets.isEmpty()) {
             return;
         }
@@ -56,16 +60,33 @@ public class ReturnPlanSettlementJob {
             try {
                 executionClient.execute(returnPlanId);
                 return true;
-            } catch (Exception e) {
-                if (attempt == MAX_ATTEMPTS) {
-                    log.error("리턴 플랜 정산 실행 실패 (재시도 {}회 모두 실패): returnPlanId={}", MAX_ATTEMPTS, returnPlanId, e);
+            } catch (HttpClientErrorException e) {
+                // 409(이미 실행됨)는 직전 시도가 사실은 성공했는데 응답만 못 받은 경우와 같은 결과이므로
+                // 실패로 보지 않고 그대로 성공 처리한다 — 재시도/실패 로그가 불필요한 잡음이 된다.
+                if (e.getStatusCode() == HttpStatus.CONFLICT) {
+                    return true;
+                }
+                if (!retryOrFail(returnPlanId, attempt, e)) {
                     return false;
                 }
-                log.warn("리턴 플랜 정산 실행 실패, 재시도합니다: returnPlanId={}, attempt={}", returnPlanId, attempt);
-                sleep(RETRY_BACKOFF.multipliedBy(attempt));
+            } catch (Exception e) {
+                if (!retryOrFail(returnPlanId, attempt, e)) {
+                    return false;
+                }
             }
         }
         return false;
+    }
+
+    /** @return 재시도를 이어가도 되면 true, 마지막 시도까지 실패해서 더 이상 재시도하지 않으면 false */
+    private boolean retryOrFail(Long returnPlanId, int attempt, Exception e) {
+        if (attempt == MAX_ATTEMPTS) {
+            log.error("리턴 플랜 정산 실행 실패 (재시도 {}회 모두 실패): returnPlanId={}", MAX_ATTEMPTS, returnPlanId, e);
+            return false;
+        }
+        log.warn("리턴 플랜 정산 실행 실패, 재시도합니다: returnPlanId={}, attempt={}", returnPlanId, attempt);
+        sleep(RETRY_BACKOFF.multipliedBy(attempt));
+        return true;
     }
 
     private void sleep(Duration duration) {

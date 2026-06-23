@@ -158,7 +158,8 @@ class ReturnPlanApiTest {
         mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId)
                         .header("X-Internal-Api-Key", "test-internal-api-key"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.planStatus").value("EXECUTED"));
+                .andExpect(jsonPath("$.data.planStatus").value("EXECUTED"))
+                .andExpect(jsonPath("$.data.executedAt").exists());
 
         // 내부 API 키가 없거나 틀리면 401
         mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId))

@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Map;
 
 /**
@@ -49,7 +51,8 @@ public class InternalReturnPlanController {
     }
 
     private void validateApiKey(String apiKey) {
-        if (!StringUtils.hasText(expectedApiKey) || !expectedApiKey.equals(apiKey)) {
+        if (!StringUtils.hasText(expectedApiKey) || !StringUtils.hasText(apiKey)
+                || !MessageDigest.isEqual(expectedApiKey.getBytes(StandardCharsets.UTF_8), apiKey.getBytes(StandardCharsets.UTF_8))) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "내부 API 키가 유효하지 않습니다.");
         }
     }
