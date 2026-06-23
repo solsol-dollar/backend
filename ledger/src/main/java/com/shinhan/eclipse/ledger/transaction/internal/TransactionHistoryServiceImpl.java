@@ -28,7 +28,8 @@ class TransactionHistoryServiceImpl implements TransactionHistoryService {
         List<TransferTransaction> transfers;
         List<FxExchangeTransaction> fxList;
 
-        switch (filter.toUpperCase()) {
+        String normalizedFilter = (filter == null) ? "ALL" : filter.toUpperCase();
+        switch (normalizedFilter) {
             case "IN"       -> { transfers = transferRepository.findIncoming(userId, accountIds);   fxList = List.of(); }
             case "OUT"      -> { transfers = transferRepository.findOutgoing(userId, accountIds);   fxList = List.of(); }
             case "CARD"     -> { transfers = transferRepository.findCard(userId, accountIds);       fxList = List.of(); }
@@ -54,9 +55,11 @@ class TransactionHistoryServiceImpl implements TransactionHistoryService {
 
     private TransactionHistoryItem toItem(TransferTransaction t, List<Long> accountIds, Map<Long, FinancialAccount> accountMap) {
         String type;
+        boolean fromMine = t.getFromAccountId() != null && accountIds.contains(t.getFromAccountId());
+        boolean toMine   = t.getToAccountId()   != null && accountIds.contains(t.getToAccountId());
         if ("CARD".equals(t.getTransferType())) {
             type = "CARD";
-        } else if (t.getToAccountId() != null && accountIds.contains(t.getToAccountId())) {
+        } else if (toMine && !fromMine) {
             type = "IN";
         } else {
             type = "OUT";

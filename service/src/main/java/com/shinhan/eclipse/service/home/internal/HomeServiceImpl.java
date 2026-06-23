@@ -1,5 +1,7 @@
 package com.shinhan.eclipse.service.home.internal;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 import com.shinhan.eclipse.domain.account.Card;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
@@ -35,6 +37,9 @@ class HomeServiceImpl implements HomeService {
 
         ExchangeRateInfo rateInfo = exchangeService.getExchangeRate("USD");
         BigDecimal exchangeRate = rateInfo.baseRate();
+        if (exchangeRate == null || exchangeRate.compareTo(BigDecimal.ZERO) == 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "환율 정보를 불러올 수 없습니다.");
+        }
 
         BigDecimal prevRate = exchangeService.getPreviousExchangeRate("USD")
                 .map(com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo::baseRate)
@@ -141,6 +146,6 @@ class HomeServiceImpl implements HomeService {
 
     @Override
     public Object getDashboard(Long userId) {
-        throw new UnsupportedOperationException("TODO");
+        throw new BusinessException(ErrorCode.INTERNAL_ERROR, "미구현 기능입니다.");
     }
 }
