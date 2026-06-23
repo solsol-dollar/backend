@@ -70,34 +70,9 @@ public class FinancialAccount extends BaseEntity {
         return a;
     }
 
-    public static FinancialAccount link(Long userId, String accountType, String institutionName, String accountNumberMasked) {
-        FinancialAccount a = new FinancialAccount();
-        a.userId = userId;
-        a.accountType = accountType;
-        a.institutionType = "SECURITIES".equals(accountType) ? "SECURITIES_FIRM" : "BANK";
-        a.institutionName = institutionName;
-        a.accountNumberMasked = accountNumberMasked;
-        a.balance = BigDecimal.ZERO;
-        a.linked = true;
-        a.linkedAt = LocalDateTime.now();
-        a.status = "ACTIVE";
-        return a;
-    }
-
     public void link() {
         this.linked = true;
         this.linkedAt = LocalDateTime.now();
-    }
-
-    public void relink(String institutionName, String accountNumberMasked) {
-        this.institutionName = institutionName;
-        this.accountNumberMasked = accountNumberMasked;
-        this.linked = true;
-        this.linkedAt = LocalDateTime.now();
-    }
-
-    public void unlink() {
-        this.linked = false;
     }
 
     public boolean hasSufficientBalance(BigDecimal amount) {

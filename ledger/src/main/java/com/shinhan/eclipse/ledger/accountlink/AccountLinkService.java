@@ -24,7 +24,4 @@ public interface AccountLinkService {
 
     /** 소유/연동 검증 + 비관적 락 후 적립. 리턴 플랜 분배 실행 등에서 사용. */
     void credit(Long userId, Long accountId, BigDecimal amount);
-
-    /** 예금주명. 공동/법인 계좌 개념 없이 본인 명의 계좌만 다루므로 사용자 본인 이름과 동일하게 처리한다. */
-    String getAccountHolderName(Long userId);
 }

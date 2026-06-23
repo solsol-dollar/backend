@@ -20,6 +20,4 @@ interface FinancialAccountRepository extends JpaRepository<FinancialAccount, Lon
     Optional<FinancialAccount> findByIdAndUserIdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 
     Optional<FinancialAccount> findFirstByUserIdAndAccountTypeAndLinkedTrueOrderByIdAsc(Long userId, String accountType);
-
-    Optional<FinancialAccount> findFirstByUserIdAndAccountTypeOrderByIdAsc(Long userId, String accountType);
 }
