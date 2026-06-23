@@ -17,11 +17,7 @@ class IpoNewsSyncSchedulerTest {
             .withUserConfiguration(IpoNewsSyncScheduler.class);
 
     @Test
-<<<<<<< HEAD
-    void usesFetchOnlyJobWhenSyncJobIsUnavailable() {
-=======
     void alwaysUsesFetchOnlyJob() {
->>>>>>> 0ab9ceab761178cdcb577f93dd4fe0d4134b9e21
         Job fetchOnlyJob = job("ipoNewsFetchOnlyJob");
 
         contextRunner
@@ -29,20 +25,6 @@ class IpoNewsSyncSchedulerTest {
                 .run(context -> assertSelectedJob(context.getBean(IpoNewsSyncScheduler.class), fetchOnlyJob));
     }
 
-<<<<<<< HEAD
-    @Test
-    void usesSyncJobWhenSyncJobIsAvailable() {
-        Job fetchOnlyJob = job("ipoNewsFetchOnlyJob");
-        Job syncJob = job("ipoNewsSyncJob");
-
-        contextRunner
-                .withBean("ipoNewsFetchOnlyJob", Job.class, () -> fetchOnlyJob)
-                .withBean("ipoNewsSyncJob", Job.class, () -> syncJob)
-                .run(context -> assertSelectedJob(context.getBean(IpoNewsSyncScheduler.class), syncJob));
-    }
-
-=======
->>>>>>> 0ab9ceab761178cdcb577f93dd4fe0d4134b9e21
     private static Job job(String name) {
         Job job = mock(Job.class);
         given(job.getName()).willReturn(name);
@@ -52,8 +34,4 @@ class IpoNewsSyncSchedulerTest {
     private static void assertSelectedJob(IpoNewsSyncScheduler scheduler, Job expectedJob) {
         assertThat(ReflectionTestUtils.getField(scheduler, "ipoNewsJob")).isSameAs(expectedJob);
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 0ab9ceab761178cdcb577f93dd4fe0d4134b9e21
