@@ -44,7 +44,11 @@ public class IpoAllocationJob {
         log.info("IpoAllocationJob 시작: 대상 IPO {}건", listingTodayIpos.size());
         int totalAllocated = 0;
         for (Ipo ipo : listingTodayIpos) {
-            totalAllocated += allocateForIpo(ipo);
+            try {
+                totalAllocated += allocateForIpo(ipo);
+            } catch (Exception e) {
+                log.error("IPO 배정 실패: ipoId={}, ticker={}", ipo.getId(), ipo.getTicker(), e);
+            }
         }
         log.info("IpoAllocationJob 완료: 청약 {}건 배정", totalAllocated);
     }
