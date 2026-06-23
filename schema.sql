@@ -1,5 +1,11 @@
--- Eclipse DB Schema v1.1.0 (subscription_results 통합)
+-- Eclipse DB Schema v1.1.1 (리턴 플랜 상태/목적지 타입 정리)
 -- Engine: InnoDB (FK 제약 사용) / Charset: utf8mb4
+--
+-- [v1.1.0 → v1.1.1 변경 사항] (스키마 변경 없음, 컬럼 값 의미만 정리)
+--  - return_plans.plan_status: CONFIRMED 단계 제거 → DRAFT / EXECUTED 2단계
+--    (confirmed_at은 상태 전이와 무관하게 "사용자가 확인 버튼을 누른 시각"만 기록)
+--  - return_plan_allocations.destination_type, financial_accounts.account_type:
+--    FX_SAVINGS / FX_ACCOUNT → SAVINGS / DEPOSIT (실제 계좌 타입과 일치시킴)
 --
 -- [v1.0.2 → v1.1.0 변경 사항]
 --  - subscription_results 테이블 제거
@@ -28,7 +34,7 @@ CREATE TABLE `users` (
 CREATE TABLE `financial_accounts` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT,
 	`user_id`	BIGINT	NOT NULL,
-	`account_type`	VARCHAR(30)	NOT NULL	COMMENT 'SECURITIES / FX_SAVINGS / FX_ACCOUNT 등',
+	`account_type`	VARCHAR(30)	NOT NULL	COMMENT 'SECURITIES / SAVINGS / DEPOSIT 등',
 	`institution_type`	VARCHAR(30)	NOT NULL,
 	`institution_name`	VARCHAR(50)	NOT NULL,
 	`account_name`	VARCHAR(100)	NULL,
@@ -211,7 +217,7 @@ CREATE TABLE `return_plans` (
 	`currency`	VARCHAR(10)	NOT NULL	DEFAULT 'USD',
 	`current_securities_balance`	DECIMAL(18,4)	NULL	COMMENT '리턴 플랜 생성 시점 증권 잔액 스냅샷',
 	`savings_interest_rate`	DECIMAL(7,4)	NULL	COMMENT '생성 시점 외화적금 금리 스냅샷',
-	`plan_status`	VARCHAR(30)	NOT NULL	DEFAULT 'DRAFT'	COMMENT 'DRAFT / CONFIRMED / EXECUTED',
+	`plan_status`	VARCHAR(30)	NOT NULL	DEFAULT 'DRAFT'	COMMENT 'DRAFT / EXECUTED (confirmed_at은 상태와 무관하게 사용자가 확인한 시각만 기록)',
 	`confirmed_at`	DATETIME	NULL,
 	`executed_at`	DATETIME	NULL,
 	`created_at`	DATETIME	NOT NULL,
@@ -224,7 +230,7 @@ CREATE TABLE `return_plans` (
 CREATE TABLE `return_plan_allocations` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT,
 	`return_plan_id`	BIGINT	NOT NULL,
-	`destination_type`	VARCHAR(30)	NOT NULL	COMMENT 'SECURITIES / FX_SAVINGS / FX_ACCOUNT',
+	`destination_type`	VARCHAR(30)	NOT NULL	COMMENT 'SECURITIES / SAVINGS / DEPOSIT',
 	`destination_account_id`	BIGINT	NULL,
 	`allocation_ratio`	DECIMAL(5,2)	NOT NULL,
 	`allocation_amount`	DECIMAL(18,4)	NOT NULL,
@@ -240,7 +246,7 @@ CREATE TABLE `return_plan_allocations` (
 CREATE TABLE `return_plan_presets` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT,
 	`preset_code`	VARCHAR(30)	NOT NULL	COMMENT 'IPO_FOCUS / STABLE_SAVING / BALANCED',
-	`preset_name`	VARCHAR(50)	NOT NULL	COMMENT 'IPO 집중 / 안정 저축 / 균형 배분',
+	`preset_name`	VARCHAR(50)	NOT NULL	COMMENT '투자 집중 / 안정 저축 / 균형 배분',
 	`securities_ratio`	DECIMAL(5,2)	NOT NULL	COMMENT '외화 증권 계좌 비율',
 	`savings_ratio`	DECIMAL(5,2)	NOT NULL	COMMENT '외화 적금 비율',
 	`account_ratio`	DECIMAL(5,2)	NOT NULL	COMMENT '외화 통장 비율',

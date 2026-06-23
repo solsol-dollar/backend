@@ -36,6 +36,7 @@ class ExchangeRateScheduler {
         try {
             apiClient.fetchOne("USD").ifPresentOrElse(
                     rate -> {
+                        rateCache.get("USD").ifPresent(rateCache::putPrev);
                         rateCache.put(rate);
                         log.info("[환율 갱신] 완료: USD={}", rate.baseRate());
                     },

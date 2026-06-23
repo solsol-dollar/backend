@@ -13,7 +13,7 @@ interface IdleDetectionAccountRepository extends JpaRepository<FinancialAccount,
             WHERE a.accountType = 'SECURITIES'
               AND a.currency = 'USD'
               AND a.linked = true
-              AND a.balance > 0
+              AND a.balance >= 1000.00
               AND a.status = 'ACTIVE'
             """)
     List<FinancialAccount> findActiveSecuritiesAccountsWithBalance();

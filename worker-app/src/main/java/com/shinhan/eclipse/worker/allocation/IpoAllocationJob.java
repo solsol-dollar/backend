@@ -21,8 +21,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 상장일 배정 배치. 정규장 개장 후 1~3시간 이내 배정결과가 나온다는 요구사항을 매일 11:00(KST)
- * 1회 실행으로 단순화해 흉내낸다 — 실제 증권사 배정 통보 연동 전까지의 MOCK 구현.
+ * 상장일 배정 배치. "상장일 개장 1시간 전에 배정 결과 발표"라는 요구사항을 매일 21:30(KST) 1회
+ * 실행으로 단순화해 흉내낸다 — 실제 증권사 배정 통보 연동 전까지의 MOCK 구현.
+ *
+ * <p>미국 정규장 개장(9:30 AM ET)은 한국시간으로 22:30(EDT)~23:30(EST)이라, 21:30 KST는
+ * 서머타임 여부와 무관하게 항상 개장 1시간 이상 전이다(EDT 기준 정확히 1시간 전, EST 기준 2시간 전).
  *
  * <p>listingDate가 오늘인 IPO들을 찾아, 그 IPO에 대해 CONFIRMED 상태이고 아직 배정 결과가 없는
  * 청약들을 모아 {@link IpoAllocationEngine}으로 배정한 뒤 각 청약에 반영한다.
@@ -36,7 +39,7 @@ public class IpoAllocationJob {
     private final WorkerIpoSubscriptionRepository subscriptionRepository;
     private final WorkerNotificationRepository notificationRepository;
 
-    @Scheduled(cron = "0 0 11 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 30 21 * * *", zone = "Asia/Seoul")
     public void run() {
         LocalDate today = LocalDate.now();
         List<Ipo> listingTodayIpos = ipoRepository.findByListingDate(today);

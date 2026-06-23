@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -27,13 +28,14 @@ import java.util.stream.Stream;
 class IdleDollarServiceImpl implements IdleDollarService {
 
     private static final int IDLE_THRESHOLD_DAYS = 14;
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final ZoneId KST                 = ZoneId.of("Asia/Seoul");
 
-    private final IdleDollarTriggerRepository triggerRepository;
-    private final IdleDetectionAccountRepository accountRepository;
-    private final IdleDetectionTradeOrderRepository tradeOrderRepository;
+    private final IdleDollarTriggerRepository        triggerRepository;
+    private final IdleDetectionAccountRepository     accountRepository;
+    private final IdleDetectionTradeOrderRepository  tradeOrderRepository;
     private final IdleDetectionFxTransactionRepository fxTransactionRepository;
-    private final IdleDetectionTransferRepository transferRepository;
+    private final IdleDetectionTransferRepository    transferRepository;
+    private final IdleDetectionFavoriteIpoRepository favoriteIpoRepository;
     private final NotificationService notificationService;
 
     @Override
@@ -116,6 +118,11 @@ class IdleDollarServiceImpl implements IdleDollarService {
             return false;
         }
 
+        if (!passesIpoCondition(account.getUserId())) {
+            log.info("유휴 달러 트리거 스킵 — IPO 조건 미충족 [userId={}]", account.getUserId());
+            return false;
+        }
+
         int idleDays = lastActivity
                 .map(la -> (int) ChronoUnit.DAYS.between(la.toLocalDate(), LocalDate.now(KST)))
                 .orElse(IDLE_THRESHOLD_DAYS);
@@ -135,6 +142,18 @@ class IdleDollarServiceImpl implements IdleDollarService {
         log.info("유휴 달러 트리거 생성 [accountId={}, userId={}, balance={}, idleDays={}]",
                 account.getId(), account.getUserId(), account.getBalance(), idleDays);
         return true;
+    }
+
+    /**
+     * 관심 IPO가 없으면 무조건 통과.
+     * 관심 IPO가 있으면 청약 마감일이 14일 이상 남은 항목이 하나라도 있어야 통과.
+     */
+    private boolean passesIpoCondition(Long userId) {
+        if (!favoriteIpoRepository.existsByUserId(userId)) {
+            return true;
+        }
+        LocalDate cutoff = LocalDate.now(KST).plusDays(IDLE_THRESHOLD_DAYS);
+        return favoriteIpoRepository.existsFavoriteWithSubscriptionEndAfter(userId, cutoff);
     }
 
     private Optional<LocalDateTime> resolveLastActivity(Long accountId) {

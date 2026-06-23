@@ -8,6 +8,7 @@ public record FavoriteIpoItem(
         Long ipoId,
         String ticker,
         String companyName,
+        String logoUrl,
         String ipoStatus,
         LocalDate subscriptionStartDate,
         LocalDate subscriptionEndDate,

@@ -33,6 +33,12 @@ spring:
 eodhd:
   api-key: ${EODHD_API_KEY:}
 
+eclipse:
+  ledger:
+    url: ${ECLIPSE_LEDGER_URL:http://localhost:8080}
+  internal:
+    api-key: ${ECLIPSE_INTERNAL_API_KEY:}
+
 ls:
   securities:
     base-url: ${LS_BASE_URL:https://openapi.ls-sec.co.kr:8080}
