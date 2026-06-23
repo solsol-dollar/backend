@@ -22,28 +22,34 @@ public interface IpoNewsRepository extends JpaRepository<IpoNews, Long> {
     @Modifying(clearAutomatically = true)
     @Query(value = """
             INSERT IGNORE INTO ipo_news
-                (ipo_id, title, source, published_at, url, content, created_at, updated_at, status)
+                (ipo_id, title, source, published_at, url, phase, content, created_at, updated_at, status)
             VALUES
-                (:ipoId, :title, :source, :publishedAt, :url, :content, NOW(), NOW(), 'ACTIVE')
+                (:ipoId, :title, :source, :publishedAt, :url, :phase, :content, NOW(), NOW(), 'ACTIVE')
             """, nativeQuery = true)
     int insertIgnore(@Param("ipoId") Long ipoId,
                      @Param("title") String title,
                      @Param("source") String source,
                      @Param("publishedAt") LocalDateTime publishedAt,
                      @Param("url") String url,
+                     @Param("phase") String phase,
                      @Param("content") String content);
 
     @Query(value = """
-            SELECT * FROM ipo_news
-            WHERE ipo_id = :ipoId AND title_ko IS NULL AND content IS NOT NULL
-            ORDER BY published_at DESC
-            LIMIT 3
+            SELECT * FROM ipo_news WHERE id IN (
+                SELECT id FROM (
+                    SELECT id,
+                           ROW_NUMBER() OVER (PARTITION BY ipo_id ORDER BY published_at DESC) AS rn
+                    FROM ipo_news
+                    WHERE title_ko IS NULL AND content IS NOT NULL AND status = 'ACTIVE'
+                      AND ipo_id IN (SELECT id FROM ipos WHERE status = 'ACTIVE')
+                ) ranked WHERE rn <= 3
+            )
             """, nativeQuery = true)
-    List<IpoNews> findTop3ForTranslation(@Param("ipoId") Long ipoId);
+    List<IpoNews> findAllForTranslation();
 
     @Transactional
     @Modifying(clearAutomatically = true)
     @Query(value = "UPDATE ipo_news SET title_ko = :titleKo, summary = :summary, updated_at = NOW() WHERE id = :id",
            nativeQuery = true)
-    void updateTranslation(@Param("id") Long id, @Param("titleKo") String titleKo, @Param("summary") String summary);
+    int updateTranslation(@Param("id") Long id, @Param("titleKo") String titleKo, @Param("summary") String summary);
 }

@@ -79,49 +79,73 @@ public class IpoNewsFetchReader implements ItemReader<NewsItem> {
     }
 
     private List<NewsItem> fetchForTicker(Ipo ipo) {
+        LocalDate today = LocalDate.now();
+        LocalDate listingDate = ipo.getListingDate();
+
+        LocalDate windowStart = listingDate != null ? listingDate.minusDays(365) : today.minusDays(365);
+        LocalDate windowEnd   = listingDate != null
+                ? listingDate.plusDays(90).isAfter(today) ? today : listingDate.plusDays(90)
+                : today;
+
         LocalDate from = ipoNewsRepository.findMaxPublishedAt(ipo.getId())
                 .map(LocalDateTime::toLocalDate)
-                .orElse(ipo.getListingDate() != null
-                        ? ipo.getListingDate().minusDays(365)
-                        : LocalDate.now().minusDays(365));
+                .orElse(windowStart);
 
-        LocalDate to = ipo.getListingDate() != null
-                ? ipo.getListingDate().minusDays(1)
-                : LocalDate.now();
-
-        if (!from.isBefore(to)) {
-            log.debug("EODHD [{}]: 수집 범위 없음 (from={}, to={})", ipo.getTicker(), from, to);
+        if (!from.isBefore(windowEnd)) {
+            log.debug("EODHD [{}]: 수집 범위 없음 (from={}, to={})", ipo.getTicker(), from, windowEnd);
             return List.of();
         }
 
-        EodhdArticle[] articles = restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/api/news")
-                        .queryParam("s", ipo.getTicker() + ".US")
-                        .queryParam("api_token", apiKey)
-                        .queryParam("limit", 1000)
-                        .queryParam("fmt", "json")
-                        .queryParam("from", from.toString())
-                        .queryParam("to", to.toString())
-                        .build())
-                .retrieve()
-                .body(EodhdArticle[].class);
+        List<EodhdArticle> allArticles = new ArrayList<>();
+        int offset = 0;
+        int page = 0;
+        final int MAX_PAGES = 20;
+        final String fromStr = from.toString();
+        final String toStr = windowEnd.toString();
+        final String tickerUs = ipo.getTicker() + ".US";
+        while (page < MAX_PAGES) {
+            final int currentOffset = offset;
+            EodhdArticle[] batch = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/news")
+                            .queryParam("s", tickerUs)
+                            .queryParam("api_token", apiKey)
+                            .queryParam("limit", 1000)
+                            .queryParam("offset", currentOffset)
+                            .queryParam("fmt", "json")
+                            .queryParam("from", fromStr)
+                            .queryParam("to", toStr)
+                            .build())
+                    .retrieve()
+                    .body(EodhdArticle[].class);
 
-        if (articles == null || articles.length == 0) return List.of();
+            if (batch == null || batch.length == 0) break;
+            allArticles.addAll(Arrays.asList(batch));
+            if (batch.length < 1000) break;
+            offset += 1000;
+            page++;
+        }
+        if (page == MAX_PAGES) log.warn("EODHD [{}]: 최대 페이지({}) 도달, 일부 기사 누락 가능", ipo.getTicker(), MAX_PAGES);
 
-        LocalDate windowStart = ipo.getListingDate() != null ? ipo.getListingDate().minusDays(365) : null;
-        LocalDate windowEnd   = ipo.getListingDate() != null ? ipo.getListingDate().minusDays(1) : null;
+        if (allArticles.isEmpty()) return List.of();
 
-        return Arrays.stream(articles)
+        return allArticles.stream()
                 .filter(a -> a.title() != null && !a.title().isBlank())
-                .filter(a -> a.content() != null && a.content().length() >= 500)
+                .filter(a -> a.content() != null && !a.content().contains("Continue Reading"))
                 .filter(a -> {
-                    if (windowStart == null || a.date() == null) return true;
+                    if (a.date() == null) return true;
                     LocalDate articleDate = EodhdNewsUtil.parseDateET(a.date());
                     if (articleDate == null) return false;
                     return !articleDate.isBefore(windowStart) && !articleDate.isAfter(windowEnd);
                 })
-                .map(a -> new NewsItem(ipo.getId(), a.title(), a.link(), EodhdNewsUtil.extractSource(a.link()), EodhdNewsUtil.parseDate(a.date()), a.content()))
+                .map(a -> {
+                    LocalDateTime publishedAt = EodhdNewsUtil.parseDate(a.date());
+                    LocalDate articleDate = EodhdNewsUtil.parseDateET(a.date());
+                    String phase = (listingDate == null || articleDate == null ||
+                                    articleDate.isBefore(listingDate)) ? "PRE" : "POST";
+                    return new NewsItem(ipo.getId(), a.title(),
+                            EodhdNewsUtil.extractSource(a.link()), publishedAt, a.link(), phase, a.content());
+                })
                 .toList();
     }
 

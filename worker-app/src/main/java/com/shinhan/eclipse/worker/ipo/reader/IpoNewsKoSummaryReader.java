@@ -2,7 +2,6 @@ package com.shinhan.eclipse.worker.ipo.reader;
 
 import com.shinhan.eclipse.domain.ipo.IpoNews;
 import com.shinhan.eclipse.worker.ipo.repository.IpoNewsRepository;
-import com.shinhan.eclipse.worker.ipo.repository.WorkerIpoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.StepExecution;
@@ -20,15 +19,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class IpoNewsKoSummaryReader implements ItemReader<IpoNews> {
 
-    private final WorkerIpoRepository ipoRepository;
     private final IpoNewsRepository ipoNewsRepository;
     private Iterator<IpoNews> iterator;
 
     @BeforeStep
     public void beforeStep(StepExecution stepExecution) {
-        List<IpoNews> targets = ipoRepository.findByStatus("ACTIVE").stream()
-                .flatMap(ipo -> ipoNewsRepository.findTop3ForTranslation(ipo.getId()).stream())
-                .toList();
+        List<IpoNews> targets = ipoNewsRepository.findAllForTranslation();
         log.info("한국어 요약 대상: {}건", targets.size());
         iterator = targets.iterator();
     }

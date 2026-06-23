@@ -25,6 +25,7 @@ public class IpoNewsWriter implements ItemWriter<IpoNews> {
                     news.getSource(),
                     news.getPublishedAt(),
                     news.getUrl(),
+                    news.getPhase(),
                     news.getContent()
             );
         }

@@ -27,6 +27,9 @@ public class IpoNews extends BaseEntity {
     @Column(length = 500)
     private String url;
 
+    @Column(nullable = false, length = 10)
+    private String phase;
+
     @Column(columnDefinition = "TEXT")
     private String content;
 
@@ -37,13 +40,14 @@ public class IpoNews extends BaseEntity {
     private String summary;
 
     public static IpoNews create(Long ipoId, String title, String source,
-                                 LocalDateTime publishedAt, String url, String content) {
+                                 LocalDateTime publishedAt, String url, String phase, String content) {
         IpoNews news = new IpoNews();
         news.ipoId = ipoId;
         news.title = title;
         news.source = source;
         news.publishedAt = publishedAt;
         news.url = url;
+        news.phase = phase;
         news.content = content;
         return news;
     }

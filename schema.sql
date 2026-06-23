@@ -148,6 +148,7 @@ CREATE TABLE `ipo_news` (
 	`source`	VARCHAR(100)	NULL,
 	`published_at`	DATETIME	NULL,
 	`url`	VARCHAR(500)	NULL,
+	`phase`	VARCHAR(10)	NOT NULL	DEFAULT 'PRE'	COMMENT 'PRE: 상장 전 / POST: 상장 후',
 	`content`	TEXT	NULL	COMMENT 'EODHD 영어 원문',
 	`title_ko`	VARCHAR(255)	NULL	COMMENT '한국어 제목',
 	`summary`	TEXT	NULL	COMMENT '한국어 요약 (IPO-007 노출)',

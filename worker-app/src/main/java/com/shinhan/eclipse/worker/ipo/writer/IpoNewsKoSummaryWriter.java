@@ -17,9 +17,14 @@ public class IpoNewsKoSummaryWriter implements ItemWriter<IpoNews> {
 
     @Override
     public void write(Chunk<? extends IpoNews> chunk) {
+        int saved = 0;
         for (IpoNews news : chunk.getItems()) {
-            ipoNewsRepository.updateTranslation(news.getId(), news.getTitleKo(), news.getSummary());
+            saved += ipoNewsRepository.updateTranslation(news.getId(), news.getTitleKo(), news.getSummary());
         }
-        log.info("한국어 번역 저장: {}건", chunk.size());
+        if (saved < chunk.size()) {
+            log.warn("한국어 번역 저장 불일치: 대상 {}건, 실제 저장 {}건", chunk.size(), saved);
+        } else {
+            log.info("한국어 번역 저장: {}건", saved);
+        }
     }
 }

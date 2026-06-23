@@ -16,6 +16,7 @@ public class IpoNewsItemConverter implements ItemProcessor<NewsItem, IpoNews> {
                 item.source(),
                 item.publishedAt(),
                 item.url(),
+                item.phase(),
                 item.content()
         );
     }

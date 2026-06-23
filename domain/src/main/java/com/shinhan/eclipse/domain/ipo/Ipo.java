@@ -85,8 +85,8 @@ public class Ipo extends BaseEntity {
             BigDecimal minimumSubscriptionAmount,
             String ipoStatus,
             Long numberOfShares,
-            String logoUrl
-            Integer totalAllocableShares,
+            String logoUrl,
+            Integer totalAllocableShares
     ) {
         Ipo ipo = new Ipo();
         ipo.ticker = ticker;

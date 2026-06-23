@@ -67,10 +67,10 @@ public class IpoNewsTagReader implements ItemReader<NewsItem> {
         return iterator.hasNext() ? iterator.next() : null;
     }
 
+    private static final LocalDate NO_LISTING_DATE_FROM = LocalDate.of(2020, 1, 1);
+
     private List<NewsItem> fetchByIpoTag() {
-        List<Ipo> ipos = ipoRepository.findByStatus("ACTIVE").stream()
-                .filter(i -> i.getListingDate() != null)
-                .toList();
+        List<Ipo> ipos = ipoRepository.findByStatus("ACTIVE");
 
         if (ipos.isEmpty()) return List.of();
 
@@ -81,14 +81,21 @@ public class IpoNewsTagReader implements ItemReader<NewsItem> {
             if (kw != null) keywordMap.put(ipo.getTicker(), kw);
         }
 
+        LocalDate today = LocalDate.now();
         LocalDate globalFrom = ipos.stream()
-                .map(i -> i.getListingDate().minusDays(365))
+                .map(i -> i.getListingDate() != null
+                        ? i.getListingDate().minusDays(365)
+                        : NO_LISTING_DATE_FROM)
                 .min(Comparator.naturalOrder())
-                .orElse(LocalDate.now().minusDays(365));
+                .orElse(NO_LISTING_DATE_FROM);
         LocalDate globalTo = ipos.stream()
-                .map(i -> i.getListingDate().minusDays(1))
+                .map(i -> {
+                    if (i.getListingDate() == null) return today;
+                    LocalDate postEnd = i.getListingDate().plusDays(90);
+                    return postEnd.isAfter(today) ? today : postEnd;
+                })
                 .max(Comparator.naturalOrder())
-                .orElse(LocalDate.now());
+                .orElse(today);
 
         List<EodhdArticle> allArticles;
         try {
@@ -104,22 +111,26 @@ public class IpoNewsTagReader implements ItemReader<NewsItem> {
             String kw = keywordMap.get(ipo.getTicker());
             if (kw == null) continue;
 
-            LocalDate windowStart = ipo.getListingDate().minusDays(365);
-            LocalDate windowEnd   = ipo.getListingDate().minusDays(1);
+            LocalDate listingDate = ipo.getListingDate();
+            LocalDate windowStart = listingDate != null ? listingDate.minusDays(365) : NO_LISTING_DATE_FROM;
+            LocalDate windowEnd   = listingDate != null
+                    ? (listingDate.plusDays(90).isAfter(today) ? today : listingDate.plusDays(90))
+                    : today;
             String kwLower = kw.toLowerCase();
 
             int count = 0;
             for (EodhdArticle article : allArticles) {
                 if (article.title() == null || !article.title().toLowerCase().contains(kwLower)) continue;
-                if (article.content() == null || article.content().length() < 500) continue;
+                if (article.content() == null || article.content().contains("Continue Reading")) continue;
 
                 LocalDateTime parsed = EodhdNewsUtil.parseDate(article.date());
                 if (parsed == null) continue;
                 LocalDate articleDate = EodhdNewsUtil.parseDateET(article.date());
                 if (articleDate == null || articleDate.isBefore(windowStart) || articleDate.isAfter(windowEnd)) continue;
 
-                result.add(new NewsItem(ipo.getId(), article.title(), article.link(),
-                        EodhdNewsUtil.extractSource(article.link()), parsed, article.content()));
+                String phase = (listingDate == null || articleDate.isBefore(listingDate)) ? "PRE" : "POST";
+                result.add(new NewsItem(ipo.getId(), article.title(),
+                        EodhdNewsUtil.extractSource(article.link()), parsed, article.link(), phase, article.content()));
                 count++;
             }
             if (count > 0) log.info("IPO 태그 [{}] ({}): {}건", ipo.getTicker(), kw, count);
@@ -129,10 +140,13 @@ public class IpoNewsTagReader implements ItemReader<NewsItem> {
         return result;
     }
 
+    private static final int MAX_PAGES = 50;
+
     private List<EodhdArticle> fetchAllPages(LocalDate from, LocalDate to) {
         List<EodhdArticle> result = new ArrayList<>();
         int offset = 0;
-        while (true) {
+        int page = 0;
+        while (page < MAX_PAGES) {
             final int currentOffset = offset;
             EodhdArticle[] batch = restClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -152,7 +166,9 @@ public class IpoNewsTagReader implements ItemReader<NewsItem> {
             result.addAll(Arrays.asList(batch));
             if (batch.length < 1000) break;
             offset += 1000;
+            page++;
         }
+        if (page == MAX_PAGES) log.warn("IPO 태그 수집 최대 페이지({}) 도달, 일부 기사 누락 가능", MAX_PAGES);
         return result;
     }
 

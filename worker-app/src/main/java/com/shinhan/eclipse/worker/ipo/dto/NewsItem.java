@@ -5,8 +5,9 @@ import java.time.LocalDateTime;
 public record NewsItem(
         Long ipoId,
         String title,
-        String url,
         String source,
         LocalDateTime publishedAt,
+        String url,
+        String phase,
         String content
 ) {}
