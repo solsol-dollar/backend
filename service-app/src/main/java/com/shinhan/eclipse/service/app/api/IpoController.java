@@ -6,6 +6,7 @@ import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.service.ipo.*;
 import lombok.RequiredArgsConstructor;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +41,16 @@ public class IpoController {
             @AuthenticationPrincipal AuthUser authUser) {
         return ResponseEntity.ok(ApiResponse.success(
                 ipoExplorationService.getIpoDetail(ipoId, authUser.userId())));
+    }
+
+    /** IPO-007: IPO 뉴스 목록 */
+    @GetMapping("/{ipoId}/news")
+    public ResponseEntity<ApiResponse<List<IpoNewsItem>>> getIpoNews(
+            @PathVariable Long ipoId,
+            @RequestParam(defaultValue = "3") int size) {
+        if (size < 1 || size > 5) throw new BusinessException(ErrorCode.INVALID_INPUT, "size는 1~5 사이어야 합니다.");
+        return ResponseEntity.ok(ApiResponse.success(
+                ipoExplorationService.getIpoNews(ipoId, size)));
     }
 
     /** IPO-003: 찜 추가 */
