@@ -4,15 +4,20 @@ import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.ipo.FavoriteIpo;
 import com.shinhan.eclipse.domain.ipo.Ipo;
+import com.shinhan.eclipse.domain.ipo.IpoNews;
 import com.shinhan.eclipse.service.ipo.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -22,6 +27,7 @@ import java.util.stream.Collectors;
 class IpoExplorationServiceImpl implements IpoExplorationService {
 
     private final IpoRepository ipoRepository;
+    private final IpoNewsRepository ipoNewsRepository;
     private final FavoriteIpoRepository favoriteIpoRepository;
 
     @Override
@@ -49,6 +55,18 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     }
 
     @Override
+    public List<IpoNewsItem> getIpoNews(Long ipoId, int size) {
+        if (!ipoRepository.existsById(ipoId)) {
+            throw new BusinessException(ErrorCode.IPO_NOT_FOUND);
+        }
+        return ipoNewsRepository
+                .findByIpoIdAndSummaryIsNotNullOrderByPublishedAtDesc(ipoId, PageRequest.of(0, size))
+                .stream()
+                .map(this::toNewsItem)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public FavoriteIpoResponse addFavorite(Long userId, Long ipoId) {
         if (!ipoRepository.existsById(ipoId)) {
@@ -57,8 +75,12 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
         if (favoriteIpoRepository.findByUserIdAndIpoId(userId, ipoId).isPresent()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 찜한 IPO입니다.");
         }
-        FavoriteIpo saved = favoriteIpoRepository.save(FavoriteIpo.create(userId, ipoId));
-        return new FavoriteIpoResponse(saved.getIpoId(), true, saved.getCreatedAt());
+        try {
+            FavoriteIpo saved = favoriteIpoRepository.save(FavoriteIpo.create(userId, ipoId));
+            return new FavoriteIpoResponse(saved.getIpoId(), true, saved.getCreatedAt());
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 찜한 IPO입니다.");
+        }
     }
 
     @Override
@@ -76,21 +98,24 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
         List<Long> ipoIds = favorites.stream().map(FavoriteIpo::getIpoId).toList();
         if (ipoIds.isEmpty()) return List.of();
 
-        List<Ipo> ipos = ipoRepository.findAllById(ipoIds);
+        Map<Long, Ipo> ipoMap = ipoRepository.findAllById(ipoIds).stream()
+                .collect(Collectors.toMap(Ipo::getId, ipo -> ipo));
 
         List<FavoriteIpoItem> result = favorites.stream()
-                .flatMap(fav -> ipos.stream()
-                        .filter(ipo -> ipo.getId().equals(fav.getIpoId()))
-                        .map(ipo -> new FavoriteIpoItem(
-                                fav.getId(),
-                                ipo.getId(),
-                                ipo.getTicker(),
-                                ipo.getCompanyName(),
-                                computeStatus(ipo),
-                                ipo.getSubscriptionStartDate(),
-                                ipo.getSubscriptionEndDate(),
-                                ipo.getConfirmedOfferPrice()
-                        )))
+                .filter(fav -> ipoMap.containsKey(fav.getIpoId()))
+                .map(fav -> {
+                    Ipo ipo = ipoMap.get(fav.getIpoId());
+                    return new FavoriteIpoItem(
+                            fav.getId(),
+                            ipo.getId(),
+                            ipo.getTicker(),
+                            ipo.getCompanyName(),
+                            computeStatus(ipo),
+                            ipo.getSubscriptionStartDate(),
+                            ipo.getSubscriptionEndDate(),
+                            ipo.getConfirmedOfferPrice()
+                    );
+                })
                 .toList();
 
         if (limit != null && limit > 0 && result.size() > limit) {
@@ -113,7 +138,28 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
         return "UPCOMING";
     }
 
+    private IpoNewsItem toNewsItem(IpoNews news) {
+        return new IpoNewsItem(
+                news.getId(),
+                news.getTitleKo(),
+                news.getSource(),
+                news.getPublishedAt(),
+                news.getUrl(),
+                news.getSummary()
+        );
+    }
+
     private IpoItem toItem(Ipo ipo, boolean isFavorite) {
+        BigDecimal currentPrice = ipo.getCurrentPrice();
+        BigDecimal confirmedPrice = ipo.getConfirmedOfferPrice();
+        BigDecimal priceChange = null;
+        BigDecimal priceChangePercent = null;
+        if (currentPrice != null && confirmedPrice != null
+                && confirmedPrice.compareTo(BigDecimal.ZERO) > 0) {
+            priceChange = currentPrice.subtract(confirmedPrice).setScale(4, RoundingMode.HALF_UP);
+            priceChangePercent = priceChange.divide(confirmedPrice, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP);
+        }
         return new IpoItem(
                 ipo.getId(),
                 ipo.getTicker(),
@@ -124,8 +170,12 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                 ipo.getListingDate(),
                 ipo.getOfferPriceMin(),
                 ipo.getOfferPriceMax(),
-                ipo.getConfirmedOfferPrice(),
-                isFavorite
+                confirmedPrice,
+                isFavorite,
+                ipo.getLogoUrl(),
+                currentPrice,
+                priceChange,
+                priceChangePercent
         );
     }
 
@@ -146,7 +196,9 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                 ipo.getOfferPriceMax(),
                 ipo.getConfirmedOfferPrice(),
                 ipo.getMinimumSubscriptionAmount(),
-                isFavorite
+                isFavorite,
+                ipo.getNumberOfShares(),
+                ipo.getLogoUrl()
         );
     }
 }
