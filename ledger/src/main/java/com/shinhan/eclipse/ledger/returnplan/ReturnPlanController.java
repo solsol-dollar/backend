@@ -12,7 +12,10 @@ import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanConfirmRes;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanCreateReq;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanListItemRes;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanListRes;
+import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanPresetReq;
+import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanPresetRes;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanRes;
+import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanSummaryRes;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanUpdateReq;
 import com.shinhan.eclipse.ledger.subscription.SubscriptionFacade;
 import jakarta.validation.Valid;
@@ -26,7 +29,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/return-plans")
@@ -76,28 +81,62 @@ public class ReturnPlanController {
         return ResponseEntity.ok(ApiResponse.success(ReturnPlanConfirmRes.from(plan)));
     }
 
-    // RP-004
+    // RP-004 (from/to/status: 명세 외 추가 — 조회 조건 설정 모달용)
     @GetMapping
     public ResponseEntity<ApiResponse<ReturnPlanListRes>> getReturnPlans(
             @UserHeader Long userId,
             @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "20") int size) {
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "from", required = false) LocalDate from,
+            @RequestParam(name = "to", required = false) LocalDate to,
+            @RequestParam(name = "status", required = false) String status) {
         if (page < 0 || size < 1 || size > 100) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "page는 0 이상, size는 1~100 사이여야 합니다.");
         }
         Pageable pageable = PageRequest.of(page, size);
-        Page<ReturnPlan> plans = returnPlanFacade.getReturnPlans(userId, pageable);
-        List<ReturnPlanListItemRes> items = plans
+        Page<ReturnPlan> plans = returnPlanFacade.getReturnPlans(userId, from, to, status, pageable);
+        List<ReturnPlanListItemRes> items = plans.getContent().stream()
                 .map(plan -> ReturnPlanListItemRes.from(plan, getSourceIpo(plan, userId)))
-                .getContent();
+                .toList();
         return ResponseEntity.ok(ApiResponse.success(ReturnPlanListRes.builder().returnPlans(items).build()));
+    }
+
+    // RP-005 (명세 외 추가): 분배 프리셋 목록 (return_plan_presets 테이블 기반)
+    @GetMapping("/presets")
+    public ResponseEntity<ApiResponse<List<ReturnPlanPresetRes>>> getPresets() {
+        List<ReturnPlanPresetRes> presets = returnPlanFacade.getPresets().stream()
+                .map(ReturnPlanPresetRes::from)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(presets));
+    }
+
+    // RP-006 (명세 외 추가): 프리셋 적용
+    @PutMapping("/{returnPlanId}/preset")
+    public ResponseEntity<ApiResponse<ReturnPlanRes>> applyPreset(
+            @UserHeader Long userId,
+            @PathVariable("returnPlanId") Long returnPlanId,
+            @Valid @RequestBody ReturnPlanPresetReq request) {
+        ReturnPlan plan = returnPlanFacade.applyPreset(returnPlanId, userId, request.presetCode());
+        return ResponseEntity.ok(ApiResponse.success(toRes(plan, userId)));
+    }
+
+    // RP-007 (명세 외 추가): 리턴플랜 대시보드 요약
+    @GetMapping("/summary")
+    public ResponseEntity<ApiResponse<ReturnPlanSummaryRes>> getSummary(@UserHeader Long userId) {
+        List<ReturnPlan> plans = returnPlanFacade.getAllReturnPlans(userId);
+        Map<Long, List<ReturnPlanAllocation>> allocationsByPlanId = returnPlanFacade.getAllocationsByPlanIds(
+                plans.stream().map(ReturnPlan::getId).toList());
+        return ResponseEntity.ok(ApiResponse.success(ReturnPlanSummaryRes.of(plans,
+                id -> allocationsByPlanId.getOrDefault(id, List.of()),
+                subscriptionFacade.findNextUpcomingIpo().orElse(null))));
     }
 
     private ReturnPlanRes toRes(ReturnPlan plan, Long userId) {
         List<ReturnPlanAllocation> allocations = returnPlanFacade.getAllocations(plan.getId());
         Ipo nextIpo = plan.getNextIpoId() == null ? null : subscriptionFacade.getIpo(plan.getNextIpoId());
-        Ipo sourceIpo = getSourceIpo(plan, userId);
-        return ReturnPlanRes.of(plan, allocations, nextIpo, sourceIpo);
+        IpoSubscription sourceSubscription = subscriptionFacade.getSubscriptionResult(plan.getSubscriptionId(), userId);
+        Ipo sourceIpo = subscriptionFacade.getIpo(sourceSubscription.getIpoId());
+        return ReturnPlanRes.of(plan, allocations, nextIpo, sourceIpo, sourceSubscription);
     }
 
     private Ipo getSourceIpo(ReturnPlan plan, Long userId) {

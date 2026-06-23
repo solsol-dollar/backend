@@ -21,4 +21,7 @@ public interface AccountLinkService {
 
     /** 소유/연동 검증 + 비관적 락 후 차감. */
     void deduct(Long userId, Long accountId, BigDecimal amount);
+
+    /** 소유/연동 검증 + 비관적 락 후 적립. 리턴 플랜 분배 실행 등에서 사용. */
+    void credit(Long userId, Long accountId, BigDecimal amount);
 }

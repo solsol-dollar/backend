@@ -6,6 +6,7 @@ import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlanAllocation;
+import com.shinhan.eclipse.domain.returnplan.ReturnPlanPreset;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
 import com.shinhan.eclipse.ledger.accountlink.AccountLinkService;
 import com.shinhan.eclipse.ledger.event.AllocationCompletedEvent;
@@ -21,18 +22,28 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 class ReturnPlanFacadeImpl implements ReturnPlanFacade {
 
     private static final Logger log = LoggerFactory.getLogger(ReturnPlanFacadeImpl.class);
-    private static final List<String> DESTINATION_TYPES = List.of("SECURITIES", "FX_SAVINGS", "FX_ACCOUNT");
+    private static final List<String> DESTINATION_TYPES = List.of("SECURITIES", "SAVINGS", "DEPOSIT");
+    /** 환불일(D+1) 21:00 KST 정산 배치보다 1시간 앞선 수정 마감 시각. */
+    private static final LocalTime EDIT_CUTOFF_TIME = LocalTime.of(20, 0);
 
     private final ReturnPlanRepository returnPlanRepository;
     private final ReturnPlanAllocationRepository allocationRepository;
+    private final ReturnPlanPresetRepository presetRepository;
     private final SubscriptionFacade subscriptionFacade;
     private final AccountLinkService accountLinkService;
     private final ApplicationEventPublisher eventPublisher;
@@ -48,8 +59,10 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
             throw new BusinessException(ErrorCode.RETURN_PLAN_ALREADY_EXISTS);
         }
 
+        FinancialAccount savingsAccount = requireLinkedAccount(userId, "SAVINGS", "외화적립예금");
+        requireLinkedAccount(userId, "DEPOSIT", "외화통장");
+
         Ipo nextIpo = subscriptionFacade.findNextUpcomingIpo().orElse(null);
-        FinancialAccount fxSavings = accountLinkService.findAccountByType(userId, "FX_SAVINGS").orElse(null);
 
         ReturnPlan plan = ReturnPlan.create(
                 userId,
@@ -57,7 +70,7 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
                 subscription.getRefundAmount(),
                 nextIpo == null ? null : nextIpo.getId(),
                 null,
-                fxSavings == null ? null : fxSavings.getInterestRate());
+                savingsAccount.getInterestRate());
 
         ReturnPlan saved;
         try {
@@ -89,6 +102,16 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<ReturnPlanAllocation>> getAllocationsByPlanIds(List<Long> returnPlanIds) {
+        if (returnPlanIds.isEmpty()) {
+            return Map.of();
+        }
+        return allocationRepository.findByReturnPlanIdIn(returnPlanIds).stream()
+                .collect(Collectors.groupingBy(ReturnPlanAllocation::getReturnPlanId));
+    }
+
+    @Override
     @Transactional
     public ReturnPlan updateRatios(Long returnPlanId, Long userId, List<AllocationItem> items) {
         ReturnPlan plan = returnPlanRepository.findByIdAndUserIdForUpdate(returnPlanId, userId)
@@ -97,6 +120,7 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
         if (!plan.isDraft()) {
             throw new BusinessException(ErrorCode.RETURN_PLAN_CONFLICT);
         }
+        validateEditWindow(plan, userId);
 
         items.forEach(item -> {
             ReturnPlanAllocation allocation = allocationRepository
@@ -120,27 +144,127 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
         ReturnPlan plan = returnPlanRepository.findByIdAndUserIdForUpdate(returnPlanId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RETURN_PLAN_NOT_FOUND));
 
-        List<ReturnPlanAllocation> allocations = allocationRepository.findByReturnPlanIdOrderByIdAsc(plan.getId());
-        validateRatioSum(allocations.stream().mapToInt(a -> a.getAllocationRatio().intValue()).sum());
-
         plan.confirm();
 
-        eventPublisher.publishEvent(new AllocationCompletedEvent(plan.getSubscriptionId(), userId, plan.getTotalRefundAmount()));
-
-        log.info("리턴 플랜 확정: returnPlanId={}, userId={}", returnPlanId, userId);
+        log.info("리턴 플랜 확인 표시: returnPlanId={}, userId={}", returnPlanId, userId);
         return plan;
     }
 
     @Override
+    @Transactional
+    public ReturnPlan executeReturnPlan(Long returnPlanId) {
+        ReturnPlan plan = returnPlanRepository.findByIdForUpdate(returnPlanId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RETURN_PLAN_NOT_FOUND));
+
+        if (!plan.isDraft()) {
+            throw new BusinessException(ErrorCode.RETURN_PLAN_CONFLICT);
+        }
+
+        // 생성 이후 사용자가 계좌 연동을 끊었을 수 있으니 실제 자금 이동 직전에 한 번 더 확인한다.
+        requireLinkedAccount(plan.getUserId(), "SAVINGS", "외화적립예금");
+        requireLinkedAccount(plan.getUserId(), "DEPOSIT", "외화통장");
+
+        List<ReturnPlanAllocation> allocations = allocationRepository.findByReturnPlanIdOrderByIdAsc(plan.getId());
+        int ratioSum = allocations.stream().mapToInt(a -> a.getAllocationRatio().intValue()).sum();
+        if (ratioSum != 100) {
+            log.warn("리턴 플랜 비율 미설정으로 기본값(SECURITIES 100%) 적용: returnPlanId={}", plan.getId());
+            applyDefaultAllocation(plan, allocations);
+        }
+
+        creditAllocations(plan, allocations);
+        plan.execute();
+
+        eventPublisher.publishEvent(new AllocationCompletedEvent(plan.getSubscriptionId(), plan.getUserId(), plan.getTotalRefundAmount()));
+
+        log.info("리턴 플랜 실행: returnPlanId={}, userId={}", returnPlanId, plan.getUserId());
+        return plan;
+    }
+
+    /** 목적지 타입별 계좌에 분배 금액을 실제로 적립한다 (환불금 자체가 여기서 처음 계좌에 들어간다). */
+    private void creditAllocations(ReturnPlan plan, List<ReturnPlanAllocation> allocations) {
+        for (ReturnPlanAllocation allocation : allocations) {
+            if (allocation.getAllocationAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            FinancialAccount account = accountLinkService.findAccountByType(plan.getUserId(), allocation.getDestinationType())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED,
+                            allocation.getDestinationType() + " 계좌가 연동되어 있지 않아 분배를 실행할 수 없습니다."));
+            accountLinkService.credit(plan.getUserId(), account.getId(), allocation.getAllocationAmount());
+            allocation.markExecuted(account.getId());
+        }
+    }
+
+    /** SAVINGS/DEPOSIT 둘 중 하나라도 연동되어 있지 않으면 리턴 플랜 생성/실행 자체를 막는다. */
+    private FinancialAccount requireLinkedAccount(Long userId, String accountType, String displayName) {
+        return accountLinkService.findAccountByType(userId, accountType)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED,
+                        displayName + " 계좌가 연동되어 있지 않아 리턴 플랜을 진행할 수 없습니다."));
+    }
+
+    private void applyDefaultAllocation(ReturnPlan plan, List<ReturnPlanAllocation> allocations) {
+        for (ReturnPlanAllocation allocation : allocations) {
+            int ratio = "SECURITIES".equals(allocation.getDestinationType()) ? 100 : 0;
+            allocation.updateRatio(ratio, plan.getTotalRefundAmount());
+        }
+    }
+
+    /**
+     * 환불일(D+1) 21:00 KST에 정산 배치가 실행되므로, 그 1시간 전인 20:00까지만 비율 수정을 허용한다.
+     * 정확히 그 순간에 몰려도 같은 row를 비관적 락으로 잡기 때문에 데이터가 깨지지는 않지만,
+     * 사용자가 "방금 수정한 게 반영됐는지 애매한" 혼란을 막기 위한 버퍼다.
+     */
+    private void validateEditWindow(ReturnPlan plan, Long userId) {
+        IpoSubscription subscription = subscriptionFacade.getSubscriptionResult(plan.getSubscriptionId(), userId);
+        Ipo ipo = subscriptionFacade.getIpo(subscription.getIpoId());
+        if (ipo.getRefundDate() == null) {
+            return;
+        }
+        LocalDateTime editDeadline = LocalDateTime.of(ipo.getRefundDate(), EDIT_CUTOFF_TIME);
+        if (!LocalDateTime.now().isBefore(editDeadline)) {
+            throw new BusinessException(ErrorCode.RETURN_PLAN_EDIT_WINDOW_CLOSED);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
-    public Page<ReturnPlan> getReturnPlans(Long userId, Pageable pageable) {
-        return returnPlanRepository.findByUserId(userId, pageable);
+    public Page<ReturnPlan> getReturnPlans(Long userId, LocalDate from, LocalDate to, String status, Pageable pageable) {
+        String normalizedStatus = (!StringUtils.hasText(status) || "ALL".equalsIgnoreCase(status)) ? null : status;
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atTime(LocalTime.MAX);
+        return returnPlanRepository.search(userId, normalizedStatus, fromDateTime, toDateTime, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReturnPlan> getAllReturnPlans(Long userId) {
+        return returnPlanRepository.findByUserId(userId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public boolean existsBySubscriptionId(Long subscriptionId) {
         return returnPlanRepository.existsBySubscriptionId(subscriptionId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReturnPlanPreset> getPresets() {
+        return presetRepository.findAllByOrderByDisplayOrderAsc();
+    }
+
+    @Override
+    @Transactional
+    public ReturnPlan applyPreset(Long returnPlanId, Long userId, String presetCode) {
+        ReturnPlanPreset preset = presetRepository.findByPresetCode(presetCode)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RETURN_PLAN_PRESET_NOT_FOUND));
+
+        List<AllocationItem> items = List.of(
+                new AllocationItem("SECURITIES", preset.getSecuritiesRatio().intValue()),
+                new AllocationItem("SAVINGS", preset.getSavingsRatio().intValue()),
+                new AllocationItem("DEPOSIT", preset.getAccountRatio().intValue()));
+
+        log.info("리턴 플랜 프리셋 적용: returnPlanId={}, userId={}, presetCode={}", returnPlanId, userId, presetCode);
+        return updateRatios(returnPlanId, userId, items);
     }
 
     private void validateRatioSum(int sum) {

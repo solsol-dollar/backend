@@ -61,11 +61,24 @@ public class ReturnPlan extends BaseEntity {
         return "DRAFT".equals(this.planStatus);
     }
 
+    public boolean isExecuted() {
+        return "EXECUTED".equals(this.planStatus);
+    }
+
+    /** 사용자가 "확정" 버튼을 눌렀다는 표시. 상태 전이는 없고 시각만 기록한다 — 이후에도 비율 수정 가능. */
     public void confirm() {
         if (!isDraft()) {
             throw new BusinessException(ErrorCode.RETURN_PLAN_CONFLICT);
         }
-        this.planStatus = "CONFIRMED";
         this.confirmedAt = LocalDateTime.now();
+    }
+
+    /** 환불일 배치가 호출하는 실제 분배 실행. 사용자 액션이 아니다. */
+    public void execute() {
+        if (!isDraft()) {
+            throw new BusinessException(ErrorCode.RETURN_PLAN_CONFLICT);
+        }
+        this.executedAt = LocalDateTime.now();
+        this.planStatus = "EXECUTED";
     }
 }

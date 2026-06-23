@@ -25,6 +25,8 @@ public enum ErrorCode {
     RETURN_PLAN_NOT_FOUND("L009", "리턴 플랜을 찾을 수 없습니다.", 404),
     RATIO_SUM_INVALID("L010", "비율의 합이 100이 아닙니다.", 422),
     RETURN_PLAN_CONFLICT("L011", "이미 확정된 리턴 플랜입니다.", 409),
+    RETURN_PLAN_PRESET_NOT_FOUND("L012", "존재하지 않는 분배 프리셋입니다.", 404),
+    RETURN_PLAN_EDIT_WINDOW_CLOSED("L013", "환불일 당일에는 분배 비율을 수정할 수 없습니다.", 422),
 
     // Service
     AI_ANALYSIS_FAILED("S001", "AI 분석에 실패했습니다.", 503),
