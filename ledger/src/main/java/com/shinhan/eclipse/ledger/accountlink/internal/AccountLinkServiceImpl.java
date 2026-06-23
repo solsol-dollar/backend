@@ -3,6 +3,7 @@ package com.shinhan.eclipse.ledger.accountlink.internal;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
+import com.shinhan.eclipse.domain.user.User;
 import com.shinhan.eclipse.ledger.accountlink.AccountLinkService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,11 +18,14 @@ import java.util.Optional;
 class AccountLinkServiceImpl implements AccountLinkService {
 
     private final FinancialAccountRepository financialAccountRepository;
+    private final UserRepository userRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public List<FinancialAccount> getLinkedAccounts(Long userId) {
-        // TODO: 구현
-        throw new UnsupportedOperationException("TODO");
+        return financialAccountRepository.findByUserId(userId).stream()
+                .filter(account -> Boolean.TRUE.equals(account.getLinked()))
+                .toList();
     }
 
     @Override
@@ -31,15 +35,25 @@ class AccountLinkServiceImpl implements AccountLinkService {
     }
 
     @Override
+    @Transactional
     public FinancialAccount linkAccount(Long userId, String accountType, String institutionName, String accountNumberMasked) {
-        // TODO: 구현
-        throw new UnsupportedOperationException("TODO");
+        FinancialAccount account = financialAccountRepository
+                .findFirstByUserIdAndAccountTypeOrderByIdAsc(userId, accountType)
+                .orElse(null);
+        if (account == null) {
+            return financialAccountRepository.save(
+                    FinancialAccount.link(userId, accountType, institutionName, accountNumberMasked));
+        }
+        account.relink(institutionName, accountNumberMasked);
+        return account;
     }
 
     @Override
+    @Transactional
     public void unlinkAccount(Long userId, Long accountId) {
-        // TODO: 구현
-        throw new UnsupportedOperationException("TODO");
+        FinancialAccount account = financialAccountRepository.findByIdAndUserId(accountId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED));
+        account.unlink();
     }
 
     @Override
@@ -84,5 +98,13 @@ class AccountLinkServiceImpl implements AccountLinkService {
             throw new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED);
         }
         account.addBalance(amount);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getAccountHolderName(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        return user.getName();
     }
 }

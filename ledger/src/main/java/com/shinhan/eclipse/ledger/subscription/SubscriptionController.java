@@ -1,8 +1,14 @@
 package com.shinhan.eclipse.ledger.subscription;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.common.resolver.UserHeader;
 import com.shinhan.eclipse.common.response.ApiResponse;
+import com.shinhan.eclipse.domain.account.FinancialAccount;
+import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
+import com.shinhan.eclipse.ledger.accountlink.AccountLinkService;
+import com.shinhan.eclipse.ledger.subscription.dto.SubscriptionCancelRes;
 import com.shinhan.eclipse.ledger.subscription.dto.SubscriptionListRes;
 import com.shinhan.eclipse.ledger.subscription.dto.SubscriptionReq;
 import com.shinhan.eclipse.ledger.subscription.dto.SubscriptionRes;
@@ -14,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -24,6 +31,7 @@ public class SubscriptionController {
     private static final Logger log = LoggerFactory.getLogger(SubscriptionController.class);
 
     private final SubscriptionFacade subscriptionFacade;
+    private final AccountLinkService accountLinkService;
 
     // SUB-001
     @PostMapping
@@ -31,9 +39,10 @@ public class SubscriptionController {
             @UserHeader Long userId,
             @Valid @RequestBody SubscriptionReq request) {
         log.info("청약 신청 요청: userId={}, ipoId={}", userId, request.ipoId());
-        IpoSubscription subscription = subscriptionFacade.requestSubscription(request.toEntity(userId));
+        IpoSubscription subscription = subscriptionFacade.requestSubscription(
+                userId, request.ipoId(), request.securitiesAccountId(), request.subscriptionAmount(), request.offerPrice());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(SubscriptionRes.from(subscription)));
+                .body(ApiResponse.success(toRes(subscription)));
     }
 
     // SUB-002
@@ -43,29 +52,40 @@ public class SubscriptionController {
             @PathVariable("subscriptionId") Long subscriptionId) {
         log.info("청약 확정 요청: userId={}, subscriptionId={}", userId, subscriptionId);
         IpoSubscription subscription = subscriptionFacade.confirmSubscription(subscriptionId, userId);
-        return ResponseEntity.ok(ApiResponse.success(SubscriptionRes.from(subscription)));
+        return ResponseEntity.ok(ApiResponse.success(toRes(subscription)));
     }
 
-    // SUB-003
+    // SUB-003 (환불금액/환불계좌 포함: 명세 외 변경 — 기존엔 204 No Content였음)
     @DeleteMapping("/{subscriptionId}")
-    public ResponseEntity<ApiResponse<Void>> cancelSubscription(
+    public ResponseEntity<ApiResponse<SubscriptionCancelRes>> cancelSubscription(
             @UserHeader Long userId,
             @PathVariable("subscriptionId") Long subscriptionId) {
         log.info("청약 취소 요청: userId={}, subscriptionId={}", userId, subscriptionId);
-        subscriptionFacade.cancelSubscription(subscriptionId, userId);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.success());
+        IpoSubscription subscription = subscriptionFacade.cancelSubscription(subscriptionId, userId);
+        FinancialAccount refundAccount = accountLinkService.getLinkedAccount(userId, subscription.getSecuritiesAccountId());
+        return ResponseEntity.ok(ApiResponse.success(SubscriptionCancelRes.of(subscription, refundAccount)));
     }
 
-    // SUB-004
+    // SUB-004 (from/to: 명세 외 추가 — 조회 조건 설정 모달용)
     @GetMapping
     public ResponseEntity<ApiResponse<SubscriptionListRes>> getSubscriptions(
             @UserHeader Long userId,
             @RequestParam(name = "ipoId", required = false) Long ipoId,
-            @RequestParam(name = "status", required = false) String status) {
-        List<SubscriptionRes> subscriptions = subscriptionFacade.getSubscriptions(userId, ipoId, status)
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "from", required = false) LocalDate from,
+            @RequestParam(name = "to", required = false) LocalDate to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "from은 to보다 늦을 수 없습니다.");
+        }
+        List<SubscriptionRes> subscriptions = subscriptionFacade.getSubscriptions(userId, ipoId, status, from, to)
                 .stream()
-                .map(SubscriptionRes::from)
+                .map(this::toRes)
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(SubscriptionListRes.builder().subscriptions(subscriptions).build()));
+    }
+
+    private SubscriptionRes toRes(IpoSubscription subscription) {
+        Ipo ipo = subscriptionFacade.getIpo(subscription.getIpoId());
+        return SubscriptionRes.from(subscription, ipo);
     }
 }

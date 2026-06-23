@@ -69,8 +69,7 @@ class SubscriptionFacadeImplTest {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
 
-        IpoSubscription draft = IpoSubscription.request(USER_ID, ipo.getId(), account.getId(), 10, new BigDecimal("100"));
-        IpoSubscription saved = subscriptionFacade.requestSubscription(draft);
+        IpoSubscription saved = subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100"));
 
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getSubscriptionStatus()).isEqualTo("REQUESTED");
@@ -82,9 +81,7 @@ class SubscriptionFacadeImplTest {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("500"));
 
-        IpoSubscription draft = IpoSubscription.request(USER_ID, ipo.getId(), account.getId(), 10, new BigDecimal("100"));
-
-        assertThatThrownBy(() -> subscriptionFacade.requestSubscription(draft))
+        assertThatThrownBy(() -> subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100")))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.INSUFFICIENT_BALANCE);
@@ -95,9 +92,7 @@ class SubscriptionFacadeImplTest {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(10), LocalDate.now().minusDays(5));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
 
-        IpoSubscription draft = IpoSubscription.request(USER_ID, ipo.getId(), account.getId(), 10, new BigDecimal("100"));
-
-        assertThatThrownBy(() -> subscriptionFacade.requestSubscription(draft))
+        assertThatThrownBy(() -> subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100")))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.SUBSCRIPTION_PERIOD_INVALID);
@@ -108,9 +103,7 @@ class SubscriptionFacadeImplTest {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(OTHER_USER_ID, new BigDecimal("10000"));
 
-        IpoSubscription draft = IpoSubscription.request(USER_ID, ipo.getId(), account.getId(), 10, new BigDecimal("100"));
-
-        assertThatThrownBy(() -> subscriptionFacade.requestSubscription(draft))
+        assertThatThrownBy(() -> subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100")))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.ACCOUNT_NOT_LINKED);
@@ -120,8 +113,7 @@ class SubscriptionFacadeImplTest {
     void 청약확정에_성공하면_계좌잔액이_차감되고_CONFIRMED가_된다() {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
-        IpoSubscription saved = subscriptionFacade.requestSubscription(
-                IpoSubscription.request(USER_ID, ipo.getId(), account.getId(), 10, new BigDecimal("100")));
+        IpoSubscription saved = subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100"));
 
         IpoSubscription confirmed = subscriptionFacade.confirmSubscription(saved.getId(), USER_ID);
 
@@ -136,8 +128,7 @@ class SubscriptionFacadeImplTest {
     void 이미_확정된_청약을_다시_확정하면_L002_예외가_발생한다() {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
-        IpoSubscription saved = subscriptionFacade.requestSubscription(
-                IpoSubscription.request(USER_ID, ipo.getId(), account.getId(), 10, new BigDecimal("100")));
+        IpoSubscription saved = subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100"));
         subscriptionFacade.confirmSubscription(saved.getId(), USER_ID);
 
         assertThatThrownBy(() -> subscriptionFacade.confirmSubscription(saved.getId(), USER_ID))
@@ -150,12 +141,11 @@ class SubscriptionFacadeImplTest {
     void 청약취소에_성공하면_CANCELLED가_된다() {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
-        IpoSubscription saved = subscriptionFacade.requestSubscription(
-                IpoSubscription.request(USER_ID, ipo.getId(), account.getId(), 10, new BigDecimal("100")));
+        IpoSubscription saved = subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100"));
 
         subscriptionFacade.cancelSubscription(saved.getId(), USER_ID);
 
-        List<IpoSubscription> subscriptions = subscriptionFacade.getSubscriptions(USER_ID, ipo.getId(), null);
+        List<IpoSubscription> subscriptions = subscriptionFacade.getSubscriptions(USER_ID, ipo.getId(), null, null, null);
         assertThat(subscriptions).extracting(IpoSubscription::getSubscriptionStatus).containsExactly("CANCELLED");
     }
 
@@ -163,8 +153,7 @@ class SubscriptionFacadeImplTest {
     void 이미_확정된_청약을_취소하면_예외가_발생한다() {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
-        IpoSubscription saved = subscriptionFacade.requestSubscription(
-                IpoSubscription.request(USER_ID, ipo.getId(), account.getId(), 10, new BigDecimal("100")));
+        IpoSubscription saved = subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100"));
         subscriptionFacade.confirmSubscription(saved.getId(), USER_ID);
 
         assertThatThrownBy(() -> subscriptionFacade.cancelSubscription(saved.getId(), USER_ID))
@@ -181,8 +170,7 @@ class SubscriptionFacadeImplTest {
     void 동일_청약을_동시에_확정하면_한쪽만_성공하고_나머지는_충돌예외가_발생한다() throws InterruptedException {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
-        IpoSubscription saved = subscriptionFacade.requestSubscription(
-                IpoSubscription.request(USER_ID, ipo.getId(), account.getId(), 10, new BigDecimal("100")));
+        IpoSubscription saved = subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100"));
 
         CountDownLatch readyLatch = new CountDownLatch(2);
         CountDownLatch startLatch = new CountDownLatch(1);
