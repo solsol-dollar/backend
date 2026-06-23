@@ -2,7 +2,7 @@ package com.shinhan.eclipse.worker.ipo.reader;
 
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.worker.ipo.dto.NewsItem;
-import com.shinhan.eclipse.worker.ipo.repository.WorkerIpoRepository;
+import com.shinhan.eclipse.worker.ipo.repository.IpoNewsIpoRepository;
 import com.shinhan.eclipse.worker.ipo.util.EodhdNewsUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +47,7 @@ public class IpoNewsTagReader implements ItemReader<NewsItem> {
     @Value("${eodhd.api-key:}")
     private String apiKey;
 
-    private final WorkerIpoRepository ipoRepository;
+    private final IpoNewsIpoRepository ipoRepository;
     private final RestClient restClient = RestClient.builder().baseUrl(BASE_URL).build();
 
     private Iterator<NewsItem> iterator;

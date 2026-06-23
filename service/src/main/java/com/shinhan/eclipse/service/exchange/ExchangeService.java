@@ -2,6 +2,8 @@ package com.shinhan.eclipse.service.exchange;
 
 import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 
+import java.util.Optional;
+
 public interface ExchangeService {
 
     /**
@@ -9,4 +11,9 @@ public interface ExchangeService {
      * API도 실패하면 BusinessException(EXCHANGE_RATE_UNAVAILABLE)을 던진다.
      */
     ExchangeRateInfo getExchangeRate(String currencyCode);
+
+    /**
+     * 전날 환율을 반환한다. 없으면 Optional.empty().
+     */
+    Optional<ExchangeRateInfo> getPreviousExchangeRate(String currencyCode);
 }
