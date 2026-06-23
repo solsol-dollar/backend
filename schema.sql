@@ -398,7 +398,8 @@ CREATE TABLE `notifications` (
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`)
+	PRIMARY KEY (`id`),
+	INDEX `IDX_notifications_polling` (`status`, `sent_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [신규] 쉬는 달러 감지 이력 (REQ-08) - 트리거 발동/억제/무효화 상태 추적
@@ -418,6 +419,21 @@ CREATE TABLE `idle_dollar_triggers` (
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
 	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `notification_settings` (
+	`id`                     BIGINT       NOT NULL AUTO_INCREMENT,
+	`user_id`                BIGINT       NOT NULL,
+	`fcm_token`              VARCHAR(500) NULL         COMMENT 'NULL = 전체 알림 꺼짐 (기기 미등록)',
+	`ipo_allocation_enabled` BOOLEAN      NOT NULL DEFAULT TRUE,
+	`ipo_refund_enabled`     BOOLEAN      NOT NULL DEFAULT TRUE,
+	`idle_dollar_enabled`    BOOLEAN      NOT NULL DEFAULT TRUE,
+	`created_at`             DATETIME     NOT NULL,
+	`updated_at`             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`status`                 VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `UK_notification_settings_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -524,3 +540,5 @@ ALTER TABLE `idle_dollar_triggers`
 	ADD CONSTRAINT `FK_idle_dollar_triggers_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
 	ADD CONSTRAINT `FK_idle_dollar_triggers_account` FOREIGN KEY (`account_id`) REFERENCES `financial_accounts` (`id`),
 	ADD CONSTRAINT `FK_idle_dollar_triggers_notification` FOREIGN KEY (`notification_id`) REFERENCES `notifications` (`id`);
+ALTER TABLE `notification_settings`
+	ADD CONSTRAINT `FK_notification_settings_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);

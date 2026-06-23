@@ -6,6 +6,7 @@ import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.inflow.IdleDollarTrigger;
 import com.shinhan.eclipse.service.inflow.IdleDollarService;
 import com.shinhan.eclipse.service.inflow.IdleDollarStatusResponse;
+import com.shinhan.eclipse.service.mypage.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ class IdleDollarServiceImpl implements IdleDollarService {
     private final IdleDetectionTradeOrderRepository tradeOrderRepository;
     private final IdleDetectionFxTransactionRepository fxTransactionRepository;
     private final IdleDetectionTransferRepository transferRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -118,8 +120,17 @@ class IdleDollarServiceImpl implements IdleDollarService {
                 .map(la -> (int) ChronoUnit.DAYS.between(la.toLocalDate(), LocalDate.now(KST)))
                 .orElse(IDLE_THRESHOLD_DAYS);
 
-        triggerRepository.save(
+        IdleDollarTrigger trigger = triggerRepository.save(
                 IdleDollarTrigger.detect(account.getUserId(), account.getId(), account.getBalance(), idleDays));
+
+        Long notificationId = notificationService.createNotification(
+                account.getUserId(),
+                "IDLE_DOLLAR",
+                "쉬는 달러 감지",
+                "달러가 " + idleDays + "일째 잠들어 있어요. 투자 기회를 확인해보세요.",
+                "ACCOUNT", account.getId()
+        );
+        trigger.linkNotification(notificationId);
 
         log.info("유휴 달러 트리거 생성 [accountId={}, userId={}, balance={}, idleDays={}]",
                 account.getId(), account.getUserId(), account.getBalance(), idleDays);
