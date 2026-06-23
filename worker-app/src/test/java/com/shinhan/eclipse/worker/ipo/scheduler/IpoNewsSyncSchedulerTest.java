@@ -17,23 +17,12 @@ class IpoNewsSyncSchedulerTest {
             .withUserConfiguration(IpoNewsSyncScheduler.class);
 
     @Test
-    void usesFetchOnlyJobWhenSyncJobIsUnavailable() {
+    void alwaysUsesFetchOnlyJob() {
         Job fetchOnlyJob = job("ipoNewsFetchOnlyJob");
 
         contextRunner
                 .withBean("ipoNewsFetchOnlyJob", Job.class, () -> fetchOnlyJob)
                 .run(context -> assertSelectedJob(context.getBean(IpoNewsSyncScheduler.class), fetchOnlyJob));
-    }
-
-    @Test
-    void usesSyncJobWhenSyncJobIsAvailable() {
-        Job fetchOnlyJob = job("ipoNewsFetchOnlyJob");
-        Job syncJob = job("ipoNewsSyncJob");
-
-        contextRunner
-                .withBean("ipoNewsFetchOnlyJob", Job.class, () -> fetchOnlyJob)
-                .withBean("ipoNewsSyncJob", Job.class, () -> syncJob)
-                .run(context -> assertSelectedJob(context.getBean(IpoNewsSyncScheduler.class), syncJob));
     }
 
     private static Job job(String name) {
