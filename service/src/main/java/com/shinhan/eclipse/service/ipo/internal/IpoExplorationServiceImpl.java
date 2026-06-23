@@ -4,6 +4,7 @@ import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.ipo.FavoriteIpo;
 import com.shinhan.eclipse.domain.ipo.Ipo;
+import com.shinhan.eclipse.domain.ipo.IpoNews;
 import com.shinhan.eclipse.service.ipo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 class IpoExplorationServiceImpl implements IpoExplorationService {
 
     private final IpoRepository ipoRepository;
+    private final IpoNewsRepository ipoNewsRepository;
     private final FavoriteIpoRepository favoriteIpoRepository;
 
     @Override
@@ -50,6 +52,18 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.IPO_NOT_FOUND));
         boolean isFavorite = favoriteIpoRepository.findByUserIdAndIpoId(userId, ipoId).isPresent();
         return toDetail(ipo, isFavorite);
+    }
+
+    @Override
+    public List<IpoNewsItem> getIpoNews(Long ipoId, int size) {
+        if (!ipoRepository.existsById(ipoId)) {
+            throw new BusinessException(ErrorCode.IPO_NOT_FOUND);
+        }
+        return ipoNewsRepository
+                .findByIpoIdAndSummaryIsNotNullOrderByPublishedAtDesc(ipoId, PageRequest.of(0, size))
+                .stream()
+                .map(this::toNewsItem)
+                .toList();
     }
 
     @Override
@@ -122,6 +136,17 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
             return "CLOSED";
         }
         return "UPCOMING";
+    }
+
+    private IpoNewsItem toNewsItem(IpoNews news) {
+        return new IpoNewsItem(
+                news.getId(),
+                news.getTitleKo(),
+                news.getSource(),
+                news.getPublishedAt(),
+                news.getUrl(),
+                news.getSummary()
+        );
     }
 
     private IpoItem toItem(Ipo ipo, boolean isFavorite) {

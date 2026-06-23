@@ -46,9 +46,6 @@ public class Ipo extends BaseEntity {
     @Column(precision = 18, scale = 4)
     private BigDecimal minimumSubscriptionAmount;
 
-    /** 중개사가 주관사로부터 배정받은 총 공모주식수 (운영자 입력, 외부 계약값 — 계산값 아님). */
-    private Integer totalAllocableShares;
-
     @Column(nullable = false, length = 30)
     private String ipoStatus = "UPCOMING";
 
@@ -102,7 +99,6 @@ public class Ipo extends BaseEntity {
         ipo.offerPriceMax = offerPriceMax;
         ipo.confirmedOfferPrice = confirmedOfferPrice;
         ipo.minimumSubscriptionAmount = minimumSubscriptionAmount;
-        ipo.totalAllocableShares = totalAllocableShares;
         ipo.ipoStatus = ipoStatus;
         ipo.numberOfShares = numberOfShares;
         ipo.logoUrl = logoUrl;
