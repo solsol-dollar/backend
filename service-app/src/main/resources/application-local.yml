@@ -8,3 +8,7 @@ logging:
   level:
     com.shinhan.eclipse: DEBUG
     org.hibernate.SQL: DEBUG
+
+app:
+  cookie:
+    secure: false

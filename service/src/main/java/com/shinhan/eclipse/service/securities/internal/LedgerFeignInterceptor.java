@@ -28,13 +28,20 @@ class LedgerFeignInterceptor implements RequestInterceptor {
         if (!(attrs instanceof ServletRequestAttributes servletAttrs)) return null;
 
         HttpServletRequest request = servletAttrs.getRequest();
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) return null;
 
-        return Arrays.stream(cookies)
-                .filter(c -> COOKIE_NAME.equals(c.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            String fromCookie = Arrays.stream(cookies)
+                    .filter(c -> COOKIE_NAME.equals(c.getName()))
+                    .map(Cookie::getValue)
+                    .findFirst()
+                    .orElse(null);
+            if (fromCookie != null) return fromCookie;
+        }
+
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) return header.substring(7);
+
+        return null;
     }
 }

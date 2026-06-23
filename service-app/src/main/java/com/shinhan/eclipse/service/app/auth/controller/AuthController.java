@@ -8,6 +8,7 @@ import com.shinhan.eclipse.service.app.auth.service.AuthService.LoginResult;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,9 @@ public class AuthController {
     static final String COOKIE_NAME = "access_token";
 
     private final AuthService authService;
+
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
 
     @PostMapping("/simple-login")
     public ResponseEntity<ApiResponse<SimpleLoginResponse>> login(
@@ -47,7 +51,7 @@ public class AuthController {
     private String buildCookie(String value, long maxAgeSeconds) {
         return ResponseCookie.from(COOKIE_NAME, value)
                 .httpOnly(true)
-                .secure(false)   // 운영 환경에서는 true로 변경
+                .secure(cookieSecure)
                 .path("/")
                 .maxAge(Duration.ofSeconds(maxAgeSeconds))
                 .sameSite("Lax")
