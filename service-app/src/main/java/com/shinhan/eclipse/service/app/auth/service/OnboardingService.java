@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -34,11 +33,6 @@ public class OnboardingService {
         if ("COMPLETED".equals(user.getOnboardingStatus())) {
             return;
         }
-
-        // CMA 계좌 생성 (항상)
-        String cmaNumber = generateAccountNumber();
-        accountRepository.save(FinancialAccount.createCmaAccount(userId, cmaNumber, "USD"));
-        accountRepository.save(FinancialAccount.createCmaAccount(userId, cmaNumber, "KRW"));
 
         // 기존 예금/적금 계좌 자동 연동
         accountRepository.findByUserIdAndAccountTypeInAndLinkedFalse(userId, List.of("DEPOSIT", "SAVINGS"))
@@ -68,8 +62,4 @@ public class OnboardingService {
         return new OnboardingAccountsResponse(accounts, cards);
     }
 
-    private String generateAccountNumber() {
-        int suffix = ThreadLocalRandom.current().nextInt(1000, 10000);
-        return "****-****-" + suffix;
-    }
 }
