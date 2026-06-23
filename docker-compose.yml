@@ -28,6 +28,7 @@ services:
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT:-6379}
       JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH:-classpath:keys/public.pem}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-validate}
       SPRINGDOC_SWAGGER_UI_CONFIG_URL: /api/ledger/api-docs/swagger-config
       SPRINGDOC_SWAGGER_UI_URL: /api/ledger/api-docs
     volumes:
