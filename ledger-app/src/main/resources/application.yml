@@ -35,6 +35,10 @@ jwt:
 service-app:
   url: ${SERVICE_APP_URL:http://localhost:8081}
 
+eclipse:
+  internal:
+    api-key: ${ECLIPSE_INTERNAL_API_KEY:}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui

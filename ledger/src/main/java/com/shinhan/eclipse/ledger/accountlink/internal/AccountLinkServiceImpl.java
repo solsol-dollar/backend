@@ -74,4 +74,15 @@ class AccountLinkServiceImpl implements AccountLinkService {
         }
         account.deductBalance(amount);
     }
+
+    @Override
+    @Transactional
+    public void credit(Long userId, Long accountId, BigDecimal amount) {
+        FinancialAccount account = financialAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED));
+        if (!Boolean.TRUE.equals(account.getLinked())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED);
+        }
+        account.addBalance(amount);
+    }
 }

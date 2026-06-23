@@ -10,4 +10,7 @@ interface ReturnPlanAllocationRepository extends JpaRepository<ReturnPlanAllocat
     List<ReturnPlanAllocation> findByReturnPlanIdOrderByIdAsc(Long returnPlanId);
 
     Optional<ReturnPlanAllocation> findByReturnPlanIdAndDestinationType(Long returnPlanId, String destinationType);
+
+    /** 대시보드 요약 등에서 여러 플랜의 분배 내역을 한 번에 가져와 N+1을 피하기 위한 배치 조회. */
+    List<ReturnPlanAllocation> findByReturnPlanIdIn(List<Long> returnPlanIds);
 }
