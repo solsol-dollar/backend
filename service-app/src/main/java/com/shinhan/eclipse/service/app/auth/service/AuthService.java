@@ -6,7 +6,6 @@ import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.user.User;
 import com.shinhan.eclipse.service.app.auth.dto.SimpleLoginRequest;
-import com.shinhan.eclipse.service.app.auth.dto.SimpleLoginResponse;
 import com.shinhan.eclipse.service.app.auth.internal.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -21,16 +20,17 @@ public class AuthService {
     private final TokenIssuer tokenIssuer;
     private final BCryptPasswordEncoder passwordEncoder;
 
+    public record LoginResult(String token, long expiresInSeconds, String onboardingStatus) {}
+
     @Transactional(readOnly = true)
-    public SimpleLoginResponse login(SimpleLoginRequest request) {
+    public LoginResult login(SimpleLoginRequest request) {
         User matched = userRepository.findAll().stream()
                 .filter(u -> passwordEncoder.matches(request.simplePassword(), u.getSimplePassword()))
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "비밀번호가 일치하는 사용자가 없습니다."));
 
-        String token = tokenIssuer.issue(
-                new AuthUser(matched.getId(), matched.getName(), "USER"));
+        String token = tokenIssuer.issue(new AuthUser(matched.getId(), matched.getName(), "USER"));
 
-        return new SimpleLoginResponse(token, "Bearer", tokenIssuer.getExpirationMs() / 1000, matched.getOnboardingStatus());
+        return new LoginResult(token, tokenIssuer.getExpirationMs() / 1000, matched.getOnboardingStatus());
     }
 }
