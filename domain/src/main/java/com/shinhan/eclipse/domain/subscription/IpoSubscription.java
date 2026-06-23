@@ -95,4 +95,20 @@ public class IpoSubscription extends BaseEntity {
     public void cancel() {
         this.subscriptionStatus = "CANCELLED";
     }
+
+    public boolean isAllocated() {
+        return this.resultStatus != null;
+    }
+
+    /** @param allocationRatePercent 0~100 사이 퍼센트 값 (DB allocation_rate 컬럼 단위와 동일) */
+    public void allocate(int allocatedShares, BigDecimal allocationRatePercent) {
+        if (!"CONFIRMED".equals(this.subscriptionStatus)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "확정된 청약만 배정할 수 있습니다.");
+        }
+        this.allocatedShares = allocatedShares;
+        this.allocatedAmount = this.offerPrice.multiply(BigDecimal.valueOf(allocatedShares));
+        this.refundAmount = this.subscriptionAmount.subtract(this.allocatedAmount);
+        this.allocationRate = allocationRatePercent;
+        this.resultStatus = "COMPLETED";
+    }
 }
