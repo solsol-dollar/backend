@@ -16,7 +16,7 @@ import java.util.function.Function;
 @Builder
 public class ReturnPlanSummaryRes {
     private final int totalPlanCount;
-    private final int confirmedPlanCount;
+    private final int executedPlanCount;
     private final BigDecimal totalRefundAmount;
     private final BigDecimal securitiesAmount;
     private final BigDecimal savingsAmount;
@@ -30,7 +30,7 @@ public class ReturnPlanSummaryRes {
                 .map(ReturnPlan::getTotalRefundAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        long confirmedCount = plans.stream().filter(p -> !p.isDraft()).count();
+        long executedCount = plans.stream().filter(ReturnPlan::isExecuted).count();
 
         BigDecimal securities = BigDecimal.ZERO;
         BigDecimal savings = BigDecimal.ZERO;
@@ -49,7 +49,7 @@ public class ReturnPlanSummaryRes {
 
         return ReturnPlanSummaryRes.builder()
                 .totalPlanCount(plans.size())
-                .confirmedPlanCount((int) confirmedCount)
+                .executedPlanCount((int) executedCount)
                 .totalRefundAmount(totalRefundAmount)
                 .securitiesAmount(securities)
                 .savingsAmount(savings)

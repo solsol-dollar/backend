@@ -1,5 +1,7 @@
 package com.shinhan.eclipse.ledger.allocation;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.common.resolver.UserHeader;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.domain.ipo.Ipo;
@@ -35,6 +37,9 @@ public class AllocationResultController {
             @RequestParam(name = "from", required = false) LocalDate from,
             @RequestParam(name = "to", required = false) LocalDate to,
             @RequestParam(name = "statusGroup", required = false) String statusGroup) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "from은 to보다 늦을 수 없습니다.");
+        }
         List<AllocationResultRes> results = subscriptionFacade.getSubscriptionResults(userId, subscriptionId)
                 .stream()
                 .filter(s -> matchesDateRange(s, from, to))
@@ -52,14 +57,21 @@ public class AllocationResultController {
         return true;
     }
 
-    /** statusGroup: ALL(전체) | REQUESTED(청약신청/취소완료) | ALLOCATED(배정완료) | LISTED(상장완료) */
+    /**
+     * statusGroup: ALL(전체) | REQUESTED(청약신청/취소완료) | ALLOCATED(배정완료) | LISTED(상장완료)
+     * resultStatus는 배정 시점에 "COMPLETED" 하나로만 채워지고, 배정과 상장 거래 가능 시점이
+     * 사실상 같은 순간으로 통일됐기 때문에 ALLOCATED/LISTED 둘 다 같은 값으로 매칭한다.
+     */
     private boolean matchesStatusGroup(IpoSubscription subscription, String statusGroup) {
         if (!StringUtils.hasText(statusGroup) || "ALL".equalsIgnoreCase(statusGroup)) return true;
         if ("REQUESTED".equalsIgnoreCase(statusGroup)) {
             return "REQUESTED".equals(subscription.getSubscriptionStatus())
                     || "CANCELLED".equals(subscription.getSubscriptionStatus());
         }
-        return statusGroup.equalsIgnoreCase(subscription.getResultStatus());
+        if ("ALLOCATED".equalsIgnoreCase(statusGroup) || "LISTED".equalsIgnoreCase(statusGroup)) {
+            return "COMPLETED".equals(subscription.getResultStatus());
+        }
+        return false;
     }
 
     // ALLOC-002

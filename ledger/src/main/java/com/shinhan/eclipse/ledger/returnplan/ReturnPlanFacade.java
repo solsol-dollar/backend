@@ -21,9 +21,6 @@ public interface ReturnPlanFacade {
 
     ReturnPlan updateRatios(Long returnPlanId, Long userId, List<AllocationItem> items);
 
-    /** 사용자가 "확정" 버튼을 누른 시각만 기록. 상태/수정 가능 여부에는 영향 없음 (명세 외 변경). */
-    ReturnPlan confirmReturnPlan(Long returnPlanId, Long userId);
-
     /** 조회 조건(기간/상태) 필터를 DB 단에서 적용한 뒤 페이지네이션해서 반환한다. */
     Page<ReturnPlan> getReturnPlans(Long userId, LocalDate from, LocalDate to, String status, Pageable pageable);
 

@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -38,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 "spring.datasource.password=",
                 "spring.jpa.hibernate.ddl-auto=create-drop",
                 "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
+                "eclipse.internal.api-key=test-internal-api-key",
         }
 )
 @AutoConfigureMockMvc
@@ -62,12 +64,12 @@ class ReturnPlanApiTest {
     }
 
     @Test
-    void 배정결과_조회부터_리턴플랜_생성_수정_확정_목록까지_전체_흐름이_동작한다() throws Exception {
+    void 배정결과_조회부터_리턴플랜_생성_수정_실행_목록까지_전체_흐름이_동작한다() throws Exception {
         Ipo ipo = persistIpo();
         IpoSubscription subscription = persistAllocatedSubscription(ipo.getId());
-        persistLinkedAccount("SAVINGS");
-        persistLinkedAccount("DEPOSIT");
-        persistLinkedAccount("SECURITIES");
+        FinancialAccount savingsAccount = persistLinkedAccount("SAVINGS");
+        FinancialAccount depositAccount = persistLinkedAccount("DEPOSIT");
+        FinancialAccount securitiesAccount = persistLinkedAccount("SECURITIES");
 
         // ALLOC-001: 목록 조회
         mockMvc.perform(get("/api/v1/subscription-results")
@@ -136,15 +138,7 @@ class ReturnPlanApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.allocations[2].ratio").value(30));
 
-        // RP-003: 확정 — 상태 전이는 없고 confirmedAt만 기록 (이후에도 비율 수정 가능)
-        mockMvc.perform(put("/api/v1/return-plans/{id}/confirm", returnPlanId)
-                        .with(user("tester"))
-                        .header("X-User-Id", USER_ID))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.planStatus").value("DRAFT"))
-                .andExpect(jsonPath("$.data.confirmedAt").exists());
-
-        // 확정 후에도 비율 수정 가능
+        // 별도 확정 액션 없이, 실행 전까지는 계속 비율 수정 가능
         mockMvc.perform(put("/api/v1/return-plans/{id}", returnPlanId)
                         .with(user("tester"))
                         .header("X-User-Id", USER_ID)
@@ -161,12 +155,26 @@ class ReturnPlanApiTest {
         // 같은 검증 로직이 internal 실행 API에는 적용되지 않는다는 점만 RP-008에서 별도 확인한다.
 
         // RP-008(명세 외 추가): 환불일 정산 배치가 호출하는 내부 실행 API
-        mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId))
+        mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId)
+                        .header("X-Internal-Api-Key", "test-internal-api-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.planStatus").value("EXECUTED"));
 
-        // 이미 실행된 플랜을 다시 실행하면 충돌(L011)
+        // 내부 API 키가 없거나 틀리면 401
         mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId)
+                        .header("X-Internal-Api-Key", "wrong-key"))
+                .andExpect(status().isUnauthorized());
+
+        // 실행으로 비율(30/40/30)만큼 각 계좌에 실제로 적립됐는지 확인
+        assertAccountBalance(savingsAccount.getId(), new BigDecimal("84.2000"));
+        assertAccountBalance(depositAccount.getId(), new BigDecimal("63.1500"));
+        assertAccountBalance(securitiesAccount.getId(), new BigDecimal("63.1500"));
+
+        // 이미 실행된 플랜을 다시 실행하면 충돌(L011)
+        mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId)
+                        .header("X-Internal-Api-Key", "test-internal-api-key"))
                 .andExpect(status().is4xxClientError())
                 .andExpect(jsonPath("$.code").value("L011"));
 
@@ -198,6 +206,15 @@ class ReturnPlanApiTest {
                         .content("{\"subscriptionId\":" + subscription.getId() + "}"))
                 .andExpect(status().is4xxClientError())
                 .andExpect(jsonPath("$.code").value("L008"));
+    }
+
+    private void assertAccountBalance(Long accountId, BigDecimal expectedBalance) {
+        BigDecimal balance = txTemplate.execute(status -> {
+            FinancialAccount account = em.find(FinancialAccount.class, accountId);
+            em.refresh(account);
+            return account.getBalance();
+        });
+        assertThat(balance).isEqualByComparingTo(expectedBalance);
     }
 
     private Long extractReturnPlanId(String json) {

@@ -8,7 +8,6 @@ import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlanAllocation;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
-import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanConfirmRes;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanCreateReq;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanListItemRes;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanListRes;
@@ -72,15 +71,6 @@ public class ReturnPlanController {
         return ResponseEntity.ok(ApiResponse.success(toRes(plan, userId)));
     }
 
-    // RP-003
-    @PutMapping("/{returnPlanId}/confirm")
-    public ResponseEntity<ApiResponse<ReturnPlanConfirmRes>> confirmReturnPlan(
-            @UserHeader Long userId,
-            @PathVariable("returnPlanId") Long returnPlanId) {
-        ReturnPlan plan = returnPlanFacade.confirmReturnPlan(returnPlanId, userId);
-        return ResponseEntity.ok(ApiResponse.success(ReturnPlanConfirmRes.from(plan)));
-    }
-
     // RP-004 (from/to/status: 명세 외 추가 — 조회 조건 설정 모달용)
     @GetMapping
     public ResponseEntity<ApiResponse<ReturnPlanListRes>> getReturnPlans(
@@ -92,6 +82,9 @@ public class ReturnPlanController {
             @RequestParam(name = "status", required = false) String status) {
         if (page < 0 || size < 1 || size > 100) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "page는 0 이상, size는 1~100 사이여야 합니다.");
+        }
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "from은 to보다 늦을 수 없습니다.");
         }
         Pageable pageable = PageRequest.of(page, size);
         Page<ReturnPlan> plans = returnPlanFacade.getReturnPlans(userId, from, to, status, pageable);

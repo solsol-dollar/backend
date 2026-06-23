@@ -35,8 +35,8 @@ interface ReturnPlanRepository extends JpaRepository<ReturnPlan, Long> {
             select p from ReturnPlan p
             where p.userId = :userId
               and (:status is null or upper(p.planStatus) = upper(:status))
-              and (:fromDateTime is null or coalesce(p.confirmedAt, p.createdAt) >= :fromDateTime)
-              and (:toDateTime is null or coalesce(p.confirmedAt, p.createdAt) <= :toDateTime)
+              and (:fromDateTime is null or p.createdAt >= :fromDateTime)
+              and (:toDateTime is null or p.createdAt <= :toDateTime)
             """)
     Page<ReturnPlan> search(@Param("userId") Long userId,
                             @Param("status") String status,

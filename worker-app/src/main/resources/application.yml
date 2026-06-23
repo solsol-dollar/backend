@@ -36,6 +36,8 @@ eodhd:
 eclipse:
   ledger:
     url: ${ECLIPSE_LEDGER_URL:http://localhost:8080}
+  internal:
+    api-key: ${ECLIPSE_INTERNAL_API_KEY:}
 
 ls:
   securities:

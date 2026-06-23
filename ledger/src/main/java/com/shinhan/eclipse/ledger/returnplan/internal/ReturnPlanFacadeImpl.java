@@ -28,6 +28,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,6 +39,7 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
 
     private static final Logger log = LoggerFactory.getLogger(ReturnPlanFacadeImpl.class);
     private static final List<String> DESTINATION_TYPES = List.of("SECURITIES", "SAVINGS", "DEPOSIT");
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     /** 환불일(D+1) 21:00 KST 정산 배치보다 1시간 앞선 수정 마감 시각. */
     private static final LocalTime EDIT_CUTOFF_TIME = LocalTime.of(20, 0);
 
@@ -140,18 +142,6 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
 
     @Override
     @Transactional
-    public ReturnPlan confirmReturnPlan(Long returnPlanId, Long userId) {
-        ReturnPlan plan = returnPlanRepository.findByIdAndUserIdForUpdate(returnPlanId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RETURN_PLAN_NOT_FOUND));
-
-        plan.confirm();
-
-        log.info("리턴 플랜 확인 표시: returnPlanId={}, userId={}", returnPlanId, userId);
-        return plan;
-    }
-
-    @Override
-    @Transactional
     public ReturnPlan executeReturnPlan(Long returnPlanId) {
         ReturnPlan plan = returnPlanRepository.findByIdForUpdate(returnPlanId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RETURN_PLAN_NOT_FOUND));
@@ -220,7 +210,7 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
             return;
         }
         LocalDateTime editDeadline = LocalDateTime.of(ipo.getRefundDate(), EDIT_CUTOFF_TIME);
-        if (!LocalDateTime.now().isBefore(editDeadline)) {
+        if (!LocalDateTime.now(KST).isBefore(editDeadline)) {
             throw new BusinessException(ErrorCode.RETURN_PLAN_EDIT_WINDOW_CLOSED);
         }
     }
