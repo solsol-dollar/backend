@@ -22,8 +22,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 class RedisExchangeRateCache implements ExchangeRateCache {
 
-    private static final String   KEY_PREFIX = ExchangeRateKeys.RATE_KEY_PREFIX;
-    private static final Duration TTL        = Duration.ofHours(72);
+    private static final String   KEY_PREFIX      = ExchangeRateKeys.RATE_KEY_PREFIX;
+    private static final String   PREV_KEY_PREFIX = ExchangeRateKeys.PREV_RATE_KEY_PREFIX;
+    private static final Duration TTL             = Duration.ofHours(72);
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper        objectMapper;
@@ -41,7 +42,26 @@ class RedisExchangeRateCache implements ExchangeRateCache {
 
     @Override
     public Optional<ExchangeRateInfo> get(String currencyCode) {
-        String key  = KEY_PREFIX + currencyCode.toUpperCase(Locale.ROOT);
+        return getByKey(KEY_PREFIX + currencyCode.toUpperCase(Locale.ROOT), currencyCode);
+    }
+
+    @Override
+    public void putPrev(ExchangeRateInfo info) {
+        try {
+            String key  = PREV_KEY_PREFIX + info.currencyCode().toUpperCase(Locale.ROOT);
+            String json = objectMapper.writeValueAsString(info);
+            redisTemplate.opsForValue().set(key, json, TTL);
+        } catch (JsonProcessingException e) {
+            log.warn("이전 환율 캐시 직렬화 실패 [{}]: {}", info.currencyCode(), e.getMessage());
+        }
+    }
+
+    @Override
+    public Optional<ExchangeRateInfo> getPrev(String currencyCode) {
+        return getByKey(PREV_KEY_PREFIX + currencyCode.toUpperCase(Locale.ROOT), currencyCode);
+    }
+
+    private Optional<ExchangeRateInfo> getByKey(String key, String currencyCode) {
         String json = redisTemplate.opsForValue().get(key);
         if (json == null) return Optional.empty();
         try {
