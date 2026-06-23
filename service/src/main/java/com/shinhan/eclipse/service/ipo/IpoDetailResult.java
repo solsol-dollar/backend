@@ -19,5 +19,7 @@ public record IpoDetailResult(
         BigDecimal offerPriceMax,
         BigDecimal confirmedOfferPrice,
         BigDecimal minimumSubscriptionAmount,
-        boolean isFavorite
+        boolean isFavorite,
+        Long numberOfShares,
+        String logoUrl
 ) {}
