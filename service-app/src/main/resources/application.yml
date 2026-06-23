@@ -80,3 +80,7 @@ eclipse:
 logging:
   level:
     com.shinhan.eclipse: INFO
+
+app:
+  cookie:
+    secure: true
