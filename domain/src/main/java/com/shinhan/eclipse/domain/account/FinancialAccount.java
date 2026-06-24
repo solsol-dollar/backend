@@ -70,6 +70,47 @@ public class FinancialAccount extends BaseEntity {
         return a;
     }
 
+    public static FinancialAccount createDepositAccount(Long userId) {
+        FinancialAccount a = new FinancialAccount();
+        a.userId = userId;
+        a.accountType = "DEPOSIT";
+        a.institutionType = "BANK";
+        a.institutionName = "신한은행";
+        a.accountName = "외화 체인지업 예금";
+        a.accountNumberMasked = generateMaskedAccountNumber();
+        a.currency = "USD";
+        a.balance = BigDecimal.ZERO;
+        a.interestRate = new BigDecimal("3.00");
+        a.maturityDate = LocalDate.now().plusYears(1);
+        a.linked = true;
+        a.linkedAt = LocalDateTime.now();
+        a.status = "ACTIVE";
+        return a;
+    }
+
+    public static FinancialAccount createSavingsAccount(Long userId) {
+        FinancialAccount a = new FinancialAccount();
+        a.userId = userId;
+        a.accountType = "SAVINGS";
+        a.institutionType = "BANK";
+        a.institutionName = "신한은행";
+        a.accountName = "신한 Value-up 외화적립예금";
+        a.accountNumberMasked = generateMaskedAccountNumber();
+        a.currency = "USD";
+        a.balance = BigDecimal.ZERO;
+        a.interestRate = new BigDecimal("4.00");
+        a.maturityDate = LocalDate.now().plusYears(1);
+        a.linked = true;
+        a.linkedAt = LocalDateTime.now();
+        a.status = "ACTIVE";
+        return a;
+    }
+
+    private static String generateMaskedAccountNumber() {
+        int suffix = (int) (Math.random() * 9000) + 1000;
+        return "****-****-" + suffix;
+    }
+
     public void link() {
         this.linked = true;
         this.linkedAt = LocalDateTime.now();
