@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,9 +21,19 @@ interface IpoSubscriptionRepository extends JpaRepository<IpoSubscription, Long>
     @Query("select s from IpoSubscription s where s.id = :id and s.userId = :userId")
     Optional<IpoSubscription> findByIdAndUserIdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 
-    List<IpoSubscription> findByUserIdAndIpoId(Long userId, Long ipoId);
-
-    List<IpoSubscription> findByUserIdAndSubscriptionStatus(Long userId, String subscriptionStatus);
-
-    List<IpoSubscription> findByUserIdAndIpoIdAndSubscriptionStatus(Long userId, Long ipoId, String subscriptionStatus);
+    /** 조회 조건(ipoId/상태/기간) 필터 — 전부 선택값이며 null이면 해당 조건은 무시된다 (명세 외 추가). */
+    @Query("""
+            select s from IpoSubscription s
+            where s.userId = :userId
+              and (:ipoId is null or s.ipoId = :ipoId)
+              and (:status is null or upper(s.subscriptionStatus) = upper(:status))
+              and (:fromDateTime is null or s.subscribedAt >= :fromDateTime)
+              and (:toDateTime is null or s.subscribedAt <= :toDateTime)
+            order by s.subscribedAt desc
+            """)
+    List<IpoSubscription> search(@Param("userId") Long userId,
+                                  @Param("ipoId") Long ipoId,
+                                  @Param("status") String status,
+                                  @Param("fromDateTime") LocalDateTime fromDateTime,
+                                  @Param("toDateTime") LocalDateTime toDateTime);
 }

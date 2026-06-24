@@ -1,18 +1,14 @@
 package com.shinhan.eclipse.ledger.subscription.dto;
 
-import com.shinhan.eclipse.domain.subscription.IpoSubscription;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 
+/** shares 대신 화면에서 입력받는 USD 금액(subscriptionAmount)을 받는다 — 주수 환산은 서버(SubscriptionFacadeImpl)에서 한다. */
 public record SubscriptionReq(
         @NotNull Long ipoId,
         @NotNull Long securitiesAccountId,
-        @NotNull @Positive Integer shares,
+        @NotNull @Positive BigDecimal subscriptionAmount,
         @NotNull @Positive BigDecimal offerPrice
-) {
-    public IpoSubscription toEntity(Long userId) {
-        return IpoSubscription.request(userId, ipoId, securitiesAccountId, shares, offerPrice);
-    }
-}
+) {}
