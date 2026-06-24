@@ -90,11 +90,12 @@ class NotificationServiceImpl implements NotificationService {
 
     @Override
     public List<PendingPush> getPendingPushes() {
-        List<Notification> pending = notificationRepository.findBySentAtIsNullAndStatus("ACTIVE");
+        List<Notification> pending = notificationRepository.findBySentAtIsNullAndStatus("ACTIVE", PageRequest.of(0, 100, Sort.by("createdAt").ascending()));
         if (pending.isEmpty()) return List.of();
 
+        List<Long> userIds = pending.stream().map(Notification::getUserId).distinct().toList();
         Map<Long, NotificationSettings> settingsByUserId = notificationSettingsRepository
-                .findByFcmTokenIsNotNull()
+                .findByUserIdInAndFcmTokenIsNotNull(userIds)
                 .stream()
                 .collect(Collectors.toMap(NotificationSettings::getUserId, s -> s));
 

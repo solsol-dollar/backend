@@ -11,13 +11,15 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
+
 interface NotificationRepository extends JpaRepository<Notification, Long> {
 
     Page<Notification> findByUserIdAndStatusAndSentAtIsNotNull(Long userId, String status, Pageable pageable);
 
     Page<Notification> findByUserIdAndIsReadAndStatusAndSentAtIsNotNull(Long userId, Boolean isRead, String status, Pageable pageable);
 
-    List<Notification> findBySentAtIsNullAndStatus(String status);
+    List<Notification> findBySentAtIsNullAndStatus(String status, Pageable pageable);
 
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Notification n SET n.isRead = true, n.readAt = :readAt WHERE n.id = :id AND n.userId = :userId")

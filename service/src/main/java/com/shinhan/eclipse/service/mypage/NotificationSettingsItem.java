@@ -1,7 +1,7 @@
 package com.shinhan.eclipse.service.mypage;
 
 public record NotificationSettingsItem(
-        Boolean pushEnabled,
+        Boolean fcmRegistered,
         Boolean ipoAllocationEnabled,
         Boolean ipoRefundEnabled,
         Boolean idleDollarEnabled

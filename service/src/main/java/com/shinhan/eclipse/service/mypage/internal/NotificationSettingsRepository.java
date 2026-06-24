@@ -10,5 +10,5 @@ interface NotificationSettingsRepository extends JpaRepository<NotificationSetti
 
     Optional<NotificationSettings> findByUserId(Long userId);
 
-    List<NotificationSettings> findByFcmTokenIsNotNull();
+    List<NotificationSettings> findByUserIdInAndFcmTokenIsNotNull(List<Long> userIds);
 }

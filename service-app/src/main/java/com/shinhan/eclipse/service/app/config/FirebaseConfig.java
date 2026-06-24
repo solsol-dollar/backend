@@ -14,8 +14,11 @@ import java.io.IOException;
 @Configuration
 public class FirebaseConfig {
 
-    @Value("${firebase.credentials-path}")
-    private String credentialsPath;
+    private final String credentialsPath;
+
+    public FirebaseConfig(@Value("${firebase.credentials-path}") String credentialsPath) {
+        this.credentialsPath = credentialsPath;
+    }
 
     @Bean
     public FirebaseMessaging firebaseMessaging() throws IOException {
