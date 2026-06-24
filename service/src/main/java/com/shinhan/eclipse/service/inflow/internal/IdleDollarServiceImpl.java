@@ -133,8 +133,8 @@ class IdleDollarServiceImpl implements IdleDollarService {
         Long notificationId = notificationService.createNotification(
                 account.getUserId(),
                 "IDLE_DOLLAR",
-                "쉬는 달러 감지",
-                "달러가 " + idleDays + "일째 잠들어 있어요. 투자 기회를 확인해보세요.",
+                "달러가 " + idleDays + "일째 잠들어 있어요.",
+                "투자 기회를 확인해보세요.",
                 "ACCOUNT", account.getId()
         );
         trigger.linkNotification(notificationId);

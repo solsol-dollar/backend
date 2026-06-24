@@ -83,8 +83,8 @@ public class IpoAllocationJob {
             notificationRepository.save(Notification.create(
                     subscription.getUserId(),
                     "IPO_ALLOCATION",
-                    "IPO 배정 결과",
-                    ipo.getCompanyName() + " IPO 배정 결과가 나왔어요. 지금 확인해보세요.",
+                    "IPO 배정 결과가 나왔어요.",
+                    ipo.getCompanyName() + " 배정 결과를 지금 확인해보세요.",
                     "IPO", ipo.getId()
             ));
         }
