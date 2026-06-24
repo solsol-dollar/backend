@@ -26,7 +26,7 @@ INSERT IGNORE INTO financial_accounts (
     account_name, account_number_masked, currency, balance,
     interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
 ) VALUES (
-    1, 1, 'SECURITIES', 'SECURITIES', '신한투자증권',
+    1, 1, 'SECURITIES', 'SECURITIES_FIRM', '신한투자증권',
     '신한 외화증권 계좌', '****-****-1234', 'USD', 50000.0000,
     NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
 );
@@ -57,7 +57,7 @@ INSERT IGNORE INTO financial_accounts (
     account_name, account_number_masked, currency, balance,
     interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
 ) VALUES (
-    4, 1, 'SECURITIES', 'SECURITIES', '신한투자증권',
+    4, 1, 'SECURITIES', 'SECURITIES_FIRM', '신한투자증권',
     '신한 원화증권 계좌', '****-****-5678', 'KRW', 5000000.0000,
     NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
 );

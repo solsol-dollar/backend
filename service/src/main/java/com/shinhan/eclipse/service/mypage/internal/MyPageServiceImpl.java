@@ -8,6 +8,7 @@ import com.shinhan.eclipse.domain.user.InvestmentProfile;
 import com.shinhan.eclipse.service.mypage.MyPageAccountsResponse;
 import com.shinhan.eclipse.service.mypage.MyPageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,11 +60,15 @@ class MyPageServiceImpl implements MyPageService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 예금 계좌가 존재합니다.");
         }
 
-        FinancialAccount account = accountRepository.save(FinancialAccount.createDepositAccount(userId));
-        return new MyPageAccountsResponse.AccountItem(
-                account.getId(), account.getAccountType(), account.getAccountName(),
-                account.getAccountNumberMasked(), account.getCurrency(),
-                account.getBalance(), account.getInterestRate(), account.getMaturityDate());
+        try {
+            FinancialAccount account = accountRepository.save(FinancialAccount.createDepositAccount(userId));
+            return new MyPageAccountsResponse.AccountItem(
+                    account.getId(), account.getAccountType(), account.getAccountName(),
+                    account.getAccountNumberMasked(), account.getCurrency(),
+                    account.getBalance(), account.getInterestRate(), account.getMaturityDate());
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 예금 계좌가 존재합니다.");
+        }
     }
 
     @Override
@@ -73,11 +78,15 @@ class MyPageServiceImpl implements MyPageService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 적금 계좌가 존재합니다.");
         }
 
-        FinancialAccount account = accountRepository.save(FinancialAccount.createSavingsAccount(userId));
-        return new MyPageAccountsResponse.AccountItem(
-                account.getId(), account.getAccountType(), account.getAccountName(),
-                account.getAccountNumberMasked(), account.getCurrency(),
-                account.getBalance(), account.getInterestRate(), account.getMaturityDate());
+        try {
+            FinancialAccount account = accountRepository.save(FinancialAccount.createSavingsAccount(userId));
+            return new MyPageAccountsResponse.AccountItem(
+                    account.getId(), account.getAccountType(), account.getAccountName(),
+                    account.getAccountNumberMasked(), account.getCurrency(),
+                    account.getBalance(), account.getInterestRate(), account.getMaturityDate());
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 적금 계좌가 존재합니다.");
+        }
     }
 
     @Override
@@ -88,7 +97,7 @@ class MyPageServiceImpl implements MyPageService {
         }
 
         FinancialAccount cmaAccount = accountRepository
-                .findFirstByUserIdAndAccountTypeAndStatus(userId, "DEPOSIT", "ACTIVE")
+                .findFirstByUserIdAndAccountTypeAndCurrencyAndLinkedTrueAndStatus(userId, "DEPOSIT", "USD", "ACTIVE")
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND, "연동된 외화 예금 계좌가 없습니다."));
 
         Card card = cardRepository.save(Card.issue(userId, cmaAccount.getId()));
