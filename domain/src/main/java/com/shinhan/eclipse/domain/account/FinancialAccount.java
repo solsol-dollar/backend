@@ -51,9 +51,6 @@ public class FinancialAccount extends BaseEntity {
 
     private LocalDateTime linkedAt;
 
-    @Column(nullable = false, length = 20)
-    private String status = "ACTIVE";
-
     public static FinancialAccount createCmaAccount(Long userId, String accountNumberMasked, String currency) {
         FinancialAccount a = new FinancialAccount();
         a.userId = userId;
@@ -66,7 +63,6 @@ public class FinancialAccount extends BaseEntity {
         a.balance = BigDecimal.ZERO;
         a.linked = true;
         a.linkedAt = LocalDateTime.now();
-        a.status = "ACTIVE";
         return a;
     }
 
@@ -84,7 +80,6 @@ public class FinancialAccount extends BaseEntity {
         a.maturityDate = LocalDate.now().plusYears(1);
         a.linked = true;
         a.linkedAt = LocalDateTime.now();
-        a.status = "ACTIVE";
         return a;
     }
 
@@ -102,7 +97,6 @@ public class FinancialAccount extends BaseEntity {
         a.maturityDate = LocalDate.now().plusYears(1);
         a.linked = true;
         a.linkedAt = LocalDateTime.now();
-        a.status = "ACTIVE";
         return a;
     }
 
