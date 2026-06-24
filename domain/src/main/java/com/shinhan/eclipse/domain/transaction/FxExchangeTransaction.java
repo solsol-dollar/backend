@@ -52,6 +52,8 @@ public class FxExchangeTransaction extends BaseEntity {
 
     private LocalDateTime completedAt;
 
+    @Column(length = 255)
+    private String failureReason;
 
     public static FxExchangeTransaction create(Long userId, Long fromAccountId, Long toAccountId,
                                                String fromCurrency, String toCurrency,
@@ -78,5 +80,9 @@ public class FxExchangeTransaction extends BaseEntity {
         this.completedAt      = LocalDateTime.now();
     }
 
-
+    public void fail(String reason) {
+        this.exchangeStatus = "FAILED";
+        this.failureReason  = reason;
+        this.completedAt    = LocalDateTime.now();
+    }
 }

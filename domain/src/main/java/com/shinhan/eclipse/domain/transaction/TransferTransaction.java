@@ -41,6 +41,9 @@ public class TransferTransaction extends BaseEntity {
 
     private LocalDateTime completedAt;
 
+    @Column(length = 255)
+    private String failureReason;
+
     public static TransferTransaction create(Long userId, Long fromAccountId, Long toAccountId,
                                               String transferType, BigDecimal amount) {
         TransferTransaction tx = new TransferTransaction();
@@ -58,6 +61,12 @@ public class TransferTransaction extends BaseEntity {
 
     public void complete() {
         this.transferStatus = "COMPLETED";
+        this.completedAt    = LocalDateTime.now();
+    }
+
+    public void fail(String reason) {
+        this.transferStatus = "FAILED";
+        this.failureReason  = reason;
         this.completedAt    = LocalDateTime.now();
     }
 }
