@@ -27,4 +27,11 @@ public interface WorkerReturnPlanRepository extends JpaRepository<ReturnPlan, Lo
               )
             """)
     List<ReturnPlan> findDraftPlansDueForSettlement(@Param("today") LocalDate today);
+
+    @Query("""
+            select s.id, i.companyName
+            from IpoSubscription s join Ipo i on s.ipoId = i.id
+            where s.id in :subscriptionIds
+            """)
+    List<Object[]> findCompanyNamesBySubscriptionIds(@Param("subscriptionIds") List<Long> subscriptionIds);
 }

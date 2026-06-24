@@ -27,3 +27,6 @@ bin/
 ### RSA Keys
 **/keys/private.pem
 
+### Firebase
+config/firebase-service-account.json
+
