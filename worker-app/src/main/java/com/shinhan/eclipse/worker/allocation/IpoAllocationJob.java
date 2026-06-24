@@ -1,11 +1,13 @@
 package com.shinhan.eclipse.worker.allocation;
 
 import com.shinhan.eclipse.domain.ipo.Ipo;
+import com.shinhan.eclipse.domain.notification.Notification;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
 import com.shinhan.eclipse.worker.allocation.dto.AllocationApplicant;
 import com.shinhan.eclipse.worker.allocation.dto.AllocationResult;
 import com.shinhan.eclipse.worker.allocation.repository.WorkerIpoRepository;
 import com.shinhan.eclipse.worker.allocation.repository.WorkerIpoSubscriptionRepository;
+import com.shinhan.eclipse.worker.allocation.repository.WorkerNotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -35,6 +37,7 @@ public class IpoAllocationJob {
 
     private final WorkerIpoRepository ipoRepository;
     private final WorkerIpoSubscriptionRepository subscriptionRepository;
+    private final WorkerNotificationRepository notificationRepository;
 
     @Scheduled(cron = "0 30 21 * * *", zone = "Asia/Seoul")
     public void run() {
@@ -76,6 +79,14 @@ public class IpoAllocationJob {
             IpoSubscription subscription = bySubscriptionId.get(result.customerId());
             BigDecimal ratePercent = result.allocationRate().multiply(BigDecimal.valueOf(100));
             subscription.allocate(result.finalAllocated(), ratePercent);
+
+            notificationRepository.save(Notification.create(
+                    subscription.getUserId(),
+                    "IPO_ALLOCATION",
+                    "IPO 배정 결과가 나왔어요.",
+                    ipo.getCompanyName() + " 배정 결과를 지금 확인해보세요.",
+                    "IPO", ipo.getId()
+            ));
         }
 
         log.info("IPO 배정 완료: ipoId={}, ticker={}, 청약 {}건", ipo.getId(), ipo.getTicker(), subscriptions.size());

@@ -52,6 +52,11 @@ public class IdleDollarTrigger extends BaseEntity {
         return t;
     }
 
+    public void linkNotification(Long notificationId) {
+        this.notificationId = notificationId;
+        this.notifiedAt = LocalDateTime.now(KST);
+    }
+
     public void invalidate() {
         this.triggerStatus = "INVALIDATED";
         this.invalidatedAt = LocalDateTime.now(KST);

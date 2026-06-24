@@ -11,6 +11,7 @@ import com.shinhan.eclipse.service.app.auth.dto.OnboardingAccountsResponse.CardI
 import com.shinhan.eclipse.service.app.auth.internal.CardRepository;
 import com.shinhan.eclipse.service.app.auth.internal.OnboardingAccountRepository;
 import com.shinhan.eclipse.service.app.auth.internal.UserRepository;
+import com.shinhan.eclipse.service.mypage.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class OnboardingService {
     private final UserRepository userRepository;
     private final OnboardingAccountRepository accountRepository;
     private final CardRepository cardRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public void complete(Long userId) {
@@ -49,6 +51,7 @@ public class OnboardingService {
         cards.forEach(Card::link);
 
         user.completeOnboarding();
+        notificationService.initSettings(userId);
     }
 
     @Transactional(readOnly = true)

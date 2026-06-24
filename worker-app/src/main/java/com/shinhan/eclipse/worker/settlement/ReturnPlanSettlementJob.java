@@ -1,6 +1,8 @@
 package com.shinhan.eclipse.worker.settlement;
 
+import com.shinhan.eclipse.domain.notification.Notification;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
+import com.shinhan.eclipse.worker.allocation.repository.WorkerNotificationRepository;
 import com.shinhan.eclipse.worker.settlement.repository.WorkerReturnPlanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,8 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 환불일(상장일+1일) 정산 배치. "DRAFT" 상태인 리턴 플랜 중 출처 청약의 IPO refundDate가 오늘이거나
@@ -36,6 +40,7 @@ public class ReturnPlanSettlementJob {
 
     private final WorkerReturnPlanRepository returnPlanRepository;
     private final ReturnPlanExecutionClient executionClient;
+    private final WorkerNotificationRepository notificationRepository;
 
     @Scheduled(cron = "0 0 21 * * *", zone = "Asia/Seoul")
     public void run() {
@@ -45,10 +50,23 @@ public class ReturnPlanSettlementJob {
         }
 
         log.info("ReturnPlanSettlementJob 시작: 대상 {}건", targets.size());
+
+        List<Long> subscriptionIds = targets.stream().map(ReturnPlan::getSubscriptionId).toList();
+        Map<Long, String> companyBySubscriptionId = returnPlanRepository.findCompanyNamesBySubscriptionIds(subscriptionIds)
+                .stream().collect(Collectors.toMap(row -> (Long) row[0], row -> (String) row[1]));
+
         int executed = 0;
         for (ReturnPlan plan : targets) {
             if (executeWithRetry(plan.getId())) {
                 executed++;
+                String companyName = companyBySubscriptionId.getOrDefault(plan.getSubscriptionId(), "IPO");
+                notificationRepository.save(Notification.create(
+                        plan.getUserId(),
+                        "IPO_REFUND",
+                        "리턴 플랜 완료",
+                        companyName + " 청약 환불금 $" + plan.getTotalRefundAmount().stripTrailingZeros().toPlainString() + "가 리턴 플랜되었어요!",
+                        "RETURN_PLAN", plan.getId()
+                ));
             }
         }
         log.info("ReturnPlanSettlementJob 완료: {}건 실행", executed);
