@@ -6,6 +6,7 @@ import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.inflow.IdleDollarTrigger;
 import com.shinhan.eclipse.service.inflow.IdleDollarService;
 import com.shinhan.eclipse.service.inflow.IdleDollarStatusResponse;
+import com.shinhan.eclipse.service.mypage.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,13 +27,15 @@ import java.util.stream.Stream;
 class IdleDollarServiceImpl implements IdleDollarService {
 
     private static final int IDLE_THRESHOLD_DAYS = 14;
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final ZoneId KST                 = ZoneId.of("Asia/Seoul");
 
-    private final IdleDollarTriggerRepository triggerRepository;
-    private final IdleDetectionAccountRepository accountRepository;
-    private final IdleDetectionTradeOrderRepository tradeOrderRepository;
+    private final IdleDollarTriggerRepository        triggerRepository;
+    private final IdleDetectionAccountRepository     accountRepository;
+    private final IdleDetectionTradeOrderRepository  tradeOrderRepository;
     private final IdleDetectionFxTransactionRepository fxTransactionRepository;
-    private final IdleDetectionTransferRepository transferRepository;
+    private final IdleDetectionTransferRepository    transferRepository;
+    private final IdleDetectionFavoriteIpoRepository favoriteIpoRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -114,16 +117,42 @@ class IdleDollarServiceImpl implements IdleDollarService {
             return false;
         }
 
+        if (!passesIpoCondition(account.getUserId())) {
+            log.info("유휴 달러 트리거 스킵 — IPO 조건 미충족 [userId={}]", account.getUserId());
+            return false;
+        }
+
         int idleDays = lastActivity
                 .map(la -> (int) ChronoUnit.DAYS.between(la.toLocalDate(), LocalDate.now(KST)))
                 .orElse(IDLE_THRESHOLD_DAYS);
 
-        triggerRepository.save(
+        IdleDollarTrigger trigger = triggerRepository.save(
                 IdleDollarTrigger.detect(account.getUserId(), account.getId(), account.getBalance(), idleDays));
+
+        Long notificationId = notificationService.createNotification(
+                account.getUserId(),
+                "IDLE_DOLLAR",
+                "달러가 " + idleDays + "일째 잠들어 있어요.",
+                "투자 기회를 확인해보세요.",
+                "ACCOUNT", account.getId()
+        );
+        trigger.linkNotification(notificationId);
 
         log.info("유휴 달러 트리거 생성 [accountId={}, userId={}, balance={}, idleDays={}]",
                 account.getId(), account.getUserId(), account.getBalance(), idleDays);
         return true;
+    }
+
+    /**
+     * 관심 IPO가 없으면 무조건 통과.
+     * 관심 IPO가 있으면 청약 마감일이 14일 이상 남은 항목이 하나라도 있어야 통과.
+     */
+    private boolean passesIpoCondition(Long userId) {
+        if (!favoriteIpoRepository.existsByUserId(userId)) {
+            return true;
+        }
+        LocalDate cutoff = LocalDate.now(KST).plusDays(IDLE_THRESHOLD_DAYS);
+        return favoriteIpoRepository.existsFavoriteWithSubscriptionEndAfter(userId, cutoff);
     }
 
     private Optional<LocalDateTime> resolveLastActivity(Long accountId) {

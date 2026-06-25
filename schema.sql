@@ -1,5 +1,11 @@
--- Eclipse DB Schema v1.1.0 (subscription_results 통합)
+-- Eclipse DB Schema v1.1.1 (리턴 플랜 상태/목적지 타입 정리)
 -- Engine: InnoDB (FK 제약 사용) / Charset: utf8mb4
+--
+-- [v1.1.0 → v1.1.1 변경 사항] (스키마 변경 없음, 컬럼 값 의미만 정리)
+--  - return_plans.plan_status: CONFIRMED 단계 제거 → DRAFT / EXECUTED 2단계
+--    (confirmed_at은 상태 전이와 무관하게 "사용자가 확인 버튼을 누른 시각"만 기록)
+--  - return_plan_allocations.destination_type, financial_accounts.account_type:
+--    FX_SAVINGS / FX_ACCOUNT → SAVINGS / DEPOSIT (실제 계좌 타입과 일치시킴)
 --
 -- [v1.0.2 → v1.1.0 변경 사항]
 --  - subscription_results 테이블 제거
@@ -28,7 +34,7 @@ CREATE TABLE `users` (
 CREATE TABLE `financial_accounts` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT,
 	`user_id`	BIGINT	NOT NULL,
-	`account_type`	VARCHAR(30)	NOT NULL	COMMENT 'SECURITIES / FX_SAVINGS / FX_ACCOUNT 등',
+	`account_type`	VARCHAR(30)	NOT NULL	COMMENT 'SECURITIES / SAVINGS / DEPOSIT 등',
 	`institution_type`	VARCHAR(30)	NOT NULL,
 	`institution_name`	VARCHAR(50)	NOT NULL,
 	`account_name`	VARCHAR(100)	NULL,
@@ -117,13 +123,14 @@ CREATE TABLE `ipos` (
 	`offer_price_max`	DECIMAL(18,4)	NULL,
 	`confirmed_offer_price`	DECIMAL(18,4)	NULL,
 	`minimum_subscription_amount`	DECIMAL(18,4)	NULL,
-	`total_allocable_shares`	INT	NULL	COMMENT '중개사가 주관사로부터 배정받은 총 공모주식수 (운영자 입력값)',
 	`ipo_status`	VARCHAR(30)	NOT NULL	DEFAULT 'UPCOMING',
+	`number_of_shares`	BIGINT	NULL,
+	`logo_url`	VARCHAR(500)	NULL,
+	`current_price`	DECIMAL(18,4)	NULL,
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`),
-	CONSTRAINT `CK_ipos_total_allocable_shares` CHECK (`total_allocable_shares` IS NULL OR `total_allocable_shares` >= 0)
+	PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [변경] risk_level(VARCHAR) → risk_score(숫자). 등급 문자(A/B/C) 저장 금지.
@@ -147,7 +154,10 @@ CREATE TABLE `ipo_news` (
 	`source`	VARCHAR(100)	NULL,
 	`published_at`	DATETIME	NULL,
 	`url`	VARCHAR(500)	NULL,
-	`summary`	TEXT	NULL,
+	`phase`	VARCHAR(10)	NOT NULL	DEFAULT 'PRE'	COMMENT 'PRE: 상장 전 / POST: 상장 후',
+	`content`	TEXT	NULL	COMMENT 'EODHD 영어 원문',
+	`title_ko`	VARCHAR(255)	NULL	COMMENT '한국어 제목',
+	`summary`	TEXT	NULL	COMMENT '한국어 요약 (IPO-007 노출)',
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
@@ -207,8 +217,7 @@ CREATE TABLE `return_plans` (
 	`currency`	VARCHAR(10)	NOT NULL	DEFAULT 'USD',
 	`current_securities_balance`	DECIMAL(18,4)	NULL	COMMENT '리턴 플랜 생성 시점 증권 잔액 스냅샷',
 	`savings_interest_rate`	DECIMAL(7,4)	NULL	COMMENT '생성 시점 외화적금 금리 스냅샷',
-	`plan_status`	VARCHAR(30)	NOT NULL	DEFAULT 'DRAFT'	COMMENT 'DRAFT / CONFIRMED / EXECUTED',
-	`confirmed_at`	DATETIME	NULL,
+	`plan_status`	VARCHAR(30)	NOT NULL	DEFAULT 'DRAFT'	COMMENT 'DRAFT / EXECUTED',
 	`executed_at`	DATETIME	NULL,
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
@@ -220,7 +229,7 @@ CREATE TABLE `return_plans` (
 CREATE TABLE `return_plan_allocations` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT,
 	`return_plan_id`	BIGINT	NOT NULL,
-	`destination_type`	VARCHAR(30)	NOT NULL	COMMENT 'SECURITIES / FX_SAVINGS / FX_ACCOUNT',
+	`destination_type`	VARCHAR(30)	NOT NULL	COMMENT 'SECURITIES / SAVINGS / DEPOSIT',
 	`destination_account_id`	BIGINT	NULL,
 	`allocation_ratio`	DECIMAL(5,2)	NOT NULL,
 	`allocation_amount`	DECIMAL(18,4)	NOT NULL,
@@ -236,7 +245,7 @@ CREATE TABLE `return_plan_allocations` (
 CREATE TABLE `return_plan_presets` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT,
 	`preset_code`	VARCHAR(30)	NOT NULL	COMMENT 'IPO_FOCUS / STABLE_SAVING / BALANCED',
-	`preset_name`	VARCHAR(50)	NOT NULL	COMMENT 'IPO 집중 / 안정 저축 / 균형 배분',
+	`preset_name`	VARCHAR(50)	NOT NULL	COMMENT '투자 집중 / 안정 저축 / 균형 배분',
 	`securities_ratio`	DECIMAL(5,2)	NOT NULL	COMMENT '외화 증권 계좌 비율',
 	`savings_ratio`	DECIMAL(5,2)	NOT NULL	COMMENT '외화 적금 비율',
 	`account_ratio`	DECIMAL(5,2)	NOT NULL	COMMENT '외화 통장 비율',
@@ -394,7 +403,8 @@ CREATE TABLE `notifications` (
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`)
+	PRIMARY KEY (`id`),
+	INDEX `IDX_notifications_polling` (`status`, `sent_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [신규] 쉬는 달러 감지 이력 (REQ-08) - 트리거 발동/억제/무효화 상태 추적
@@ -414,6 +424,21 @@ CREATE TABLE `idle_dollar_triggers` (
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
 	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `notification_settings` (
+	`id`                     BIGINT       NOT NULL AUTO_INCREMENT,
+	`user_id`                BIGINT       NOT NULL,
+	`fcm_token`              VARCHAR(500) NULL         COMMENT 'NULL = 전체 알림 꺼짐 (기기 미등록)',
+	`ipo_allocation_enabled` BOOLEAN      NOT NULL DEFAULT TRUE,
+	`ipo_refund_enabled`     BOOLEAN      NOT NULL DEFAULT TRUE,
+	`idle_dollar_enabled`    BOOLEAN      NOT NULL DEFAULT TRUE,
+	`created_at`             DATETIME     NOT NULL,
+	`updated_at`             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`status`                 VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `UK_notification_settings_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -458,11 +483,14 @@ ALTER TABLE `investment_profiles`
 
 -- IPO 관련
 ALTER TABLE `ipos`
-	ADD CONSTRAINT `FK_ipos_product` FOREIGN KEY (`product_id`) REFERENCES `investment_products` (`id`);
+	ADD CONSTRAINT `FK_ipos_product` FOREIGN KEY (`product_id`) REFERENCES `investment_products` (`id`),
+	ADD UNIQUE KEY `uq_ipos_ticker` (`ticker`);
 ALTER TABLE `ipo_risk_scores`
 	ADD CONSTRAINT `FK_ipo_risk_scores_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`);
 ALTER TABLE `ipo_news`
-	ADD CONSTRAINT `FK_ipo_news_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`);
+	ADD CONSTRAINT `FK_ipo_news_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`),
+	ADD UNIQUE KEY `uq_ipo_url`  (`ipo_id`, `url`(255)),
+	ADD UNIQUE KEY `uq_ipo_news` (`ipo_id`, `title`(191), `published_at`);
 ALTER TABLE `favorite_ipos`
 	ADD CONSTRAINT `FK_favorite_ipos_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
 	ADD CONSTRAINT `FK_favorite_ipos_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`);
@@ -517,3 +545,5 @@ ALTER TABLE `idle_dollar_triggers`
 	ADD CONSTRAINT `FK_idle_dollar_triggers_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
 	ADD CONSTRAINT `FK_idle_dollar_triggers_account` FOREIGN KEY (`account_id`) REFERENCES `financial_accounts` (`id`),
 	ADD CONSTRAINT `FK_idle_dollar_triggers_notification` FOREIGN KEY (`notification_id`) REFERENCES `notifications` (`id`);
+ALTER TABLE `notification_settings`
+	ADD CONSTRAINT `FK_notification_settings_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);

@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -19,6 +21,11 @@ class ExchangeServiceImpl implements ExchangeService {
     @Override
     public ExchangeRateInfo getExchangeRate(String currencyCode) {
         return rateCache.get(currencyCode).orElseGet(() -> fetchAndCache(currencyCode));
+    }
+
+    @Override
+    public Optional<ExchangeRateInfo> getPreviousExchangeRate(String currencyCode) {
+        return rateCache.getPrev(currencyCode);
     }
 
     private ExchangeRateInfo fetchAndCache(String currencyCode) {

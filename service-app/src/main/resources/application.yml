@@ -77,6 +77,13 @@ eclipse:
   ledger:
     url: ${LEDGER_URL:http://localhost:8080}
 
+firebase:
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:../config/firebase-service-account.json}
+
 logging:
   level:
     com.shinhan.eclipse: INFO
+
+app:
+  cookie:
+    secure: true

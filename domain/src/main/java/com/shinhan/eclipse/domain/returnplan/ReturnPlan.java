@@ -39,7 +39,6 @@ public class ReturnPlan extends BaseEntity {
     @Column(nullable = false, length = 30)
     private String planStatus = "DRAFT";
 
-    private LocalDateTime confirmedAt;
     private LocalDateTime executedAt;
 
     public static ReturnPlan create(Long userId, Long subscriptionId, BigDecimal totalRefundAmount,
@@ -61,11 +60,16 @@ public class ReturnPlan extends BaseEntity {
         return "DRAFT".equals(this.planStatus);
     }
 
-    public void confirm() {
+    public boolean isExecuted() {
+        return "EXECUTED".equals(this.planStatus);
+    }
+
+    /** 환불일 배치가 호출하는 실제 분배 실행. 사용자 액션이 아니다. */
+    public void execute() {
         if (!isDraft()) {
             throw new BusinessException(ErrorCode.RETURN_PLAN_CONFLICT);
         }
-        this.planStatus = "CONFIRMED";
-        this.confirmedAt = LocalDateTime.now();
+        this.executedAt = LocalDateTime.now();
+        this.planStatus = "EXECUTED";
     }
 }

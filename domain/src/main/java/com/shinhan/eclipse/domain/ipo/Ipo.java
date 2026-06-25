@@ -46,11 +46,25 @@ public class Ipo extends BaseEntity {
     @Column(precision = 18, scale = 4)
     private BigDecimal minimumSubscriptionAmount;
 
-    /** 중개사가 주관사로부터 배정받은 총 공모주식수 (운영자 입력, 외부 계약값 — 계산값 아님). */
-    private Integer totalAllocableShares;
-
     @Column(nullable = false, length = 30)
     private String ipoStatus = "UPCOMING";
+
+    private Long numberOfShares;
+
+    @Column(length = 500)
+    private String logoUrl;
+
+    @Column(precision = 18, scale = 4)
+    private BigDecimal currentPrice;
+
+    public void updateCurrentPrice(BigDecimal currentPrice) {
+        this.currentPrice = currentPrice;
+    }
+
+    public void updateFmpData(String logoUrl, Long numberOfShares) {
+        if (logoUrl != null) this.logoUrl = logoUrl;
+        if (numberOfShares != null) this.numberOfShares = numberOfShares;
+    }
 
     public static Ipo create(
             String ticker,
@@ -66,8 +80,10 @@ public class Ipo extends BaseEntity {
             BigDecimal offerPriceMax,
             BigDecimal confirmedOfferPrice,
             BigDecimal minimumSubscriptionAmount,
-            Integer totalAllocableShares,
-            String ipoStatus
+            String ipoStatus,
+            Long numberOfShares,
+            String logoUrl,
+            Integer totalAllocableShares
     ) {
         Ipo ipo = new Ipo();
         ipo.ticker = ticker;
@@ -83,8 +99,9 @@ public class Ipo extends BaseEntity {
         ipo.offerPriceMax = offerPriceMax;
         ipo.confirmedOfferPrice = confirmedOfferPrice;
         ipo.minimumSubscriptionAmount = minimumSubscriptionAmount;
-        ipo.totalAllocableShares = totalAllocableShares;
         ipo.ipoStatus = ipoStatus;
+        ipo.numberOfShares = numberOfShares;
+        ipo.logoUrl = logoUrl;
         return ipo;
     }
 }

@@ -7,4 +7,6 @@ import java.util.Optional;
 interface ExchangeRateCache {
     void put(ExchangeRateInfo info);
     Optional<ExchangeRateInfo> get(String currencyCode);
+    void putPrev(ExchangeRateInfo info);
+    Optional<ExchangeRateInfo> getPrev(String currencyCode);
 }

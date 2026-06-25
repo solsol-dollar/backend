@@ -13,12 +13,16 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -34,19 +38,34 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
 
     @Override
     @Transactional
-    public IpoSubscription requestSubscription(IpoSubscription draft) {
-        Ipo ipo = ipoRepository.findById(draft.getIpoId())
+    public IpoSubscription requestSubscription(Long userId, Long ipoId, Long securitiesAccountId,
+                                                BigDecimal subscriptionAmount, BigDecimal offerPrice) {
+        Ipo ipo = ipoRepository.findById(ipoId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         validateSubscriptionPeriod(ipo);
-        validateOfferPrice(ipo, draft.getOfferPrice());
+        validateOfferPrice(ipo, offerPrice);
 
-        FinancialAccount account = accountLinkService.getLinkedAccount(draft.getUserId(), draft.getSecuritiesAccountId());
+        if (ipo.getMinimumSubscriptionAmount() != null
+                && subscriptionAmount.compareTo(ipo.getMinimumSubscriptionAmount()) < 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    "청약신청금액은 최소 " + ipo.getMinimumSubscriptionAmount() + " 이상이어야 합니다.");
+        }
+
+        int shares = subscriptionAmount.divide(offerPrice, 0, RoundingMode.DOWN).intValue();
+        if (shares < 1) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "청약신청금액이 공모가 1주 가격보다 작습니다.");
+        }
+
+        IpoSubscription draft = IpoSubscription.request(userId, ipoId, securitiesAccountId, shares, offerPrice);
+
+        FinancialAccount account = accountLinkService.getLinkedAccount(userId, securitiesAccountId);
         if (!account.hasSufficientBalance(draft.getSubscriptionAmount())) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
         IpoSubscription saved = subscriptionRepository.save(draft);
-        log.info("청약 신청 생성: subscriptionId={}, userId={}, ipoId={}", saved.getId(), saved.getUserId(), saved.getIpoId());
+        log.info("청약 신청 생성: subscriptionId={}, userId={}, ipoId={}, shares={}",
+                saved.getId(), saved.getUserId(), saved.getIpoId(), shares);
         return saved;
     }
 
@@ -84,7 +103,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
 
     @Override
     @Transactional
-    public void cancelSubscription(Long subscriptionId, Long userId) {
+    public IpoSubscription cancelSubscription(Long subscriptionId, Long userId) {
         IpoSubscription subscription = subscriptionRepository.findByIdAndUserIdForUpdate(subscriptionId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND));
 
@@ -96,26 +115,20 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         validateSubscriptionPeriod(ipo);
 
+        // REQUESTED 상태에서는 confirmSubscription() 전까지 실제 계좌 차감이 없으므로,
+        // 여기서 환불할 돈은 없다 — "환불 금액"은 취소되는 청약신청금액을 그대로 보여주는 표시값이다.
         subscription.cancel();
         log.info("청약 취소: subscriptionId={}, userId={}", subscription.getId(), userId);
+        return subscription;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<IpoSubscription> getSubscriptions(Long userId, Long ipoId, String status) {
-        boolean hasIpoId = ipoId != null;
-        boolean hasStatus = StringUtils.hasText(status);
-
-        if (hasIpoId && hasStatus) {
-            return subscriptionRepository.findByUserIdAndIpoIdAndSubscriptionStatus(userId, ipoId, status);
-        }
-        if (hasIpoId) {
-            return subscriptionRepository.findByUserIdAndIpoId(userId, ipoId);
-        }
-        if (hasStatus) {
-            return subscriptionRepository.findByUserIdAndSubscriptionStatus(userId, status);
-        }
-        return subscriptionRepository.findByUserId(userId);
+    public List<IpoSubscription> getSubscriptions(Long userId, Long ipoId, String status, LocalDate from, LocalDate to) {
+        String normalizedStatus = StringUtils.hasText(status) ? status : null;
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atTime(LocalTime.MAX);
+        return subscriptionRepository.search(userId, ipoId, normalizedStatus, fromDateTime, toDateTime);
     }
 
     @Override
@@ -146,7 +159,8 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
     @Override
     @Transactional(readOnly = true)
     public Optional<Ipo> findNextUpcomingIpo() {
-        return ipoRepository.findFirstByIpoStatusOrderBySubscriptionStartDateAsc("UPCOMING");
+        List<Ipo> upcoming = ipoRepository.findUpcomingOrderByStartDate(LocalDate.now(), PageRequest.of(0, 1));
+        return upcoming.stream().findFirst();
     }
 
     private void validateSubscriptionPeriod(Ipo ipo) {

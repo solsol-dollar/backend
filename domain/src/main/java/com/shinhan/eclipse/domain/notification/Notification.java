@@ -35,4 +35,17 @@ public class Notification extends BaseEntity {
 
     private LocalDateTime sentAt;
     private LocalDateTime readAt;
+
+    public static Notification create(Long userId, String notificationType,
+                                      String title, String message,
+                                      String targetType, Long targetId) {
+        Notification n = new Notification();
+        n.userId = userId;
+        n.notificationType = notificationType;
+        n.title = title;
+        n.message = message;
+        n.targetType = targetType;
+        n.targetId = targetId;
+        return n;
+    }
 }

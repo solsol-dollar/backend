@@ -1,6 +1,7 @@
 package com.shinhan.eclipse.ledger.returnplan;
 
 import com.shinhan.eclipse.LedgerApplication;
+import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
 import jakarta.persistence.EntityManager;
@@ -19,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -37,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 "spring.datasource.password=",
                 "spring.jpa.hibernate.ddl-auto=create-drop",
                 "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
+                "eclipse.internal.api-key=test-internal-api-key",
         }
 )
 @AutoConfigureMockMvc
@@ -61,9 +64,12 @@ class ReturnPlanApiTest {
     }
 
     @Test
-    void 배정결과_조회부터_리턴플랜_생성_수정_확정_목록까지_전체_흐름이_동작한다() throws Exception {
+    void 배정결과_조회부터_리턴플랜_생성_수정_실행_목록까지_전체_흐름이_동작한다() throws Exception {
         Ipo ipo = persistIpo();
         IpoSubscription subscription = persistAllocatedSubscription(ipo.getId());
+        FinancialAccount savingsAccount = persistLinkedAccount("SAVINGS");
+        FinancialAccount depositAccount = persistLinkedAccount("DEPOSIT");
+        FinancialAccount securitiesAccount = persistLinkedAccount("SECURITIES");
 
         // ALLOC-001: 목록 조회
         mockMvc.perform(get("/api/v1/subscription-results")
@@ -104,8 +110,8 @@ class ReturnPlanApiTest {
                         .content("""
                                 {"allocations":[
                                   {"destinationType":"SECURITIES","ratio":50},
-                                  {"destinationType":"FX_SAVINGS","ratio":20},
-                                  {"destinationType":"FX_ACCOUNT","ratio":20}
+                                  {"destinationType":"SAVINGS","ratio":20},
+                                  {"destinationType":"DEPOSIT","ratio":20}
                                 ]}"""))
                 .andExpect(status().is4xxClientError())
                 .andExpect(jsonPath("$.code").value("L010"));
@@ -118,8 +124,8 @@ class ReturnPlanApiTest {
                         .content("""
                                 {"allocations":[
                                   {"destinationType":"SECURITIES","ratio":20},
-                                  {"destinationType":"FX_SAVINGS","ratio":50},
-                                  {"destinationType":"FX_ACCOUNT","ratio":30}
+                                  {"destinationType":"SAVINGS","ratio":50},
+                                  {"destinationType":"DEPOSIT","ratio":30}
                                 ]}"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.allocations[1].ratio").value(50))
@@ -132,18 +138,56 @@ class ReturnPlanApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.allocations[2].ratio").value(30));
 
-        // RP-003: 확정
-        mockMvc.perform(put("/api/v1/return-plans/{id}/confirm", returnPlanId)
+        // 별도 확정 액션 없이, 실행 전까지는 계속 비율 수정 가능
+        mockMvc.perform(put("/api/v1/return-plans/{id}", returnPlanId)
                         .with(user("tester"))
-                        .header("X-User-Id", USER_ID))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.planStatus").value("CONFIRMED"))
-                .andExpect(jsonPath("$.data.confirmedAt").exists());
+                        .header("X-User-Id", USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"allocations":[
+                                  {"destinationType":"SECURITIES","ratio":30},
+                                  {"destinationType":"SAVINGS","ratio":40},
+                                  {"destinationType":"DEPOSIT","ratio":30}
+                                ]}"""))
+                .andExpect(status().isOk());
 
-        // 이미 확정된 플랜을 다시 확정하면 충돌(L011)
-        mockMvc.perform(put("/api/v1/return-plans/{id}/confirm", returnPlanId)
+        // 환불일 당일/이후에는 비율 수정 불가(L013) — 테스트 IPO의 refundDate는 오늘+3일이라 아직 가능,
+        // 같은 검증 로직이 internal 실행 API에는 적용되지 않는다는 점만 RP-008에서 별도 확인한다.
+
+        // RP-008(명세 외 추가): 환불일 정산 배치가 호출하는 내부 실행 API
+        mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId)
+                        .header("X-Internal-Api-Key", "test-internal-api-key"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.planStatus").value("EXECUTED"))
+                .andExpect(jsonPath("$.data.executedAt").exists());
+
+        // 내부 API 키가 없거나 틀리면 401
+        mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId)
+                        .header("X-Internal-Api-Key", "wrong-key"))
+                .andExpect(status().isUnauthorized());
+
+        // 실행으로 비율(30/40/30)만큼 각 계좌에 실제로 적립됐는지 확인
+        assertAccountBalance(savingsAccount.getId(), new BigDecimal("84.2000"));
+        assertAccountBalance(depositAccount.getId(), new BigDecimal("63.1500"));
+        assertAccountBalance(securitiesAccount.getId(), new BigDecimal("63.1500"));
+
+        // 이미 실행된 플랜을 다시 실행하면 충돌(L011)
+        mockMvc.perform(put("/internal/return-plans/{id}/execute", returnPlanId)
+                        .header("X-Internal-Api-Key", "test-internal-api-key"))
+                .andExpect(status().is4xxClientError())
+                .andExpect(jsonPath("$.code").value("L011"));
+
+        // 실행된 플랜은 더 이상 비율 수정 불가
+        mockMvc.perform(put("/api/v1/return-plans/{id}", returnPlanId)
                         .with(user("tester"))
-                        .header("X-User-Id", USER_ID))
+                        .header("X-User-Id", USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"allocations":[
+                                  {"destinationType":"SECURITIES","ratio":100}
+                                ]}"""))
                 .andExpect(status().is4xxClientError())
                 .andExpect(jsonPath("$.code").value("L011"));
 
@@ -152,7 +196,7 @@ class ReturnPlanApiTest {
                         .with(user("tester"))
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.returnPlans[0].planStatus").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.returnPlans[0].planStatus").value("EXECUTED"))
                 .andExpect(jsonPath("$.data.returnPlans[0].sourceCompanyName").value("CoreWeave"));
 
         // 같은 청약으로 다시 생성하면 중복(L008)
@@ -163,6 +207,15 @@ class ReturnPlanApiTest {
                         .content("{\"subscriptionId\":" + subscription.getId() + "}"))
                 .andExpect(status().is4xxClientError())
                 .andExpect(jsonPath("$.code").value("L008"));
+    }
+
+    private void assertAccountBalance(Long accountId, BigDecimal expectedBalance) {
+        BigDecimal balance = txTemplate.execute(status -> {
+            FinancialAccount account = em.find(FinancialAccount.class, accountId);
+            em.refresh(account);
+            return account.getBalance();
+        });
+        assertThat(balance).isEqualByComparingTo(expectedBalance);
     }
 
     private Long extractReturnPlanId(String json) {
@@ -184,6 +237,22 @@ class ReturnPlanApiTest {
             em.persist(ipo);
             em.flush();
             return ipo;
+        });
+    }
+
+    private FinancialAccount persistLinkedAccount(String accountType) {
+        return txTemplate.execute(status -> {
+            FinancialAccount account = new FinancialAccount();
+            ReflectionTestUtils.setField(account, "userId", USER_ID);
+            ReflectionTestUtils.setField(account, "accountType", accountType);
+            ReflectionTestUtils.setField(account, "institutionType", "BANK");
+            ReflectionTestUtils.setField(account, "institutionName", "신한은행");
+            ReflectionTestUtils.setField(account, "currency", "USD");
+            ReflectionTestUtils.setField(account, "balance", BigDecimal.ZERO);
+            ReflectionTestUtils.setField(account, "linked", true);
+            em.persist(account);
+            em.flush();
+            return account;
         });
     }
 

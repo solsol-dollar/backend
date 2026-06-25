@@ -23,7 +23,7 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 30)
     private String onboardingStatus = "REQUIRED";
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String simplePassword;
 
     public void completeOnboarding() {
