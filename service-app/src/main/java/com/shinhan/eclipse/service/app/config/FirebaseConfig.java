@@ -7,26 +7,32 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
+import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class FirebaseConfig {
 
-    private final String credentialsPath;
+    @Value("${firebase.secret-name:}")
+    private String secretName;
 
-    public FirebaseConfig(@Value("${firebase.credentials-path}") String credentialsPath) {
-        this.credentialsPath = credentialsPath;
-    }
+    @Value("${firebase.credentials-path:}")
+    private String credentialsPath;
 
     @Bean
     public FirebaseMessaging firebaseMessaging() throws IOException {
         FirebaseApp app;
         if (FirebaseApp.getApps().isEmpty()) {
-            try (FileInputStream serviceAccount = new FileInputStream(credentialsPath)) {
+            try (InputStream stream = resolveCredentials()) {
                 FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                        .setCredentials(GoogleCredentials.fromStream(stream))
                         .build();
                 app = FirebaseApp.initializeApp(options);
             }
@@ -34,5 +40,19 @@ public class FirebaseConfig {
             app = FirebaseApp.getInstance();
         }
         return FirebaseMessaging.getInstance(app);
+    }
+
+    private InputStream resolveCredentials() throws IOException {
+        if (secretName != null && !secretName.isBlank()) {
+            try (SecretsManagerClient client = SecretsManagerClient.builder()
+                    .region(Region.AP_NORTHEAST_2)
+                    .build()) {
+                String json = client.getSecretValue(
+                        GetSecretValueRequest.builder().secretId(secretName).build()
+                ).secretString();
+                return new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+            }
+        }
+        return new FileInputStream(credentialsPath);
     }
 }

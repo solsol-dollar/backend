@@ -78,7 +78,8 @@ eclipse:
     url: ${LEDGER_URL:http://localhost:8080}
 
 firebase:
-  credentials-path: ${FIREBASE_CREDENTIALS_PATH:../config/firebase-service-account.json}
+  secret-name: ${FIREBASE_SECRET_NAME:}
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
 
 logging:
   level:
