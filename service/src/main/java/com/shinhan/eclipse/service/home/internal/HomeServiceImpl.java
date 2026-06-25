@@ -64,6 +64,17 @@ class HomeServiceImpl implements HomeService {
                 .map(FinancialAccount::getBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // 사용가능잔액(= 실제잔액 - 청약 등으로 잠긴 reservedBalance)
+        BigDecimal cmaUsdAvailable = securities.stream()
+                .filter(a -> "USD".equals(a.getCurrency()))
+                .map(FinancialAccount::availableBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal cmaKrwAvailable = securities.stream()
+                .filter(a -> "KRW".equals(a.getCurrency()))
+                .map(FinancialAccount::availableBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         // KRW → USD 환산
         BigDecimal krwInUsd = cmaKrw.divide(exchangeRate, 4, RoundingMode.HALF_UP);
         BigDecimal securitiesTotalUsd = cmaUsd.add(krwInUsd);
@@ -82,7 +93,9 @@ class HomeServiceImpl implements HomeService {
                 .orElse(null);
 
         AssetsSummaryResponse.SecuritiesAsset securitiesAsset =
-                new AssetsSummaryResponse.SecuritiesAsset(usdAccountId, krwAccountId, cmaAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd);
+                new AssetsSummaryResponse.SecuritiesAsset(
+                        usdAccountId, krwAccountId, cmaAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd,
+                        cmaUsdAvailable, cmaKrwAvailable);
 
         // 예금/적금 계좌
         List<AssetsSummaryResponse.AccountAsset> accountAssets = accounts.stream()

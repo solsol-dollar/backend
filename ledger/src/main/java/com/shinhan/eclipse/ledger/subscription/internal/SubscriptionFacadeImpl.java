@@ -2,6 +2,7 @@ package com.shinhan.eclipse.ledger.subscription.internal;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
+import com.shinhan.eclipse.domain.account.BalanceHold;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
@@ -34,6 +35,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
     private final IpoSubscriptionRepository subscriptionRepository;
     private final IpoRepository ipoRepository;
     private final AccountLinkService accountLinkService;
+    private final BalanceHoldRepository balanceHoldRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -58,14 +60,15 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
 
         IpoSubscription draft = IpoSubscription.request(userId, ipoId, securitiesAccountId, shares, offerPrice);
 
-        FinancialAccount account = accountLinkService.getLinkedAccount(userId, securitiesAccountId);
-        if (!account.hasSufficientBalance(draft.getSubscriptionAmount())) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
+        // 신청 시점에 실제 현금은 그대로 두고 reservedBalance만 잠근다 (즉시 출금 아님 - 홀딩 모델).
+        FinancialAccount account = accountLinkService.lockAccount(userId, securitiesAccountId);
+        account.reserve(draft.getSubscriptionAmount());
 
         IpoSubscription saved = subscriptionRepository.save(draft);
-        log.info("청약 신청 생성: subscriptionId={}, userId={}, ipoId={}, shares={}",
-                saved.getId(), saved.getUserId(), saved.getIpoId(), shares);
+        balanceHoldRepository.save(BalanceHold.lock(account.getId(), saved.getId(), draft.getSubscriptionAmount()));
+
+        log.info("청약 신청 생성(홀딩): subscriptionId={}, userId={}, ipoId={}, shares={}, holdAmount={}",
+                saved.getId(), saved.getUserId(), saved.getIpoId(), shares, draft.getSubscriptionAmount());
         return saved;
     }
 
@@ -85,13 +88,8 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         validateSubscriptionPeriod(ipo);
 
-        // 잔액 재검증(REQ-05-92-01): 계좌도 락을 잡아 다른 청약의 동시 확정으로 인한 잔액 변동을 반영
-        FinancialAccount account = accountLinkService.lockAccount(userId, subscription.getSecuritiesAccountId());
-        if (!account.hasSufficientBalance(subscription.getSubscriptionAmount())) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-
-        accountLinkService.deduct(userId, account.getId(), subscription.getSubscriptionAmount());
+        // 금액은 requestSubscription 시점에 이미 reserve(홀딩)되어 있으므로, 확정 단계에서는
+        // 추가 차감이 없다. 실제 차감(settle)은 배정 결과가 확정될 때 일어난다.
         subscription.confirm();
 
         eventPublisher.publishEvent(new SubscriptionConfirmedEvent(
@@ -115,8 +113,14 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         validateSubscriptionPeriod(ipo);
 
-        // REQUESTED 상태에서는 confirmSubscription() 전까지 실제 계좌 차감이 없으므로,
-        // 여기서 환불할 돈은 없다 — "환불 금액"은 취소되는 청약신청금액을 그대로 보여주는 표시값이다.
+        // 신청 시점에 잠갔던(reserve) 금액을 풀어준다. 실제 현금은 한 번도 빠져나간 적이
+        // 없으므로(홀딩 모델) "환불"이 아니라 잠금 해제다 — actual balance는 그대로다.
+        FinancialAccount account = accountLinkService.lockAccount(userId, subscription.getSecuritiesAccountId());
+        account.releaseReserved(subscription.getSubscriptionAmount());
+        balanceHoldRepository.findBySubscriptionId(subscription.getId())
+                .filter(BalanceHold::isLocked)
+                .ifPresent(BalanceHold::release);
+
         subscription.cancel();
         log.info("청약 취소: subscriptionId={}, userId={}", subscription.getId(), userId);
         return subscription;

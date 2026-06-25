@@ -25,7 +25,9 @@ public record AssetsSummaryResponse(
             String accountNumberMasked,
             BigDecimal usdBalance,
             BigDecimal krwBalance,
-            BigDecimal totalUsdBalance
+            BigDecimal totalUsdBalance,
+            BigDecimal usdAvailableBalance,
+            BigDecimal krwAvailableBalance
     ) {}
 
     public record AccountAsset(

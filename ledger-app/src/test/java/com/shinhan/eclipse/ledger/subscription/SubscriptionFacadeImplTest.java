@@ -77,6 +77,18 @@ class SubscriptionFacadeImplTest {
     }
 
     @Test
+    void 청약신청에_성공하면_실제잔액은_그대로고_사용가능잔액만_줄어든다() {
+        Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
+        FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
+
+        subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100"));
+
+        FinancialAccount updated = accountLinkService.getLinkedAccount(USER_ID, account.getId());
+        assertThat(updated.getBalance()).isEqualByComparingTo("10000");
+        assertThat(updated.availableBalance()).isEqualByComparingTo("9000");
+    }
+
+    @Test
     void 잔액이_부족하면_L001_예외가_발생한다() {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("500"));
@@ -110,7 +122,7 @@ class SubscriptionFacadeImplTest {
     }
 
     @Test
-    void 청약확정에_성공하면_계좌잔액이_차감되고_CONFIRMED가_된다() {
+    void 청약확정에_성공하면_CONFIRMED가_되지만_홀딩된_금액은_그대로_잠겨있다() {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
         IpoSubscription saved = subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100"));
@@ -120,8 +132,10 @@ class SubscriptionFacadeImplTest {
         assertThat(confirmed.getSubscriptionStatus()).isEqualTo("CONFIRMED");
         assertThat(confirmed.getConfirmedAt()).isNotNull();
 
+        // 확정 단계는 실제 차감(settle)을 하지 않는다 - 배정 결과가 나올 때까지 계속 홀딩 상태.
         FinancialAccount updated = accountLinkService.getLinkedAccount(USER_ID, account.getId());
-        assertThat(updated.getBalance()).isEqualByComparingTo("9000");
+        assertThat(updated.getBalance()).isEqualByComparingTo("10000");
+        assertThat(updated.availableBalance()).isEqualByComparingTo("9000");
     }
 
     @Test
@@ -138,7 +152,7 @@ class SubscriptionFacadeImplTest {
     }
 
     @Test
-    void 청약취소에_성공하면_CANCELLED가_된다() {
+    void 청약취소에_성공하면_CANCELLED가_되고_홀딩이_해제된다() {
         Ipo ipo = persistIpo(LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
         FinancialAccount account = persistAccount(USER_ID, new BigDecimal("10000"));
         IpoSubscription saved = subscriptionFacade.requestSubscription(USER_ID, ipo.getId(), account.getId(), new BigDecimal("1000"), new BigDecimal("100"));
@@ -147,6 +161,10 @@ class SubscriptionFacadeImplTest {
 
         List<IpoSubscription> subscriptions = subscriptionFacade.getSubscriptions(USER_ID, ipo.getId(), null, null, null);
         assertThat(subscriptions).extracting(IpoSubscription::getSubscriptionStatus).containsExactly("CANCELLED");
+
+        FinancialAccount updated = accountLinkService.getLinkedAccount(USER_ID, account.getId());
+        assertThat(updated.getBalance()).isEqualByComparingTo("10000");
+        assertThat(updated.availableBalance()).isEqualByComparingTo("10000");
     }
 
     @Test

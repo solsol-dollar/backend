@@ -41,6 +41,7 @@ CREATE TABLE `financial_accounts` (
 	`account_number_masked`	VARCHAR(50)	NULL,
 	`currency`	VARCHAR(10)	NOT NULL	DEFAULT 'USD',
 	`balance`	DECIMAL(18,4)	NOT NULL,
+	`reserved_balance`	DECIMAL(18,4)	NOT NULL	DEFAULT 0	COMMENT '청약 등으로 잠긴 금액(홀딩). available = balance - reserved_balance',
 	`interest_rate`	DECIMAL(7,4)	NULL,
 	`maturity_date`	DATE	NULL,
 	`linked`	BOOLEAN	NOT NULL,
@@ -205,6 +206,23 @@ CREATE TABLE `ipo_subscriptions` (
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
 	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- [신규] 청약 홀딩 모델: 신청 시점에 actual balance는 그대로, reserved_balance만 잠근다.
+-- 배정 확정 시 SETTLED(실차감)/RELEASED(잠금해제)로 정리된다.
+CREATE TABLE `balance_holds` (
+	`id`	BIGINT	NOT NULL	AUTO_INCREMENT,
+	`account_id`	BIGINT	NOT NULL,
+	`subscription_id`	BIGINT	NOT NULL,
+	`amount`	DECIMAL(18,4)	NOT NULL,
+	`hold_status`	VARCHAR(20)	NOT NULL	DEFAULT 'LOCKED'	COMMENT 'LOCKED / RELEASED / SETTLED',
+	`released_at`	DATETIME	NULL,
+	`settled_at`	DATETIME	NULL,
+	`created_at`	DATETIME	NOT NULL,
+	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
+	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `UQ_balance_holds_subscription` (`subscription_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [변경] subscription_result_id → subscription_id, FK: ipo_subscriptions
@@ -500,6 +518,9 @@ ALTER TABLE `ipo_subscriptions`
 	ADD CONSTRAINT `FK_ipo_subscriptions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
 	ADD CONSTRAINT `FK_ipo_subscriptions_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`),
 	ADD CONSTRAINT `FK_ipo_subscriptions_account` FOREIGN KEY (`securities_account_id`) REFERENCES `financial_accounts` (`id`);
+ALTER TABLE `balance_holds`
+	ADD CONSTRAINT `FK_balance_holds_account` FOREIGN KEY (`account_id`) REFERENCES `financial_accounts` (`id`),
+	ADD CONSTRAINT `FK_balance_holds_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `ipo_subscriptions` (`id`);
 -- [변경] return_plans FK: subscription_results → ipo_subscriptions
 ALTER TABLE `return_plans`
 	ADD CONSTRAINT `FK_return_plans_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
