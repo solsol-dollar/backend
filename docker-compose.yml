@@ -70,6 +70,7 @@ services:
       LEDGER_URL: http://ledger-app:8080
       JWT_PRIVATE_KEY_PATH: ${JWT_PRIVATE_KEY_PATH:-/app/keys/private.pem}
       JWT_PUBLIC_KEY_PATH: ${JWT_PUBLIC_KEY_PATH:-classpath:keys/public.pem}
+      FIREBASE_SECRET_NAME: ${FIREBASE_SECRET_NAME}
       SPRINGDOC_SWAGGER_UI_CONFIG_URL: /api/service/api-docs/swagger-config
       SPRINGDOC_SWAGGER_UI_URL: /api/service/api-docs
     volumes:
