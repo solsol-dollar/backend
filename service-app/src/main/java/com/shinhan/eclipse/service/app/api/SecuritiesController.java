@@ -32,6 +32,14 @@ public class SecuritiesController {
         return ResponseEntity.ok(ApiResponse.success(securitiesService.listProducts(type, keyword, sort)));
     }
 
+    /** SEC-008: 종목 랭킹 */
+    @GetMapping("/products/ranking")
+    public ResponseEntity<ApiResponse<List<RankingItem>>> getRanking(
+            @RequestParam(defaultValue = "gainer") String type,
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(securitiesService.getRanking(type, Math.min(limit, 50))));
+    }
+
     /** SEC-002: 종목 상세 */
     @GetMapping("/products/{id}")
     public ResponseEntity<ApiResponse<ProductDetail>> getProduct(@PathVariable Long id) {
@@ -54,6 +62,12 @@ public class SecuritiesController {
     @GetMapping("/recommended")
     public ResponseEntity<ApiResponse<List<RecommendedProduct>>> getRecommended(@AuthenticationPrincipal AuthUser authUser) {
         return ResponseEntity.ok(ApiResponse.success(securitiesService.getRecommended(authUser.userId())));
+    }
+
+    /** SEC-007: 종목 통계 (52주 고저, 기간별 수익률) */
+    @GetMapping("/products/{id}/stats")
+    public ResponseEntity<ApiResponse<ProductStats>> getProductStats(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(securitiesService.getProductStats(id)));
     }
 
     /** SEC-006: 차트 조회 */

@@ -7,6 +7,8 @@ import com.shinhan.eclipse.auth.config.SecurityConfig;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.service.securities.*;
+import com.shinhan.eclipse.service.securities.ProductStats;
+import com.shinhan.eclipse.service.securities.RankingItem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -161,7 +164,7 @@ class SecuritiesControllerTest {
     @Test
     void getHoldings_JWT_인증으로_조회() throws Exception {
         HoldingItem holding = new HoldingItem(
-                1L, 10L, "TSLA", "Tesla Inc", "NASDAQ", 5,
+                1L, 10L, "TSLA", "Tesla Inc", "OVERSEAS", "NASDAQ", 5,
                 new BigDecimal("200.00"), "USD", new BigDecimal("250.00"),
                 new BigDecimal("1250.00"), new BigDecimal("250.00"), new BigDecimal("25.00")
         );
@@ -183,8 +186,8 @@ class SecuritiesControllerTest {
     @Test
     void getRecommended_AI_추천_목록_반환() throws Exception {
         RecommendedProduct rec = new RecommendedProduct(
-                "NVDA", "NVIDIA Corp", "Semiconductors", "NASDAQ",
-                new BigDecimal("880.00"), "AI/데이터센터 수혜주"
+                1L, "NVDA", "NVIDIA Corp", "OVERSEAS", "Semiconductors", "NASDAQ",
+                new BigDecimal("880.00"), new BigDecimal("2.5"), "2", "AI/데이터센터 수혜주"
         );
         given(securitiesService.getRecommended(1L)).willReturn(List.of(rec));
 
@@ -251,5 +254,56 @@ class SecuritiesControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.period").value("1M"))
                 .andExpect(jsonPath("$.data.candleType").value("MONTH"));
+    }
+
+    // ── B-01: 시장 인덱스 ────────────────────────────────────────────────────
+
+    @Test
+    void getMarketIndices_200_반환() throws Exception {
+        MarketIndex sp500 = new MarketIndex("S&P 500", new BigDecimal("5308.13"),
+                new BigDecimal("-500.77"), new BigDecimal("-1.60"), false, false);
+        given(securitiesService.getMarketIndices()).willReturn(List.of(sp500));
+
+        mockMvc.perform(get("/api/v1/securities/market/indices"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data[0].name").value("S&P 500"))
+                .andExpect(jsonPath("$.data[0].isMarketOpen").value(false));
+    }
+
+    // ── SEC-007 ──────────────────────────────────────────────────────────────
+
+    @Test
+    void getProductStats_200_반환() throws Exception {
+        ProductStats stats = new ProductStats(
+                "AAPL",
+                new BigDecimal("260.10"),
+                new BigDecimal("164.08"),
+                Map.of("1M", new BigDecimal("5.23"), "1Y", new BigDecimal("28.91"))
+        );
+        given(securitiesService.getProductStats(1L)).willReturn(stats);
+
+        mockMvc.perform(get("/api/v1/securities/products/1/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.ticker").value("AAPL"))
+                .andExpect(jsonPath("$.data.week52High").value(260.10));
+    }
+
+    // ── SEC-008 ──────────────────────────────────────────────────────────────
+
+    @Test
+    void getRanking_상승_상위_200_반환() throws Exception {
+        RankingItem item = new RankingItem(
+                3L, "NVDA", "엔비디아",
+                new BigDecimal("1208.88"), new BigDecimal("4.23"), "2"
+        );
+        given(securitiesService.getRanking("gainer", 10)).willReturn(List.of(item));
+
+        mockMvc.perform(get("/api/v1/securities/products/ranking")
+                        .param("type", "gainer")
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].ticker").value("NVDA"))
+                .andExpect(jsonPath("$.data[0].changeRate").value(4.23));
     }
 }
