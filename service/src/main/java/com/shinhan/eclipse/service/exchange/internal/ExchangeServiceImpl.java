@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -38,7 +39,7 @@ class ExchangeServiceImpl implements ExchangeService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.EXCHANGE_RATE_UNAVAILABLE,
                             "지원하지 않는 통화: " + currencyCode));
             rateCache.put(rate);
-            cachePrevIfMissing(currencyCode);
+            CompletableFuture.runAsync(() -> cachePrevIfMissing(currencyCode));
             return rate;
         } catch (BusinessException e) {
             throw e;

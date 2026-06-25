@@ -41,18 +41,23 @@ class HomeServiceImpl implements HomeService {
         try {
             ExchangeRateInfo rateInfo = exchangeService.getExchangeRate("USD");
             BigDecimal rate = rateInfo.baseRate();
-            if (rate != null && rate.compareTo(BigDecimal.ZERO) != 0) {
+            if (rate != null && rate.compareTo(BigDecimal.ZERO) > 0) {
                 exchangeRate = rate;
             }
         } catch (Exception e) {
-            log.warn("[홈] 환율 조회 실패 — 환율 0으로 처리: {}", e.getMessage());
+            log.warn("[홈] 환율 조회 실패 — 환율 null 처리: {}", e.getMessage());
         }
 
-        BigDecimal prevRate = exchangeService.getPreviousExchangeRate("USD")
-                .map(com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo::baseRate)
-                .orElse(null);
+        BigDecimal prevRate = null;
+        try {
+            prevRate = exchangeService.getPreviousExchangeRate("USD")
+                    .map(com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo::baseRate)
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("[홈] 전날 환율 조회 실패: {}", e.getMessage());
+        }
         BigDecimal changeAmount = (exchangeRate != null && prevRate != null) ? exchangeRate.subtract(prevRate) : null;
-        BigDecimal changeRate = (changeAmount != null && prevRate != null && prevRate.compareTo(BigDecimal.ZERO) != 0)
+        BigDecimal changeRate = (changeAmount != null && prevRate != null && prevRate.compareTo(BigDecimal.ZERO) > 0)
                 ? changeAmount.divide(prevRate, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
                 : null;
 
@@ -71,11 +76,11 @@ class HomeServiceImpl implements HomeService {
                 .map(FinancialAccount::getBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // KRW → USD 환산 (환율 없으면 0)
+        // KRW → USD 환산 (환율 없으면 null — 환산 불가 상태 명시)
         BigDecimal krwInUsd = (exchangeRate != null)
                 ? cmaKrw.divide(exchangeRate, 4, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-        BigDecimal securitiesTotalUsd = cmaUsd.add(krwInUsd);
+                : null;
+        BigDecimal securitiesTotalUsd = (krwInUsd != null) ? cmaUsd.add(krwInUsd) : null;
 
         Long usdAccountId = securities.stream()
                 .filter(a -> "USD".equals(a.getCurrency()))
@@ -117,7 +122,7 @@ class HomeServiceImpl implements HomeService {
                 .map(AssetsSummaryResponse.AccountAsset::balance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalUsdBalance = securitiesTotalUsd.add(accountsTotalUsd);
+        BigDecimal totalUsdBalance = (securitiesTotalUsd != null) ? securitiesTotalUsd.add(accountsTotalUsd) : null;
 
         AssetsSummaryResponse.ExchangeRateInfo exchangeRateInfo =
                 new AssetsSummaryResponse.ExchangeRateInfo(exchangeRate, prevRate, changeAmount, changeRate);
