@@ -199,7 +199,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
 
             holdingItems.add(new HoldingItem(
                     h.getId(), p.getId(), p.getTicker(), p.getProductName(),
-                    p.getExchangeName(), h.getTotalQuantity(), h.getAveragePrice(),
+                    p.getProductType(), p.getExchangeName(), h.getTotalQuantity(), h.getAveragePrice(),
                     h.getCurrency(), currentPrice, evaluatedAmount, profitLoss, profitLossRate
             ));
         }
@@ -258,12 +258,17 @@ class SecuritiesServiceImpl implements SecuritiesService {
                         Optional<InvestmentProduct> p = products.stream()
                                 .filter(prod -> prod.getTicker().equalsIgnoreCase(rec.ticker()))
                                 .findFirst();
-                        return p.map(prod -> new RecommendedProduct(
-                                prod.getTicker(), prod.getProductName(), prod.getSector(),
-                                prod.getExchangeName(),
-                                quoteCache.get(prod.getTicker()).map(QuoteSnapshot::price).orElse(null),
-                                rec.reason()
-                        )).orElse(null);
+                        return p.map(prod -> {
+                            QuoteSnapshot q = quoteCache.get(prod.getTicker()).orElse(null);
+                            return new RecommendedProduct(
+                                    prod.getId(), prod.getTicker(), prod.getProductName(),
+                                    prod.getProductType(), prod.getSector(), prod.getExchangeName(),
+                                    q != null ? q.price()      : null,
+                                    q != null ? q.changeRate() : null,
+                                    q != null ? q.sign()       : null,
+                                    rec.reason()
+                            );
+                        }).orElse(null);
                     })
                     .filter(java.util.Objects::nonNull)
                     .toList();
@@ -326,11 +331,17 @@ class SecuritiesServiceImpl implements SecuritiesService {
     private List<RecommendedProduct> fallbackRecommendations(List<InvestmentProduct> products) {
         return products.stream()
                 .filter(p -> List.of("AAPL", "MSFT", "NVDA", "QQQ", "SOXX").contains(p.getTicker()))
-                .map(p -> new RecommendedProduct(
-                        p.getTicker(), p.getProductName(), p.getSector(), p.getExchangeName(),
-                        quoteCache.get(p.getTicker()).map(QuoteSnapshot::price).orElse(null),
-                        "대표 우량주/ETF"
-                ))
+                .map(p -> {
+                    QuoteSnapshot q = quoteCache.get(p.getTicker()).orElse(null);
+                    return new RecommendedProduct(
+                            p.getId(), p.getTicker(), p.getProductName(),
+                            p.getProductType(), p.getSector(), p.getExchangeName(),
+                            q != null ? q.price()      : null,
+                            q != null ? q.changeRate() : null,
+                            q != null ? q.sign()       : null,
+                            "대표 우량주/ETF"
+                    );
+                })
                 .toList();
     }
 
