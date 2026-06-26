@@ -41,6 +41,9 @@ public record AssetsSummaryResponse(
     public record CardAsset(
             String cardName,
             String cardNumberMasked,
-            String issuerName
+            String issuerName,
+            BigDecimal monthlySpend,
+            String currency,
+            int monthlyCount
     ) {}
 }
