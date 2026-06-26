@@ -142,7 +142,7 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     private IpoNewsItem toNewsItem(IpoNews news) {
         return new IpoNewsItem(
                 news.getId(),
-                news.getTitleKo(),
+                news.getTitleKo() != null ? news.getTitleKo() : news.getTitle(),
                 news.getSource(),
                 news.getPublishedAt(),
                 news.getUrl(),
