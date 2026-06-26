@@ -167,6 +167,13 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
         return upcoming.stream().findFirst();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isAlreadySubscribed(Long userId, Long ipoId) {
+        return subscriptionRepository.existsByUserIdAndIpoIdAndSubscriptionStatusIn(
+                userId, ipoId, List.of("REQUESTED", "CONFIRMED"));
+    }
+
     private void validateSubscriptionPeriod(Ipo ipo) {
         LocalDate today = LocalDate.now();
         if (today.isBefore(ipo.getSubscriptionStartDate()) || today.isAfter(ipo.getSubscriptionEndDate())) {
