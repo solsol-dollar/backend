@@ -10,5 +10,5 @@ public interface SecuritiesService {
     List<RecommendedProduct> getRecommended(Long userId);
     List<MarketIndex>       getMarketIndices();
     ProductStats            getProductStats(Long id);
-    List<RankingItem>       getRanking(String type, int limit);
+    List<RankingItem>       getRanking(String type, int limit, String productType);
 }
