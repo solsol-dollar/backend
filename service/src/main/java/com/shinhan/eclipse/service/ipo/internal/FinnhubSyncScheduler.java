@@ -127,16 +127,27 @@ public class FinnhubSyncScheduler {
         return result;
     }
 
+    private static final java.util.regex.Pattern COMPANY_NAME_SUFFIX =
+            java.util.regex.Pattern.compile("(?i)(.*?(?:Inc|Corp|Ltd|LLC|LP|Co)\\.?)\\s*/.*");
+
+    private String normalizeCompanyName(String name) {
+        if (name == null) return null;
+        String trimmed = name.trim();
+        java.util.regex.Matcher m = COMPANY_NAME_SUFFIX.matcher(trimmed);
+        return m.matches() ? m.group(1) : trimmed;
+    }
+
     private Ipo toIpo(IpoItem item) {
         LocalDate listingDate     = item.date() != null ? LocalDate.parse(item.date()) : null;
         BigDecimal[] prices       = parsePrice(item.price());
         String ipoStatus          = "priced".equals(item.status()) ? "OPEN" : "UPCOMING";
         BigDecimal confirmedPrice = calcConfirmedPrice(prices[0], prices[1]);
         FmpData fmpData           = fetchFmpData(item.symbol());
+        String companyName        = normalizeCompanyName(item.name());
 
         return Ipo.create(
                 item.symbol(),
-                item.name(),
+                companyName,
                 item.exchange(),
                 fmpData.sector(),
                 listingDate != null ? calcSubscriptionStartDate(listingDate) : null,
@@ -150,7 +161,7 @@ public class FinnhubSyncScheduler {
                 BigDecimal.valueOf(100),
                 ipoStatus,
                 item.numberOfShares(),
-                toTradingViewLogoUrl(item.name()),
+                toTradingViewLogoUrl(companyName),
                 null // totalAllocableShares: 중개사 계약값, 외부 API에 없음 — 운영자가 별도 입력
         );
     }

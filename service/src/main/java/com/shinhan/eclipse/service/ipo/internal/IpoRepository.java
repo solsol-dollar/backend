@@ -15,12 +15,13 @@ interface IpoRepository extends JpaRepository<Ipo, Long> {
     @Query("SELECT i.ticker FROM Ipo i WHERE i.ticker IN :tickers")
     Set<String> findExistingTickers(@Param("tickers") List<String> tickers);
 
-    @Query("SELECT i FROM Ipo i WHERE i.listingDate IS NOT NULL AND i.listingDate <= CURRENT_DATE")
+    @Query("SELECT i FROM Ipo i WHERE i.listingDate IS NOT NULL AND i.listingDate <= CURRENT_DATE AND i.status = 'ACTIVE'")
     List<Ipo> findListedIpos();
 
     @Query(value = """
         SELECT i FROM Ipo i
-        WHERE (
+        WHERE i.status = 'ACTIVE'
+        AND (
             :status IS NULL
             OR (:status = 'UPCOMING' AND i.subscriptionStartDate IS NOT NULL AND CURRENT_DATE < i.subscriptionStartDate)
             OR (:status = 'OPEN'     AND i.subscriptionStartDate IS NOT NULL AND i.subscriptionEndDate IS NOT NULL
@@ -35,7 +36,8 @@ interface IpoRepository extends JpaRepository<Ipo, Long> {
         """,
         countQuery = """
         SELECT COUNT(i) FROM Ipo i
-        WHERE (
+        WHERE i.status = 'ACTIVE'
+        AND (
             :status IS NULL
             OR (:status = 'UPCOMING' AND i.subscriptionStartDate IS NOT NULL AND CURRENT_DATE < i.subscriptionStartDate)
             OR (:status = 'OPEN'     AND i.subscriptionStartDate IS NOT NULL AND i.subscriptionEndDate IS NOT NULL
