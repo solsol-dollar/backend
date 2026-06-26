@@ -297,7 +297,7 @@ class SecuritiesControllerTest {
                 3L, "NVDA", "엔비디아",
                 new BigDecimal("1208.88"), new BigDecimal("4.23"), "2"
         );
-        given(securitiesService.getRanking("gainer", 10)).willReturn(List.of(item));
+        given(securitiesService.getRanking("gainer", 10, null)).willReturn(List.of(item));
 
         mockMvc.perform(get("/api/v1/securities/products/ranking")
                         .param("type", "gainer")
