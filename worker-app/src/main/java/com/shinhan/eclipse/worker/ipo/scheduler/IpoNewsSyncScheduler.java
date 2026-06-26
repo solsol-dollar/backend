@@ -32,7 +32,7 @@ public class IpoNewsSyncScheduler {
         this.transactionTemplate = transactionTemplate;
     }
 
-    @Scheduled(cron = "0 35 15 * * *")
+    @Scheduled(cron = "0 0 3 * * *")
     public void triggerIpoNewsSync() {
         try {
             JobParameters params = new JobParametersBuilder()
