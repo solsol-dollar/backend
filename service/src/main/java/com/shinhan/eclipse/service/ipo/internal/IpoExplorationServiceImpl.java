@@ -60,7 +60,7 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
             throw new BusinessException(ErrorCode.IPO_NOT_FOUND);
         }
         return ipoNewsRepository
-                .findByIpoIdAndSummaryIsNotNullOrderByPublishedAtDesc(ipoId, PageRequest.of(0, size))
+                .findByIpoIdOrderByPublishedAtDesc(ipoId, PageRequest.of(0, size))
                 .stream()
                 .map(this::toNewsItem)
                 .toList();
