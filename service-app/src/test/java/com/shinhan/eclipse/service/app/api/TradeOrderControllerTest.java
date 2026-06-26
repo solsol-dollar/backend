@@ -9,6 +9,9 @@ import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.service.securities.TradeOrderRequest;
 import com.shinhan.eclipse.service.securities.TradeOrderResponse;
 import com.shinhan.eclipse.service.securities.TradeOrderService;
+import com.shinhan.eclipse.service.securities.OrderHistoryItem;
+import com.shinhan.eclipse.service.securities.SellProfitItem;
+import com.shinhan.eclipse.service.securities.SellProfitsSummary;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +40,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -175,5 +179,48 @@ class TradeOrderControllerTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.orderId").value(102));
+    }
+
+    // ── B-02: GET /api/v1/trade-orders ───────────────────────────────────────
+
+    @Test
+    void 주문내역_목록_조회_200() throws Exception {
+        OrderHistoryItem item = new OrderHistoryItem(
+                1L,
+                java.time.LocalDateTime.of(2026, 6, 20, 10, 30, 0),
+                "TSLA", "Tesla Inc", "BUY", "COMPLETED",
+                new BigDecimal("250.00"), 5
+        );
+        given(tradeOrderService.getOrders(1L)).willReturn(List.of(item));
+
+        mockMvc.perform(get("/api/v1/trade-orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data[0].ticker").value("TSLA"))
+                .andExpect(jsonPath("$.data[0].orderSide").value("BUY"))
+                .andExpect(jsonPath("$.data[0].quantity").value(5));
+    }
+
+    // ── B-03: GET /api/v1/trade-orders/profits ───────────────────────────────
+
+    @Test
+    void 판매수익_조회_200() throws Exception {
+        SellProfitItem profitItem = new SellProfitItem(
+                2L,
+                java.time.LocalDateTime.of(2026, 6, 20, 15, 0, 0),
+                "OVERSEAS", "AAPL", "Apple Inc",
+                new BigDecimal("1050.00"), new BigDecimal("5.00"), true
+        );
+        SellProfitsSummary summary = new SellProfitsSummary(
+                new BigDecimal("70000"), true, List.of(profitItem)
+        );
+        given(tradeOrderService.getProfits(1L)).willReturn(summary);
+
+        mockMvc.perform(get("/api/v1/trade-orders/profits"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.totalProfitKrw").value(70000))
+                .andExpect(jsonPath("$.data.isProfit").value(true))
+                .andExpect(jsonPath("$.data.items[0].ticker").value("AAPL"));
     }
 }
