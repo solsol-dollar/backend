@@ -9,4 +9,6 @@ public interface SecuritiesService {
     HoldingsSummary         getHoldings(Long userId);
     List<RecommendedProduct> getRecommended(Long userId);
     List<MarketIndex>       getMarketIndices();
+    ProductStats            getProductStats(Long id);
+    List<RankingItem>       getRanking(String type, int limit);
 }
