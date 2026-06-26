@@ -122,6 +122,15 @@ class FinnhubSyncScheduler {
         return result;
     }
 
+    private static final java.util.regex.Pattern COMPANY_NAME_SUFFIX =
+            java.util.regex.Pattern.compile("(?i)(.*?(?:Inc|Corp|Ltd|LLC|LP|Co)\\.?)\\s*/.*");
+
+    private String normalizeCompanyName(String name) {
+        if (name == null) return null;
+        java.util.regex.Matcher m = COMPANY_NAME_SUFFIX.matcher(name.trim());
+        return m.matches() ? m.group(1) : name;
+    }
+
     private Ipo toIpo(IpoItem item) {
         LocalDate listingDate     = item.date() != null ? LocalDate.parse(item.date()) : null;
         BigDecimal[] prices       = parsePrice(item.price());
@@ -131,7 +140,7 @@ class FinnhubSyncScheduler {
 
         return Ipo.create(
                 item.symbol(),
-                item.name(),
+                normalizeCompanyName(item.name()),
                 item.exchange(),
                 fmpData.sector(),
                 listingDate != null ? calcSubscriptionStartDate(listingDate) : null,

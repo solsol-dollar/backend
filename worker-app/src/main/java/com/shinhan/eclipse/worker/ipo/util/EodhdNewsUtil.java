@@ -23,8 +23,8 @@ public final class EodhdNewsUtil {
             String host = new java.net.URI(link).getHost();
             if (host == null) return null;
             if (host.startsWith("www.")) host = host.substring(4);
+            if (host.endsWith("finance.yahoo.com")) return "Yahoo Finance";
             return switch (host) {
-                case "finance.yahoo.com" -> "Yahoo Finance";
                 case "nasdaq.com"        -> "Nasdaq";
                 case "seekingalpha.com"  -> "Seeking Alpha";
                 case "benzinga.com"      -> "Benzinga";
