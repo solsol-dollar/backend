@@ -113,16 +113,13 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         validateSubscriptionPeriod(ipo);
 
-        // LOCKED 상태인 hold가 있을 때만 계좌 잠금 해제 + hold 해제를 수행한다.
-        // hold가 이미 RELEASED/SETTLED이면 reservedBalance를 건드리지 않는다.
-        BalanceHold hold = balanceHoldRepository.findBySubscriptionId(subscription.getId())
+        // 신청 시점에 잠갔던(reserve) 금액을 풀어준다. 실제 현금은 한 번도 빠져나간 적이
+        // 없으므로(홀딩 모델) "환불"이 아니라 잠금 해제다 — actual balance는 그대로다.
+        FinancialAccount account = accountLinkService.lockAccount(userId, subscription.getSecuritiesAccountId());
+        account.releaseReserved(subscription.getSubscriptionAmount());
+        balanceHoldRepository.findBySubscriptionId(subscription.getId())
                 .filter(BalanceHold::isLocked)
-                .orElse(null);
-        if (hold != null) {
-            FinancialAccount account = accountLinkService.lockAccount(userId, subscription.getSecuritiesAccountId());
-            account.releaseReserved(subscription.getSubscriptionAmount());
-            hold.release();
-        }
+                .ifPresent(BalanceHold::release);
 
         subscription.cancel();
         log.info("청약 취소: subscriptionId={}, userId={}", subscription.getId(), userId);

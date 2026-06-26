@@ -13,7 +13,7 @@ INSERT INTO `financial_accounts`
 VALUES
     (1, 1, 'SECURITIES', 'SECURITIES', '신한투자증권', 'CMA',
      '270-91-175039[01]', 'USD', 5000.0000, TRUE, NOW(), NOW(), NOW(), 'ACTIVE')
-ON DUPLICATE KEY UPDATE `balance` = 5000.0000, `reserved_balance` = 0.0000;
+ON DUPLICATE KEY UPDATE `balance` = 5000.0000;
 
 -- 3. 증권계좌 - KRW (CMA)
 INSERT INTO `financial_accounts`
@@ -22,7 +22,7 @@ INSERT INTO `financial_accounts`
 VALUES
     (2, 1, 'SECURITIES', 'SECURITIES', '신한투자증권', 'CMA',
      '270-91-175039[01]', 'KRW', 10000000.0000, TRUE, NOW(), NOW(), NOW(), 'ACTIVE')
-ON DUPLICATE KEY UPDATE `balance` = 10000000.0000, `reserved_balance` = 0.0000;
+ON DUPLICATE KEY UPDATE `balance` = 10000000.0000;
 
 -- 4. 청약 가능한 IPO (오늘이 청약기간 안에 들어오도록 설정)
 INSERT INTO `ipos`
@@ -100,16 +100,16 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO `ipo_subscriptions`
     (`id`, `user_id`, `ipo_id`, `securities_account_id`, `requested_shares`, `offer_price`, `subscription_amount`,
      `currency`, `subscription_status`, `execution_mode`, `subscribed_at`,
-     `allocated_shares`, `allocated_amount`, `refund_amount`, `allocation_rate`, `result_status`, `confirmed_at`,
+     `allocated_shares`, `allocated_amount`, `fee_amount`, `refund_amount`, `allocation_rate`, `result_status`, `confirmed_at`,
      `created_at`, `updated_at`, `status`)
 VALUES
     (100, 1, 4, 1, 20, 51.0000, 1020.0000,
      'USD', 'CONFIRMED', 'MOCK', DATE_SUB(CURDATE(), INTERVAL 9 DAY),
-     15, 765.0000, 261.3750, 75.0000, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL 9 DAY),
+     15, 765.0000, 3.8250, 261.3750, 75.0000, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL 9 DAY),
      NOW(), NOW(), 'ACTIVE')
 ON DUPLICATE KEY UPDATE
     `allocated_shares` = 15, `allocated_amount` = 765.0000,
-    `refund_amount` = 261.3750,
+    `fee_amount` = 3.8250, `refund_amount` = 261.3750,
     `allocation_rate` = 75.0000, `result_status` = 'COMPLETED';
 
 INSERT INTO `balance_holds`
@@ -172,17 +172,17 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO `ipo_subscriptions`
     (`id`, `user_id`, `ipo_id`, `securities_account_id`, `requested_shares`, `offer_price`, `subscription_amount`,
      `currency`, `subscription_status`, `execution_mode`, `subscribed_at`,
-     `allocated_shares`, `allocated_amount`, `refund_amount`, `allocation_rate`, `result_status`, `confirmed_at`,
+     `allocated_shares`, `allocated_amount`, `fee_amount`, `refund_amount`, `allocation_rate`, `result_status`, `confirmed_at`,
      `created_at`, `updated_at`, `status`)
 VALUES
     (200, 1, 5, 1, 10, 34.0000, 340.0000,
      'USD', 'CONFIRMED', 'MOCK', DATE_SUB(CURDATE(), INTERVAL 7 DAY),
-     8, 272.0000, 70.0400, 80.0000, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL 7 DAY),
+     8, 272.0000, 1.3600, 70.0400, 80.0000, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL 7 DAY),
      NOW(), NOW(), 'ACTIVE')
 ON DUPLICATE KEY UPDATE
     `ipo_id` = 5, `subscription_status` = 'CONFIRMED',
     `allocated_shares` = 8, `allocated_amount` = 272.0000,
-    `refund_amount` = 70.0400,
+    `fee_amount` = 1.3600, `refund_amount` = 70.0400,
     `allocation_rate` = 80.0000, `result_status` = 'COMPLETED';
 
 INSERT INTO `balance_holds`

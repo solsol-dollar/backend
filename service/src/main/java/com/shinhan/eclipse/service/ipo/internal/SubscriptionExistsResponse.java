@@ -1,4 +1,4 @@
 package com.shinhan.eclipse.service.ipo.internal;
 
-record SubscriptionExistsResponse(boolean alreadySubscribed) {
+public record SubscriptionExistsResponse(boolean alreadySubscribed) {
 }

@@ -4,7 +4,6 @@ import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.ledger.subscription.SubscriptionFacade;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import com.shinhan.eclipse.common.resolver.UserHeader;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,7 +20,7 @@ public class InternalSubscriptionController {
 
     @GetMapping("/exists")
     public ResponseEntity<ApiResponse<Map<String, Object>>> exists(
-            @UserHeader Long userId, @RequestParam Long ipoId) {
+            @RequestParam Long userId, @RequestParam Long ipoId) {
         boolean alreadySubscribed = subscriptionFacade.isAlreadySubscribed(userId, ipoId);
         return ResponseEntity.ok(ApiResponse.success(Map.of("alreadySubscribed", alreadySubscribed)));
     }

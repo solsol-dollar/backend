@@ -1,7 +1,5 @@
 package com.shinhan.eclipse.worker.allocation;
 
-import com.shinhan.eclipse.common.exception.BusinessException;
-import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.account.BalanceHold;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.ipo.Ipo;
@@ -87,20 +85,21 @@ public class IpoAllocationJob {
             IpoSubscription subscription = bySubscriptionId.get(result.customerId());
             BigDecimal ratePercent = result.allocationRate().multiply(BigDecimal.valueOf(100));
 
-            BalanceHold hold = balanceHoldRepository.findBySubscriptionId(subscription.getId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND,
-                            "BalanceHold 없음: subscriptionId=" + subscription.getId()));
-            FinancialAccount account = financialAccountRepository.findById(hold.getAccountId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+            BalanceHold hold = balanceHoldRepository.findBySubscriptionId(subscription.getId()).orElse(null);
+            BigDecimal heldAmount = hold != null ? hold.getAmount() : subscription.getSubscriptionAmount();
 
-            subscription.allocate(result.finalAllocated(), ratePercent, hold.getAmount());
+            subscription.allocate(result.finalAllocated(), ratePercent, heldAmount);
 
-            account.settleReserved(subscription.getAllocatedAmount());
-            account.releaseReserved(subscription.getRefundAmount());
-            if (result.finalAllocated() > 0) {
-                hold.settle();
-            } else {
-                hold.release();
+            if (hold != null) {
+                FinancialAccount account = financialAccountRepository
+                        .findById(hold.getAccountId()).orElseThrow();
+                account.settleReserved(subscription.getAllocatedAmount());
+                account.releaseReserved(subscription.getRefundAmount());
+                if (result.finalAllocated() > 0) {
+                    hold.settle();
+                } else {
+                    hold.release();
+                }
             }
 
             notificationRepository.save(Notification.create(
