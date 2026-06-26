@@ -124,6 +124,9 @@ public class FinancialAccount extends BaseEntity {
     }
 
     public void addBalance(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "추가 금액은 0 이상이어야 합니다.");
+        }
         this.balance = this.balance.add(amount);
     }
 
@@ -142,11 +145,20 @@ public class FinancialAccount extends BaseEntity {
 
     /** 미배정/취소 등으로 잠금을 해제한다. 현금 이동 없음. */
     public void releaseReserved(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "해제 금액은 0 이상이어야 합니다.");
+        }
+        if (this.reservedBalance.compareTo(amount) < 0) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
         this.reservedBalance = this.reservedBalance.subtract(amount);
     }
 
     /** 배정 확정분만큼 잠금을 풀면서 동시에 실제 차감한다 (홀딩 → 실차감 전환). */
     public void settleReserved(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "정산 금액은 0 이상이어야 합니다.");
+        }
         if (this.reservedBalance.compareTo(amount) < 0 || this.balance.compareTo(amount) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
