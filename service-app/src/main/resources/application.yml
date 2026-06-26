@@ -15,7 +15,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
@@ -38,7 +38,7 @@ spring:
 jwt:
   private-key: ${JWT_PRIVATE_KEY_PATH:classpath:keys/private.pem}
   public-key: ${JWT_PUBLIC_KEY_PATH:classpath:keys/public.pem}
-  expiration-ms: 3600000
+  expiration-ms: 604800000
   provider-enabled: true
 
 ls:
@@ -78,7 +78,8 @@ eclipse:
     url: ${LEDGER_URL:http://localhost:8080}
 
 firebase:
-  credentials-path: ${FIREBASE_CREDENTIALS_PATH:../config/firebase-service-account.json}
+  secret-name: ${FIREBASE_SECRET_NAME:}
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
 
 logging:
   level:
@@ -86,4 +87,4 @@ logging:
 
 app:
   cookie:
-    secure: true
+    secure: ${APP_COOKIE_SECURE:false}

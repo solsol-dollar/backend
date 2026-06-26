@@ -63,13 +63,17 @@ class ExchangeRateApiClient {
      * 전체 통화 목록 환율 조회. 일일 제한 1회 소모.
      */
     Optional<List<ExchangeRateInfo>> fetchAll() {
+        return fetchAll(LocalDate.now(KST));
+    }
+
+    Optional<List<ExchangeRateInfo>> fetchAll(LocalDate date) {
         try {
             List<ExchangeRateApiDto> dtos = webClient
                     .get()
                     .uri(uri -> uri
                             .path("/site/program/financial/exchangeJSON")
                             .queryParam("authkey", props.getAuthKey())
-                            .queryParam("searchdate", LocalDate.now(KST).format(DATE_FORMATTER))
+                            .queryParam("searchdate", date.format(DATE_FORMATTER))
                             .queryParam("data", DATA_TYPE)
                             .build())
                     .retrieve()
@@ -77,7 +81,7 @@ class ExchangeRateApiClient {
                     .block(TIMEOUT);
 
             if (dtos == null || dtos.isEmpty()) {
-                log.warn("수출입은행 API 응답이 비어 있습니다 (주말·공휴일 가능성)");
+                log.warn("수출입은행 API 응답이 비어 있습니다 (주말·공휴일 가능성) date={}", date);
                 return Optional.empty();
             }
 
@@ -88,7 +92,7 @@ class ExchangeRateApiClient {
 
             if (rates.isEmpty()) {
                 int firstResult = dtos.getFirst().getResult();
-                log.warn("수출입은행 API 오류 코드: {}", firstResult);
+                log.warn("수출입은행 API 오류 코드: {} date={}", firstResult, date);
                 return Optional.empty();
             }
 
@@ -107,9 +111,14 @@ class ExchangeRateApiClient {
      * 특정 통화 환율 조회 (전체 호출 후 필터링 — API가 단일 통화 조회를 미지원).
      */
     Optional<ExchangeRateInfo> fetchOne(String currencyCode) {
-        return fetchAll()
-                .flatMap(list -> list.stream()
-                        .filter(r -> currencyCode.equalsIgnoreCase(r.currencyCode()))
-                        .findFirst());
+        return fetchAll().flatMap(list -> list.stream()
+                .filter(r -> currencyCode.equalsIgnoreCase(r.currencyCode()))
+                .findFirst());
+    }
+
+    Optional<ExchangeRateInfo> fetchOne(String currencyCode, LocalDate date) {
+        return fetchAll(date).flatMap(list -> list.stream()
+                .filter(r -> currencyCode.equalsIgnoreCase(r.currencyCode()))
+                .findFirst());
     }
 }

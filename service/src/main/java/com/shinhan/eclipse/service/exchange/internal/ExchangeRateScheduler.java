@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.ZoneId;
@@ -24,6 +25,46 @@ class ExchangeRateScheduler {
     private final ExchangeRateCache     rateCache;
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
+    /** 앱 시작 시 즉시 캐시 초기화 (오늘 + 전날 환율) */
+    @Scheduled(initialDelay = 0, fixedDelay = Long.MAX_VALUE)
+    void initCacheOnStartup() {
+        log.info("[환율 갱신] 앱 시작 초기화");
+        LocalDate today = LocalDate.now(KST);
+        LocalDate prevBusinessDay = prevBusinessDay(today);
+        try {
+            apiClient.fetchOne("USD", today).ifPresentOrElse(
+                    rate -> {
+                        rateCache.put(rate);
+                        log.info("[환율 갱신] 오늘 초기화 완료: USD={}", rate.baseRate());
+                    },
+                    () -> log.warn("[환율 갱신] 오늘 환율 API 응답 없음")
+            );
+        } catch (Exception e) {
+            log.error("[환율 갱신] 오늘 환율 초기화 실패: {}", e.getMessage());
+        }
+        try {
+            apiClient.fetchOne("USD", prevBusinessDay).ifPresentOrElse(
+                    rate -> {
+                        rateCache.putPrev(rate);
+                        log.info("[환율 갱신] 전날 초기화 완료: USD={} ({})", rate.baseRate(), prevBusinessDay);
+                    },
+                    () -> log.warn("[환율 갱신] 전날 환율 API 응답 없음 ({})", prevBusinessDay)
+            );
+        } catch (Exception e) {
+            log.error("[환율 갱신] 전날 환율 초기화 실패: {}", e.getMessage());
+        }
+    }
+
+    private LocalDate prevBusinessDay(LocalDate date) {
+        LocalDate prev = date.minusDays(1);
+        while (prev.getDayOfWeek() == DayOfWeek.SATURDAY
+                || prev.getDayOfWeek() == DayOfWeek.SUNDAY
+                || isKoreanHolidayDate(prev)) {
+            prev = prev.minusDays(1);
+        }
+        return prev;
+    }
 
     /** 평일 오전 11시 10분 1회 갱신 (KST 기준) */
     @Scheduled(cron = "0 10 11 * * MON-FRI", zone = "Asia/Seoul")
@@ -79,8 +120,11 @@ class ExchangeRateScheduler {
     );
 
     private boolean isKoreanHoliday() {
-        LocalDate today = LocalDate.now(KST);
-        return FIXED_HOLIDAYS.contains(MonthDay.from(today))
-                || LUNAR_HOLIDAYS.contains(today);
+        return isKoreanHolidayDate(LocalDate.now(KST));
+    }
+
+    private boolean isKoreanHolidayDate(LocalDate date) {
+        return FIXED_HOLIDAYS.contains(MonthDay.from(date))
+                || LUNAR_HOLIDAYS.contains(date);
     }
 }

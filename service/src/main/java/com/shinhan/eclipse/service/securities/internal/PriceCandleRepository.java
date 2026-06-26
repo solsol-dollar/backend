@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +35,24 @@ interface PriceCandleRepository extends JpaRepository<PriceCandle, Long> {
             ORDER BY product_id ASC, candle_at ASC
             """, nativeQuery = true)
     List<Object[]> findDailyClosePricesForSpark(@Param("ids") List<Long> ids, @Param("from") LocalDate from);
+
+    @Query(value = """
+            SELECT MAX(high_price) FROM price_candles
+            WHERE product_id = :id AND candle_type = 'DAY' AND candle_at >= :from
+            """, nativeQuery = true)
+    Optional<BigDecimal> findWeek52High(@Param("id") Long id, @Param("from") LocalDate from);
+
+    @Query(value = """
+            SELECT MIN(low_price) FROM price_candles
+            WHERE product_id = :id AND candle_type = 'DAY' AND candle_at >= :from
+            """, nativeQuery = true)
+    Optional<BigDecimal> findWeek52Low(@Param("id") Long id, @Param("from") LocalDate from);
+
+    Optional<PriceCandle> findFirstByProductIdAndCandleTypeAndCandleAtGreaterThanEqualOrderByCandleAtAsc(
+            Long productId, String candleType, LocalDate from);
+
+    Optional<PriceCandle> findFirstByProductIdAndCandleTypeOrderByCandleAtDesc(
+            Long productId, String candleType);
 
     /** productId별 가장 최근 DAY 캔들 1건씩 벌크 조회 (GROUP BY + JOIN으로 DEPENDENT SUBQUERY 제거) */
     @Query(value = """

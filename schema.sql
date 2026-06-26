@@ -1,16 +1,22 @@
--- Eclipse DB Schema v1.1.1 (리턴 플랜 상태/목적지 타입 정리)
+-- Eclipse DB Schema v1.2.0
 -- Engine: InnoDB (FK 제약 사용) / Charset: utf8mb4
 --
--- [v1.1.0 → v1.1.1 변경 사항] (스키마 변경 없음, 컬럼 값 의미만 정리)
---  - return_plans.plan_status: CONFIRMED 단계 제거 → DRAFT / EXECUTED 2단계
---    (confirmed_at은 상태 전이와 무관하게 "사용자가 확인 버튼을 누른 시각"만 기록)
---  - return_plan_allocations.destination_type, financial_accounts.account_type:
---    FX_SAVINGS / FX_ACCOUNT → SAVINGS / DEPOSIT (실제 계좌 타입과 일치시킴)
+-- [v1.1.1 → v1.2.0 변경 사항]
+--  - ipos.total_allocable_shares 컬럼 추가, CHECK 제약 (ledger-app V2)
+--  - ipo_news: content_hash / embedding_status / vector_doc_id / translation_status / content_ko 컬럼 추가
+--              idx_ipo_news_embedding_status / idx_ipo_news_translation_status 인덱스 추가 (eclipse_ai V1·V6·V8)
+--  - ipo_news_analysis 테이블 신규 (eclipse_ai V2)
+--  - ipo_score 테이블 신규 (eclipse_ai V3·V4·V5·V7)
 --
 -- [v1.0.2 → v1.1.0 변경 사항]
 --  - subscription_results 테이블 제거
 --  - ipo_subscriptions 에 배정 결과 필드 통합 (배정 전 NULL)
 --  - return_plans.subscription_result_id → subscription_id (FK: ipo_subscriptions)
+--
+-- [v1.1.0 → v1.1.1 변경 사항] (스키마 변경 없음, 컬럼 값 의미만 정리)
+--  - return_plans.plan_status: CONFIRMED 단계 제거 → DRAFT / EXECUTED 2단계
+--  - return_plan_allocations.destination_type, financial_accounts.account_type:
+--    FX_SAVINGS / FX_ACCOUNT → SAVINGS / DEPOSIT
 -- =====================================================================
 
 
@@ -126,12 +132,14 @@ CREATE TABLE `ipos` (
 	`minimum_subscription_amount`	DECIMAL(18,4)	NULL,
 	`ipo_status`	VARCHAR(30)	NOT NULL	DEFAULT 'UPCOMING',
 	`number_of_shares`	BIGINT	NULL,
+	`total_allocable_shares`	INT	NULL	COMMENT '중개사가 주관사로부터 배정받은 총 공모주식수 (운영자 입력값)',
 	`logo_url`	VARCHAR(500)	NULL,
 	`current_price`	DECIMAL(18,4)	NULL,
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`)
+	PRIMARY KEY (`id`),
+	CONSTRAINT `CK_ipos_total_allocable_shares` CHECK (`total_allocable_shares` IS NULL OR `total_allocable_shares` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [변경] risk_level(VARCHAR) → risk_score(숫자). 등급 문자(A/B/C) 저장 금지.
@@ -157,12 +165,19 @@ CREATE TABLE `ipo_news` (
 	`url`	VARCHAR(500)	NULL,
 	`phase`	VARCHAR(10)	NOT NULL	DEFAULT 'PRE'	COMMENT 'PRE: 상장 전 / POST: 상장 후',
 	`content`	TEXT	NULL	COMMENT 'EODHD 영어 원문',
+	`content_hash`	VARCHAR(64)	NULL,
+	`content_ko`	TEXT	NULL	COMMENT '한국어 전문 번역 (eclipse_ai V8)',
 	`title_ko`	VARCHAR(255)	NULL	COMMENT '한국어 제목',
 	`summary`	TEXT	NULL	COMMENT '한국어 요약 (IPO-007 노출)',
+	`embedding_status`	VARCHAR(20)	NOT NULL	DEFAULT 'PENDING',
+	`translation_status`	VARCHAR(20)	NOT NULL	DEFAULT 'PENDING',
+	`vector_doc_id`	VARCHAR(36)	NULL,
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
-	PRIMARY KEY (`id`)
+	PRIMARY KEY (`id`),
+	INDEX `idx_ipo_news_embedding_status` (`embedding_status`),
+	INDEX `idx_ipo_news_translation_status` (`translation_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `favorite_ipos` (
@@ -174,6 +189,57 @@ CREATE TABLE `favorite_ipos` (
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
 	PRIMARY KEY (`id`),
 	UNIQUE KEY `UQ_favorite_ipos_user_ipo` (`user_id`, `ipo_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- =====================================================================
+-- 2-1. AI 분석 (eclipse_ai)
+-- =====================================================================
+
+-- eclipse_ai V2
+CREATE TABLE `ipo_news_analysis` (
+	`id`                  BIGINT          NOT NULL AUTO_INCREMENT,
+	`ipo_id`              BIGINT          NOT NULL,
+	`ticker`              VARCHAR(20)     NULL,
+	`analysis_status`     VARCHAR(20)     NOT NULL DEFAULT 'PENDING',
+	`sentiment_score`     DECIMAL(5,4)    NULL,
+	`signal_strength`     DECIMAL(5,4)    NULL,
+	`consistency_score`   DECIMAL(5,4)    NULL,
+	`risk_factors`        JSON            NULL,
+	`source_news_indexes` JSON            NULL,
+	`raw_llm_response`    TEXT            NULL,
+	`news_count`          INT             NULL DEFAULT 0,
+	`analyzed_at`         DATETIME        NULL,
+	`created_at`          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at`          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uk_ipo_analysis` (`ipo_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- eclipse_ai V3·V4·V5·V7 통합
+CREATE TABLE `ipo_score` (
+	`id`                             BIGINT          NOT NULL AUTO_INCREMENT,
+	`ipo_id`                         BIGINT          NOT NULL,
+	`ticker`                         VARCHAR(20)     NULL,
+	`final_score`                    INT             NOT NULL,
+	`grade`                          VARCHAR(20)     NOT NULL,
+	`reason`                         VARCHAR(500)    NULL,
+	`top_news_ids`                   JSON            NULL,
+	`sentiment_component`            DECIMAL(6,4)    NULL,
+	`recency_component`              DECIMAL(6,4)    NULL,
+	`volume_component`               DECIMAL(6,4)    NULL,
+	`source_reliability_component`   DECIMAL(6,4)    NULL,
+	`signal_strength_component`      DECIMAL(6,4)    NULL,
+	`market_timing_component`        DECIMAL(6,4)    NULL,
+	`consistency_component`          DECIMAL(6,4)    NULL,
+	`risk_penalty`                   DECIMAL(6,4)    NULL,
+	`summary`                        TEXT            NULL,
+	`news_count`                     INT             NULL,
+	`scored_at`                      DATETIME        NULL,
+	`created_at`                     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at`                     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uk_ipo_score` (`ipo_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
