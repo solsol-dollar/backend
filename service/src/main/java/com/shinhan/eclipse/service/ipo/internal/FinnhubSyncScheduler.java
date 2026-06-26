@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-class FinnhubSyncScheduler {
+public class FinnhubSyncScheduler {
 
     private static final String BASE_URL = "https://finnhub.io/api/v1";
     private static final String FMP_BASE_URL = "https://financialmodelingprep.com/stable";
@@ -52,16 +52,20 @@ class FinnhubSyncScheduler {
     private record FmpData(String sector) {}
 
     @Scheduled(cron = "0 0 1 * * *")
-    public void sync() {
+    public void syncScheduled() {
+        sync();
+    }
+
+    public int sync() {
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("FINNHUB_API_KEY가 설정되지 않았습니다.");
-            return;
+            return 0;
         }
 
         List<Ipo> fetched = fetchFromFinnhub().stream()
                 .collect(Collectors.toMap(Ipo::getTicker, i -> i, (a, b) -> a))
                 .values().stream().toList();
-        if (fetched.isEmpty()) return;
+        if (fetched.isEmpty()) return 0;
 
         List<String> tickers = fetched.stream().map(Ipo::getTicker).toList();
         Set<String> existingTickers = ipoRepository.findExistingTickers(tickers);
@@ -75,6 +79,7 @@ class FinnhubSyncScheduler {
         }
 
         log.info("IPO 동기화 완료: {}건 신규 / {}건 조회", newIpos.size(), fetched.size());
+        return newIpos.size();
     }
 
     private List<Ipo> fetchFromFinnhub() {
