@@ -44,6 +44,9 @@ public class TransferTransaction extends BaseEntity {
     @Column(length = 255)
     private String failureReason;
 
+    @Column(length = 100)
+    private String description;
+
     public static TransferTransaction create(Long userId, Long fromAccountId, Long toAccountId,
                                               String transferType, BigDecimal amount) {
         TransferTransaction tx = new TransferTransaction();

@@ -20,7 +20,10 @@ public record TransactionHistoryItem(
         String toCurrency,
         BigDecimal exchangeRate,
         BigDecimal sourceAmount,
-        BigDecimal targetAmount
+        BigDecimal targetAmount,
+
+        // 카드 결제 전용
+        String description
 ) {
     public record AccountInfo(
             Long accountId,
@@ -33,7 +36,14 @@ public record TransactionHistoryItem(
             BigDecimal amount, String currency, String status, LocalDateTime executedAt,
             AccountInfo fromAccount, AccountInfo toAccount) {
         return new TransactionHistoryItem(id, type, amount, currency, status, executedAt,
-                fromAccount, toAccount, null, null, null, null, null);
+                fromAccount, toAccount, null, null, null, null, null, null);
+    }
+
+    public static TransactionHistoryItem ofCard(Long id,
+            BigDecimal amount, String currency, String status, LocalDateTime executedAt,
+            AccountInfo fromAccount, String description) {
+        return new TransactionHistoryItem(id, "CARD", amount, currency, status, executedAt,
+                fromAccount, null, null, null, null, null, null, description);
     }
 
     public static TransactionHistoryItem ofExchange(Long id,
@@ -44,6 +54,6 @@ public record TransactionHistoryItem(
         return new TransactionHistoryItem(id, "EXCHANGE",
                 sourceAmount, fromCurrency, status, executedAt,
                 fromAccount, toAccount,
-                fromCurrency, toCurrency, exchangeRate, sourceAmount, targetAmount);
+                fromCurrency, toCurrency, exchangeRate, sourceAmount, targetAmount, null);
     }
 }

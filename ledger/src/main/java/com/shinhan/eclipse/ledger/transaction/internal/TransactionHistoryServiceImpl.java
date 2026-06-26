@@ -58,7 +58,14 @@ class TransactionHistoryServiceImpl implements TransactionHistoryService {
         boolean fromMine = t.getFromAccountId() != null && accountIds.contains(t.getFromAccountId());
         boolean toMine   = t.getToAccountId()   != null && accountIds.contains(t.getToAccountId());
         if ("CARD".equals(t.getTransferType())) {
-            type = "CARD";
+            return TransactionHistoryItem.ofCard(
+                    t.getId(),
+                    t.getAmount(), t.getCurrency(),
+                    t.getTransferStatus(),
+                    t.getCompletedAt() != null ? t.getCompletedAt() : t.getRequestedAt(),
+                    null,
+                    t.getDescription()
+            );
         } else if (toMine && !fromMine) {
             type = "IN";
         } else {
