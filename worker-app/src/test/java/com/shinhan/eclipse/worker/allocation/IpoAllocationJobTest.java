@@ -92,7 +92,7 @@ class IpoAllocationJobTest {
         });
 
         Long subscriptionId = tx.execute(status -> {
-            IpoSubscription subscription = IpoSubscription.request(1L, ipoId, accountId, 10, new BigDecimal("100"), new BigDecimal("1000"));
+            IpoSubscription subscription = IpoSubscription.request(1L, ipoId, accountId, 10, new BigDecimal("100"));
             ReflectionTestUtils.setField(subscription, "subscriptionStatus", "CONFIRMED");
             em.persist(subscription);
 
