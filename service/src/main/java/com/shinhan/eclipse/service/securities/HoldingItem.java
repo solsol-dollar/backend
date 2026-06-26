@@ -7,6 +7,7 @@ public record HoldingItem(
         Long       productId,
         String     ticker,
         String     productName,
+        String     productType,
         String     exchangeName,
         Integer    totalQuantity,
         BigDecimal averagePrice,
