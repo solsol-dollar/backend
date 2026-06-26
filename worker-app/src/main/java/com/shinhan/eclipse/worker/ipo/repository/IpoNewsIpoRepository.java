@@ -19,11 +19,10 @@ public interface IpoNewsIpoRepository extends JpaRepository<Ipo, Long> {
             SET i.status = 'INACTIVE', i.updated_at = NOW()
             WHERE i.status = 'ACTIVE'
               AND i.confirmed_offer_price IS NOT NULL
-              AND i.listing_date <= CURDATE()
               AND (
                   (SELECT COUNT(*) FROM ipo_news n WHERE n.ipo_id = i.id AND n.phase = 'PRE') <= 3
                   OR
-                  (i.listing_date <= CURDATE() - INTERVAL 30 DAY
+                  (i.listing_date IS NOT NULL AND i.listing_date <= CURDATE() - INTERVAL 30 DAY
                    AND (SELECT COUNT(*) FROM ipo_news n WHERE n.ipo_id = i.id AND n.phase = 'POST') <= 3)
               )
             """, nativeQuery = true)
