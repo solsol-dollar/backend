@@ -87,4 +87,4 @@ logging:
 
 app:
   cookie:
-    secure: true
+    secure: ${APP_COOKIE_SECURE:false}

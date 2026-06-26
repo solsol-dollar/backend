@@ -396,8 +396,8 @@ class SecuritiesServiceImpl implements SecuritiesService {
 
     // ── SEC-008: 종목 랭킹 ─────────────────────────────────────────────────
     @Override
-    public List<RankingItem> getRanking(String type, int limit) {
-        List<InvestmentProduct> products = productRepository.searchProducts(null, null);
+    public List<RankingItem> getRanking(String type, int limit, String productType) {
+        List<InvestmentProduct> products = productRepository.searchProducts(productType, null);
 
         // 캐시 히트 종목으로 우선 랭킹 구성
         List<RankingItem> cached = products.stream()

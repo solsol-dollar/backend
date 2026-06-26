@@ -105,6 +105,7 @@ services:
       LS_BASE_URL: ${LS_BASE_URL}
       LS_APP_KEY: ${LS_APP_KEY}
       LS_APP_SECRET: ${LS_APP_SECRET}
+      APP_COOKIE_SECURE: "true"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]

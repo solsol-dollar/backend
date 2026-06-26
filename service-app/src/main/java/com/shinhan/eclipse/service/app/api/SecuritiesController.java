@@ -36,8 +36,9 @@ public class SecuritiesController {
     @GetMapping("/products/ranking")
     public ResponseEntity<ApiResponse<List<RankingItem>>> getRanking(
             @RequestParam(defaultValue = "gainer") String type,
-            @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(ApiResponse.success(securitiesService.getRanking(type, Math.min(limit, 50))));
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String productType) {
+        return ResponseEntity.ok(ApiResponse.success(securitiesService.getRanking(type, Math.min(limit, 50), productType)));
     }
 
     /** SEC-002: 종목 상세 */
