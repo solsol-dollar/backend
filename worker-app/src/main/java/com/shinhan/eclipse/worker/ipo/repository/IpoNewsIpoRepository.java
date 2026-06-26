@@ -23,7 +23,8 @@ public interface IpoNewsIpoRepository extends JpaRepository<Ipo, Long> {
               AND (
                   (SELECT COUNT(*) FROM ipo_news n WHERE n.ipo_id = i.id AND n.phase = 'PRE') <= 3
                   OR
-                  (SELECT COUNT(*) FROM ipo_news n WHERE n.ipo_id = i.id AND n.phase = 'POST') <= 3
+                  (i.listing_date <= CURDATE() - INTERVAL 30 DAY
+                   AND (SELECT COUNT(*) FROM ipo_news n WHERE n.ipo_id = i.id AND n.phase = 'POST') <= 3)
               )
             """, nativeQuery = true)
     int deactivateIposWithInsufficientNews();
