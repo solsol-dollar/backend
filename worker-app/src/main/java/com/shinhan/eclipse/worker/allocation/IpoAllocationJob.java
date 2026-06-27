@@ -1,10 +1,14 @@
 package com.shinhan.eclipse.worker.allocation;
 
+import com.shinhan.eclipse.domain.account.BalanceHold;
+import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.notification.Notification;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
 import com.shinhan.eclipse.worker.allocation.dto.AllocationApplicant;
 import com.shinhan.eclipse.worker.allocation.dto.AllocationResult;
+import com.shinhan.eclipse.worker.allocation.repository.WorkerBalanceHoldRepository;
+import com.shinhan.eclipse.worker.allocation.repository.WorkerFinancialAccountRepository;
 import com.shinhan.eclipse.worker.allocation.repository.WorkerIpoRepository;
 import com.shinhan.eclipse.worker.allocation.repository.WorkerIpoSubscriptionRepository;
 import com.shinhan.eclipse.worker.allocation.repository.WorkerNotificationRepository;
@@ -15,7 +19,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,9 +44,28 @@ public class IpoAllocationJob {
     private final WorkerIpoRepository ipoRepository;
     private final WorkerIpoSubscriptionRepository subscriptionRepository;
     private final WorkerNotificationRepository notificationRepository;
+    private final WorkerBalanceHoldRepository balanceHoldRepository;
+    private final WorkerFinancialAccountRepository financialAccountRepository;
 
+    private static final ZoneId NEW_YORK = ZoneId.of("America/New_York");
+
+    private boolean isNewYorkInDst() {
+        return NEW_YORK.getRules().isDaylightSavings(Instant.now());
+    }
+
+    /** EDT(써머타임): 배정 발표 = 21:30 KST (8:30 AM ET) */
     @Scheduled(cron = "0 30 21 * * *", zone = "Asia/Seoul")
-    public void run() {
+    public void runEdt() {
+        if (isNewYorkInDst()) run();
+    }
+
+    /** EST(겨울): 배정 발표 = 22:30 KST (8:30 AM ET) */
+    @Scheduled(cron = "0 30 22 * * *", zone = "Asia/Seoul")
+    public void runEst() {
+        if (!isNewYorkInDst()) run();
+    }
+
+    void run() {
         LocalDate today = LocalDate.now();
         List<Ipo> listingTodayIpos = ipoRepository.findByListingDate(today);
         if (listingTodayIpos.isEmpty()) {
@@ -78,7 +103,23 @@ public class IpoAllocationJob {
         for (AllocationResult result : results) {
             IpoSubscription subscription = bySubscriptionId.get(result.customerId());
             BigDecimal ratePercent = result.allocationRate().multiply(BigDecimal.valueOf(100));
-            subscription.allocate(result.finalAllocated(), ratePercent);
+
+            BalanceHold hold = balanceHoldRepository.findBySubscriptionId(subscription.getId()).orElse(null);
+            BigDecimal heldAmount = hold != null ? hold.getAmount() : subscription.getSubscriptionAmount();
+
+            subscription.allocate(result.finalAllocated(), ratePercent, heldAmount);
+
+            if (hold != null) {
+                FinancialAccount account = financialAccountRepository
+                        .findById(hold.getAccountId()).orElseThrow();
+                account.settleReserved(subscription.getAllocatedAmount());
+                account.releaseReserved(subscription.getRefundAmount());
+                if (result.finalAllocated() > 0) {
+                    hold.settle();
+                } else {
+                    hold.release();
+                }
+            }
 
             notificationRepository.save(Notification.create(
                     subscription.getUserId(),

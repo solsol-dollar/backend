@@ -2,13 +2,17 @@ package com.shinhan.eclipse.worker.settlement;
 
 import com.shinhan.eclipse.domain.notification.Notification;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
+import com.shinhan.eclipse.domain.returnplan.ReturnPlanAllocation;
+import com.shinhan.eclipse.domain.subscription.IpoSubscription;
 import com.shinhan.eclipse.worker.allocation.repository.WorkerNotificationRepository;
+import com.shinhan.eclipse.worker.settlement.repository.WorkerReturnPlanAllocationRepository;
 import com.shinhan.eclipse.worker.settlement.repository.WorkerReturnPlanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Duration;
@@ -39,12 +43,17 @@ public class ReturnPlanSettlementJob {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final WorkerReturnPlanRepository returnPlanRepository;
+    private final WorkerReturnPlanAllocationRepository allocationRepository;
     private final ReturnPlanExecutionClient executionClient;
     private final WorkerNotificationRepository notificationRepository;
 
+    private static final List<String> DESTINATION_TYPES = List.of("SECURITIES", "SAVINGS", "DEPOSIT");
+
     @Scheduled(cron = "0 0 21 * * *", zone = "Asia/Seoul")
     public void run() {
-        List<ReturnPlan> targets = returnPlanRepository.findDraftPlansDueForSettlement(LocalDate.now(KST));
+        LocalDate today = LocalDate.now(KST);
+        autoCreateMissingReturnPlans(today);
+        List<ReturnPlan> targets = returnPlanRepository.findDraftPlansDueForSettlement(today);
         if (targets.isEmpty()) {
             return;
         }
@@ -112,6 +121,45 @@ public class ReturnPlanSettlementJob {
             Thread.sleep(duration.toMillis());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * 기한 내에 리턴 플랜을 생성하지 않은 청약에 대해 SECURITIES 100% 기본 플랜을 자동 생성한다.
+     * 이후 기존 정산 배치가 DRAFT 플랜을 찾아 실행하므로 별도 실행 로직은 불필요.
+     */
+    @Transactional
+    void autoCreateMissingReturnPlans(LocalDate today) {
+        List<IpoSubscription> targets = returnPlanRepository.findSubscriptionsNeedingAutoReturnPlan(today);
+        if (targets.isEmpty()) {
+            return;
+        }
+
+        log.info("리턴 플랜 자동 생성 대상: {}건", targets.size());
+        for (IpoSubscription subscription : targets) {
+            try {
+                ReturnPlan plan = ReturnPlan.create(
+                        subscription.getUserId(),
+                        subscription.getId(),
+                        subscription.getRefundAmount(),
+                        null,
+                        null,
+                        null);
+                ReturnPlan saved = returnPlanRepository.save(plan);
+
+                // SECURITIES 100%, 나머지 0%로 allocation 생성
+                for (String type : DESTINATION_TYPES) {
+                    ReturnPlanAllocation allocation = ReturnPlanAllocation.initZero(saved.getId(), type);
+                    allocationRepository.save(allocation);
+                }
+                allocationRepository.findByReturnPlanIdAndDestinationType(saved.getId(), "SECURITIES")
+                        .ifPresent(a -> a.updateRatio(100, subscription.getRefundAmount()));
+
+                log.info("리턴 플랜 자동 생성: returnPlanId={}, subscriptionId={}, refundAmount={}",
+                        saved.getId(), subscription.getId(), subscription.getRefundAmount());
+            } catch (Exception e) {
+                log.error("리턴 플랜 자동 생성 실패: subscriptionId={}", subscription.getId(), e);
+            }
         }
     }
 }

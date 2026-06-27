@@ -65,12 +65,15 @@ public class IpoSubscription extends BaseEntity {
     private LocalDateTime confirmedAt;
 
     public static IpoSubscription request(Long userId, Long ipoId, Long securitiesAccountId,
-                                           Integer shares, BigDecimal offerPrice) {
+                                           Integer shares, BigDecimal offerPrice, BigDecimal subscriptionAmount) {
         if (shares == null || shares <= 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "shares는 1 이상이어야 합니다.");
         }
         if (offerPrice == null || offerPrice.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "offerPrice는 0보다 커야 합니다.");
+        }
+        if (subscriptionAmount == null || subscriptionAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "subscriptionAmount는 0보다 커야 합니다.");
         }
         IpoSubscription subscription = new IpoSubscription();
         subscription.userId = userId;
@@ -78,7 +81,7 @@ public class IpoSubscription extends BaseEntity {
         subscription.securitiesAccountId = securitiesAccountId;
         subscription.requestedShares = shares;
         subscription.offerPrice = offerPrice;
-        subscription.subscriptionAmount = offerPrice.multiply(BigDecimal.valueOf(shares));
+        subscription.subscriptionAmount = subscriptionAmount;
         subscription.subscribedAt = LocalDateTime.now();
         return subscription;
     }
@@ -100,8 +103,11 @@ public class IpoSubscription extends BaseEntity {
         return this.resultStatus != null;
     }
 
-    /** @param allocationRatePercent 0~100 사이 퍼센트 값 (DB allocation_rate 컬럼 단위와 동일) */
-    public void allocate(int allocatedShares, BigDecimal allocationRatePercent) {
+    /**
+     * @param allocationRatePercent 0~100 사이 퍼센트 값
+     * @param heldAmount 청약 시점에 잠긴 실제 금액(증거금). refundAmount = heldAmount - allocatedAmount.
+     */
+    public void allocate(int allocatedShares, BigDecimal allocationRatePercent, BigDecimal heldAmount) {
         if (!"CONFIRMED".equals(this.subscriptionStatus)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "확정된 청약만 배정할 수 있습니다.");
         }
@@ -113,7 +119,7 @@ public class IpoSubscription extends BaseEntity {
         }
         this.allocatedShares = allocatedShares;
         this.allocatedAmount = this.offerPrice.multiply(BigDecimal.valueOf(allocatedShares));
-        this.refundAmount = this.subscriptionAmount.subtract(this.allocatedAmount);
+        this.refundAmount = heldAmount.subtract(this.allocatedAmount);
         this.allocationRate = allocationRatePercent;
         this.resultStatus = "COMPLETED";
     }

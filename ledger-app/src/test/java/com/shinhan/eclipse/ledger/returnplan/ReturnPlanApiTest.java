@@ -260,7 +260,7 @@ class ReturnPlanApiTest {
     private IpoSubscription persistAllocatedSubscription(Long ipoId) {
         return txTemplate.execute(status -> {
             IpoSubscription subscription = IpoSubscription.request(
-                    USER_ID, ipoId, 1L, 10, new BigDecimal("100"));
+                    USER_ID, ipoId, 1L, 10, new BigDecimal("100"), new BigDecimal("1000"));
             em.persist(subscription);
             ReflectionTestUtils.setField(subscription, "subscriptionStatus", "CONFIRMED");
             ReflectionTestUtils.setField(subscription, "confirmedAt", LocalDateTime.now());

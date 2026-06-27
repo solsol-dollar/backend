@@ -42,7 +42,8 @@ class MyPageServiceImpl implements MyPageService {
                 .map(a -> new MyPageAccountsResponse.AccountItem(
                         a.getId(), a.getAccountType(), a.getAccountName(),
                         a.getAccountNumberMasked(), a.getCurrency(),
-                        a.getBalance(), a.getInterestRate(), a.getMaturityDate()))
+                        a.getBalance(), a.getReservedBalance(), a.availableBalance(),
+                        a.getInterestRate(), a.getMaturityDate()))
                 .toList();
 
         List<MyPageAccountsResponse.CardItem> cardItems = cards.stream()
@@ -65,7 +66,8 @@ class MyPageServiceImpl implements MyPageService {
             return new MyPageAccountsResponse.AccountItem(
                     account.getId(), account.getAccountType(), account.getAccountName(),
                     account.getAccountNumberMasked(), account.getCurrency(),
-                    account.getBalance(), account.getInterestRate(), account.getMaturityDate());
+                    account.getBalance(), account.getReservedBalance(), account.availableBalance(),
+                    account.getInterestRate(), account.getMaturityDate());
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 예금 계좌가 존재합니다.");
         }
@@ -83,7 +85,8 @@ class MyPageServiceImpl implements MyPageService {
             return new MyPageAccountsResponse.AccountItem(
                     account.getId(), account.getAccountType(), account.getAccountName(),
                     account.getAccountNumberMasked(), account.getCurrency(),
-                    account.getBalance(), account.getInterestRate(), account.getMaturityDate());
+                    account.getBalance(), account.getReservedBalance(), account.availableBalance(),
+                    account.getInterestRate(), account.getMaturityDate());
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 적금 계좌가 존재합니다.");
         }

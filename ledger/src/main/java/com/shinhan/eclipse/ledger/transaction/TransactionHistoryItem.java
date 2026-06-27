@@ -5,13 +5,13 @@ import java.time.LocalDateTime;
 
 public record TransactionHistoryItem(
         Long id,
-        String type,             // IN, OUT, CARD, EXCHANGE
+        String type,             // IN, OUT, CARD, EXCHANGE, IPO_SUBSCRIPTION, IPO_SUBSCRIPTION_CANCEL
         BigDecimal amount,
         String currency,
         String status,
         LocalDateTime executedAt,
 
-        // 송금 상대방 정보
+        // 송금 상대방 정보 (IPO 관련 항목은 null)
         AccountInfo fromAccount,
         AccountInfo toAccount,
 
@@ -22,7 +22,7 @@ public record TransactionHistoryItem(
         BigDecimal sourceAmount,
         BigDecimal targetAmount,
 
-        // 카드 결제 전용
+        // 카드 결제 전용 및 IPO 청약 — 표시용 텍스트
         String description
 ) {
     public record AccountInfo(
@@ -55,5 +55,12 @@ public record TransactionHistoryItem(
                 sourceAmount, fromCurrency, status, executedAt,
                 fromAccount, toAccount,
                 fromCurrency, toCurrency, exchangeRate, sourceAmount, targetAmount, null);
+    }
+
+    /** IPO 청약 신청(출금) 또는 취소(입금) 내역 */
+    public static TransactionHistoryItem ofIpoHold(Long id, String type,
+            BigDecimal amount, String status, LocalDateTime executedAt, String description) {
+        return new TransactionHistoryItem(id, type, amount, "USD", status, executedAt,
+                null, null, null, null, null, null, null, description);
     }
 }

@@ -5,6 +5,7 @@ import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
+import com.shinhan.eclipse.domain.product.PriceCandle;
 import com.shinhan.eclipse.domain.user.InvestmentProfile;
 import com.shinhan.eclipse.service.mypage.MyPageService;
 import com.shinhan.eclipse.service.securities.*;
@@ -114,11 +115,13 @@ class SecuritiesServiceImpl implements SecuritiesService {
         InvestmentProduct product = productRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "종목을 찾을 수 없습니다: " + id));
 
-        QuoteSnapshot quote = quoteCache.get(product.getTicker()).orElseGet(() ->
-                kisRestClient.getCurrentPrice(product.getTicker(), product.getExchangeName())
-                        .map(dto -> kisToSnapshot(product.getTicker(), dto))
-                        .orElse(null)
-        );
+        QuoteSnapshot quote = quoteCache.get(product.getTicker()).orElseGet(() -> {
+            QuoteSnapshot fetched = kisRestClient.getCurrentPrice(product.getTicker(), product.getExchangeName())
+                    .map(dto -> kisToSnapshot(product.getTicker(), dto))
+                    .orElse(null);
+            if (fetched != null) quoteCache.put(product.getTicker(), fetched);
+            return fetched;
+        });
 
         return ProductDetail.of(product, quote);
     }
@@ -207,7 +210,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
         List<FinancialAccount> accounts = accountRepository.findByUserId(userId);
         BigDecimal cashUsd = accounts.stream()
                 .filter(a -> "USD".equals(a.getCurrency()))
-                .map(FinancialAccount::getBalance)
+                .map(FinancialAccount::availableBalance)
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
         BigDecimal cashKrw = cashUsd.multiply(usdKrw).setScale(0, RoundingMode.HALF_UP);
@@ -346,4 +349,111 @@ class SecuritiesServiceImpl implements SecuritiesService {
     }
 
     private record AiRecommendation(String ticker, String reason) {}
+
+    // ── SEC-007: 종목 통계 ─────────────────────────────────────────────────
+    @Override
+    public ProductStats getProductStats(Long id) {
+        InvestmentProduct product = productRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "종목을 찾을 수 없습니다: " + id));
+
+        LocalDate today = LocalDate.now();
+        LocalDate week52Ago = today.minusWeeks(52);
+
+        BigDecimal week52High = priceCandleRepository.findWeek52High(id, week52Ago).orElse(null);
+        BigDecimal week52Low  = priceCandleRepository.findWeek52Low(id, week52Ago).orElse(null);
+
+        // 최신 종가
+        Optional<com.shinhan.eclipse.domain.product.PriceCandle> latestOpt =
+                priceCandleRepository.findFirstByProductIdAndCandleTypeOrderByCandleAtDesc(id, "DAY");
+        BigDecimal latestClose = latestOpt.map(c -> c.getClosePrice()).orElse(null);
+
+        // 기간별 수익률 계산
+        java.util.LinkedHashMap<String, BigDecimal> returns = new java.util.LinkedHashMap<>();
+        String[] periods  = {"1M",   "3M",   "6M",    "1Y"};
+        LocalDate[] froms = {
+            today.minusMonths(1), today.minusMonths(3),
+            today.minusMonths(6), today.minusYears(1)
+        };
+        for (int i = 0; i < periods.length; i++) {
+            if (latestClose != null) {
+                Optional<com.shinhan.eclipse.domain.product.PriceCandle> baseOpt =
+                        priceCandleRepository.findFirstByProductIdAndCandleTypeAndCandleAtGreaterThanEqualOrderByCandleAtAsc(id, "DAY", froms[i]);
+                if (baseOpt.isPresent()) {
+                    BigDecimal baseClose = baseOpt.get().getClosePrice();
+                    if (baseClose.compareTo(BigDecimal.ZERO) > 0) {
+                        BigDecimal ret = latestClose.subtract(baseClose)
+                                .divide(baseClose, 4, java.math.RoundingMode.HALF_UP)
+                                .multiply(BigDecimal.valueOf(100))
+                                .setScale(2, java.math.RoundingMode.HALF_UP);
+                        returns.put(periods[i], ret);
+                    }
+                }
+            }
+        }
+
+        return new ProductStats(product.getTicker(), week52High, week52Low, returns);
+    }
+
+    // ── SEC-008: 종목 랭킹 ─────────────────────────────────────────────────
+    @Override
+    public List<RankingItem> getRanking(String type, int limit, String productType) {
+        List<InvestmentProduct> products = productRepository.searchProducts(productType, null);
+
+        // 캐시 히트 종목으로 우선 랭킹 구성
+        List<RankingItem> cached = products.stream()
+                .map(p -> {
+                    QuoteSnapshot q = quoteCache.get(p.getTicker()).orElse(null);
+                    if (q == null) return null;
+                    return new RankingItem(p.getId(), p.getTicker(), p.getProductName(),
+                            q.price(), q.changeRate(), q.sign());
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
+
+        // 캐시 미스 시 price_candles 최신 일봉 fallback
+        if (cached.isEmpty()) {
+            List<Long> ids = products.stream().map(InvestmentProduct::getId).toList();
+            java.util.Map<Long, PriceCandle> latestByProduct = priceCandleRepository
+                    .findLatestDailyByProductIds(ids).stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            PriceCandle::getProductId, c -> c));
+            return products.stream()
+                    .map(p -> {
+                        PriceCandle c = latestByProduct.get(p.getId());
+                        if (c == null) return null;
+                        BigDecimal change = c.getClosePrice().subtract(c.getOpenPrice());
+                        BigDecimal rate = c.getOpenPrice().compareTo(BigDecimal.ZERO) == 0
+                                ? BigDecimal.ZERO
+                                : change.divide(c.getOpenPrice(), 4, java.math.RoundingMode.HALF_UP)
+                                        .multiply(new BigDecimal("100"));
+                        String sign = rate.compareTo(BigDecimal.ZERO) > 0 ? "2"
+                                : rate.compareTo(BigDecimal.ZERO) < 0 ? "5" : "3";
+                        return new RankingItem(p.getId(), p.getTicker(), p.getProductName(),
+                                c.getClosePrice(), rate, sign);
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .sorted(buildRankingComparator(type))
+                    .limit(limit)
+                    .toList();
+        }
+
+        return cached.stream()
+                .sorted(buildRankingComparator(type))
+                .limit(limit)
+                .toList();
+    }
+
+    private Comparator<RankingItem> buildRankingComparator(String type) {
+        Comparator<BigDecimal> nullsLast = Comparator.nullsLast(Comparator.naturalOrder());
+        return switch (type == null ? "gainer" : type) {
+            case "loser"  -> Comparator.comparing(RankingItem::changeRate, nullsLast);
+            case "volume" -> Comparator.comparing(
+                    (RankingItem r) -> quoteCache.get(r.ticker())
+                            .map(QuoteSnapshot::volume).orElse(0L),
+                    Comparator.<Long>nullsLast(Comparator.reverseOrder())
+            );
+            default       -> Comparator.comparing(RankingItem::changeRate,
+                    Comparator.nullsLast(Comparator.reverseOrder()));
+        };
+    }
 }

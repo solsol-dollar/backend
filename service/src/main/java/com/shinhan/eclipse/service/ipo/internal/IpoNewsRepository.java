@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 interface IpoNewsRepository extends JpaRepository<IpoNews, Long> {
-    List<IpoNews> findByIpoIdAndSummaryIsNotNullOrderByPublishedAtDesc(Long ipoId, Pageable pageable);
+    List<IpoNews> findByIpoIdOrderByPublishedAtDesc(Long ipoId, Pageable pageable);
 }
