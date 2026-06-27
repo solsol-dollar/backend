@@ -14,6 +14,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     runtimeOnly 'com.mysql:mysql-connector-j'
     testImplementation 'org.springframework.batch:spring-batch-test'
+    testRuntimeOnly 'com.h2database:h2'
 }
 
 bootJar {

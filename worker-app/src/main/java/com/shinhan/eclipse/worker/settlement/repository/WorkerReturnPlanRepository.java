@@ -1,6 +1,7 @@
 package com.shinhan.eclipse.worker.settlement.repository;
 
 import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
+import com.shinhan.eclipse.domain.subscription.IpoSubscription;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -34,4 +35,17 @@ public interface WorkerReturnPlanRepository extends JpaRepository<ReturnPlan, Lo
             where s.id in :subscriptionIds
             """)
     List<Object[]> findCompanyNamesBySubscriptionIds(@Param("subscriptionIds") List<Long> subscriptionIds);
+
+    /**
+     * 환불일이 오늘이거나 지난 COMPLETED 청약 중 리턴 플랜이 없는 것을 찾는다.
+     * 기한 내에 리턴 플랜을 생성하지 않은 사용자를 위한 자동 생성 대상.
+     */
+    @Query("""
+            select s from IpoSubscription s
+            where s.resultStatus = 'COMPLETED'
+              and s.refundAmount > 0
+              and s.ipoId in (select i.id from Ipo i where i.refundDate <= :today)
+              and s.id not in (select p.subscriptionId from ReturnPlan p)
+            """)
+    List<IpoSubscription> findSubscriptionsNeedingAutoReturnPlan(@Param("today") LocalDate today);
 }

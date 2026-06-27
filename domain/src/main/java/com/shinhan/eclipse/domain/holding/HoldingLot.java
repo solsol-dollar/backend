@@ -56,4 +56,19 @@ public class HoldingLot extends BaseEntity {
         lot.acquiredAt = LocalDateTime.now();
         return lot;
     }
+
+    public static HoldingLot ofIpoAllocation(Long holdingId, Long userId, Long productId,
+                                              Long subscriptionId, Integer quantity, BigDecimal price) {
+        HoldingLot lot = new HoldingLot();
+        lot.holdingId = holdingId;
+        lot.userId = userId;
+        lot.productId = productId;
+        lot.sourceType = "IPO_ALLOCATION";
+        lot.sourceId = subscriptionId;
+        lot.quantity = quantity;
+        lot.remainingQuantity = quantity;
+        lot.acquisitionPrice = price;
+        lot.acquiredAt = LocalDateTime.now();
+        return lot;
+    }
 }

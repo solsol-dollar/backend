@@ -76,11 +76,22 @@ class HomeServiceImpl implements HomeService {
                 .map(FinancialAccount::getBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // 사용가능잔액(= 실제잔액 - 청약 등으로 잠긴 reservedBalance)
+        BigDecimal cmaUsdAvailable = securities.stream()
+                .filter(a -> "USD".equals(a.getCurrency()))
+                .map(FinancialAccount::availableBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal cmaKrwAvailable = securities.stream()
+                .filter(a -> "KRW".equals(a.getCurrency()))
+                .map(FinancialAccount::availableBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         // KRW → USD 환산 (환율 없으면 null — 환산 불가 상태 명시)
         BigDecimal krwInUsd = (exchangeRate != null)
-                ? cmaKrw.divide(exchangeRate, 4, RoundingMode.HALF_UP)
+                ? cmaKrwAvailable.divide(exchangeRate, 4, RoundingMode.HALF_UP)
                 : null;
-        BigDecimal securitiesTotalUsd = (krwInUsd != null) ? cmaUsd.add(krwInUsd) : null;
+        BigDecimal securitiesTotalUsd = (krwInUsd != null) ? cmaUsdAvailable.add(krwInUsd) : null;
 
         Long usdAccountId = securities.stream()
                 .filter(a -> "USD".equals(a.getCurrency()))
@@ -96,7 +107,9 @@ class HomeServiceImpl implements HomeService {
                 .orElse(null);
 
         AssetsSummaryResponse.SecuritiesAsset securitiesAsset =
-                new AssetsSummaryResponse.SecuritiesAsset(usdAccountId, krwAccountId, cmaAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd);
+                new AssetsSummaryResponse.SecuritiesAsset(
+                        usdAccountId, krwAccountId, cmaAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd,
+                        cmaUsdAvailable, cmaKrwAvailable);
 
         // 예금/적금 계좌
         List<AssetsSummaryResponse.AccountAsset> accountAssets = accounts.stream()

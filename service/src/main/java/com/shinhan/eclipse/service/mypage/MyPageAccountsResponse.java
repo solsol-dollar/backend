@@ -15,6 +15,8 @@ public record MyPageAccountsResponse(
             String accountNumberMasked,
             String currency,
             BigDecimal balance,
+            BigDecimal reservedBalance,
+            BigDecimal availableBalance,
             BigDecimal interestRate,
             LocalDate maturityDate
     ) {}

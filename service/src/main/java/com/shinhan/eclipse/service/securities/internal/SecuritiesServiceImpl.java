@@ -210,7 +210,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
         List<FinancialAccount> accounts = accountRepository.findByUserId(userId);
         BigDecimal cashUsd = accounts.stream()
                 .filter(a -> "USD".equals(a.getCurrency()))
-                .map(FinancialAccount::getBalance)
+                .map(FinancialAccount::availableBalance)
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
         BigDecimal cashKrw = cashUsd.multiply(usdKrw).setScale(0, RoundingMode.HALF_UP);

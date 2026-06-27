@@ -66,6 +66,28 @@ class AccountLinkServiceImpl implements AccountLinkService {
 
     @Override
     @Transactional
+    public void reserve(Long userId, Long accountId, BigDecimal amount) {
+        FinancialAccount account = financialAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED));
+        if (!Boolean.TRUE.equals(account.getLinked())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED);
+        }
+        account.reserve(amount);
+    }
+
+    @Override
+    @Transactional
+    public void releaseReserved(Long userId, Long accountId, BigDecimal amount) {
+        FinancialAccount account = financialAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED));
+        if (!Boolean.TRUE.equals(account.getLinked())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED);
+        }
+        account.releaseReserved(amount);
+    }
+
+    @Override
+    @Transactional
     public void deduct(Long userId, Long accountId, BigDecimal amount) {
         FinancialAccount account = financialAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED));

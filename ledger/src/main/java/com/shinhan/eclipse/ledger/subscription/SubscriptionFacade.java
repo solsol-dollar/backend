@@ -33,4 +33,7 @@ public interface SubscriptionFacade {
 
     /** 청약 시작일이 가장 빠른 예정(UPCOMING) IPO. */
     Optional<Ipo> findNextUpcomingIpo();
+
+    /** 해당 사용자가 ipoId 종목을 이미 청약(REQUESTED/CONFIRMED)했는지 확인. */
+    boolean isAlreadySubscribed(Long userId, Long ipoId);
 }
