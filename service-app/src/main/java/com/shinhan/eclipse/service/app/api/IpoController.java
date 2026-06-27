@@ -53,6 +53,15 @@ public class IpoController {
                 ipoExplorationService.getIpoNews(ipoId, size)));
     }
 
+    /** IPO-008: IPO 뉴스 스코어 조회 */
+    @GetMapping("/{ipoId}/score")
+    public ResponseEntity<ApiResponse<IpoScoreResult>> getIpoScore(@PathVariable Long ipoId) {
+        return ipoExplorationService.getIpoScore(ipoId)
+                .map(ApiResponse::success)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     /** IPO-003: 찜 추가 */
     @PostMapping("/{ipoId}/favorites")
     public ResponseEntity<ApiResponse<FavoriteIpoResponse>> addFavorite(
