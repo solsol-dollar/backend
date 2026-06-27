@@ -22,10 +22,10 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -39,6 +39,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
     private final AccountLinkService accountLinkService;
     private final BalanceHoldRepository balanceHoldRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -178,11 +179,10 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
 
     private static final LocalTime SUBSCRIPTION_OPEN  = LocalTime.of(9, 0);
     private static final LocalTime SUBSCRIPTION_CLOSE = LocalTime.of(17, 0);
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     /** 취소 가능 구간: subscriptionStartDate 09:00 ~ subscriptionEndDate 17:00 (KST) */
     private void validateCancellationPeriod(Ipo ipo) {
-        LocalDateTime now = LocalDateTime.now(KST);
+        LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime start = ipo.getSubscriptionStartDate().atTime(SUBSCRIPTION_OPEN);
         LocalDateTime end   = ipo.getSubscriptionEndDate().atTime(SUBSCRIPTION_CLOSE);
         if (now.isBefore(start) || !now.isBefore(end)) {
@@ -196,7 +196,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
     }
 
     private void validateSubscriptionPeriod(Ipo ipo, boolean checkTime) {
-        LocalDateTime now = LocalDateTime.now(KST);
+        LocalDateTime now = LocalDateTime.now(clock);
         LocalDate today = now.toLocalDate();
         if (today.isBefore(ipo.getSubscriptionStartDate()) || today.isAfter(ipo.getSubscriptionEndDate())) {
             throw new BusinessException(ErrorCode.SUBSCRIPTION_PERIOD_INVALID);
