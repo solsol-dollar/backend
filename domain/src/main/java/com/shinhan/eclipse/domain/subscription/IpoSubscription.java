@@ -65,12 +65,15 @@ public class IpoSubscription extends BaseEntity {
     private LocalDateTime confirmedAt;
 
     public static IpoSubscription request(Long userId, Long ipoId, Long securitiesAccountId,
-                                           Integer shares, BigDecimal offerPrice) {
+                                           Integer shares, BigDecimal offerPrice, BigDecimal subscriptionAmount) {
         if (shares == null || shares <= 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "shares는 1 이상이어야 합니다.");
         }
         if (offerPrice == null || offerPrice.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "offerPrice는 0보다 커야 합니다.");
+        }
+        if (subscriptionAmount == null || subscriptionAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "subscriptionAmount는 0보다 커야 합니다.");
         }
         IpoSubscription subscription = new IpoSubscription();
         subscription.userId = userId;
@@ -78,7 +81,7 @@ public class IpoSubscription extends BaseEntity {
         subscription.securitiesAccountId = securitiesAccountId;
         subscription.requestedShares = shares;
         subscription.offerPrice = offerPrice;
-        subscription.subscriptionAmount = offerPrice.multiply(BigDecimal.valueOf(shares));
+        subscription.subscriptionAmount = subscriptionAmount;
         subscription.subscribedAt = LocalDateTime.now();
         return subscription;
     }

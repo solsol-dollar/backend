@@ -19,7 +19,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,8 +47,25 @@ public class IpoAllocationJob {
     private final WorkerBalanceHoldRepository balanceHoldRepository;
     private final WorkerFinancialAccountRepository financialAccountRepository;
 
+    private static final ZoneId NEW_YORK = ZoneId.of("America/New_York");
+
+    private boolean isNewYorkInDst() {
+        return NEW_YORK.getRules().isDaylightSavings(Instant.now());
+    }
+
+    /** EDT(써머타임): 배정 발표 = 21:30 KST (8:30 AM ET) */
     @Scheduled(cron = "0 30 21 * * *", zone = "Asia/Seoul")
-    public void run() {
+    public void runEdt() {
+        if (isNewYorkInDst()) run();
+    }
+
+    /** EST(겨울): 배정 발표 = 22:30 KST (8:30 AM ET) */
+    @Scheduled(cron = "0 30 22 * * *", zone = "Asia/Seoul")
+    public void runEst() {
+        if (!isNewYorkInDst()) run();
+    }
+
+    void run() {
         LocalDate today = LocalDate.now();
         List<Ipo> listingTodayIpos = ipoRepository.findByListingDate(today);
         if (listingTodayIpos.isEmpty()) {
