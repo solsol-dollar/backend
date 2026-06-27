@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-class FinnhubSyncScheduler {
+public class FinnhubSyncScheduler {
 
     private static final String BASE_URL = "https://finnhub.io/api/v1";
     private static final String FMP_BASE_URL = "https://financialmodelingprep.com/stable";
@@ -52,16 +52,20 @@ class FinnhubSyncScheduler {
     private record FmpData(String sector) {}
 
     @Scheduled(cron = "0 0 1 * * *")
-    public void sync() {
+    public void syncScheduled() {
+        sync();
+    }
+
+    public int sync() {
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("FINNHUB_API_KEY가 설정되지 않았습니다.");
-            return;
+            return 0;
         }
 
         List<Ipo> fetched = fetchFromFinnhub().stream()
                 .collect(Collectors.toMap(Ipo::getTicker, i -> i, (a, b) -> a))
                 .values().stream().toList();
-        if (fetched.isEmpty()) return;
+        if (fetched.isEmpty()) return 0;
 
         List<String> tickers = fetched.stream().map(Ipo::getTicker).toList();
         Set<String> existingTickers = ipoRepository.findExistingTickers(tickers);
@@ -75,6 +79,7 @@ class FinnhubSyncScheduler {
         }
 
         log.info("IPO 동기화 완료: {}건 신규 / {}건 조회", newIpos.size(), fetched.size());
+        return newIpos.size();
     }
 
     private List<Ipo> fetchFromFinnhub() {
@@ -122,16 +127,27 @@ class FinnhubSyncScheduler {
         return result;
     }
 
+    private static final java.util.regex.Pattern COMPANY_NAME_SUFFIX =
+            java.util.regex.Pattern.compile("(?i)(.*?(?:Inc|Corp|Ltd|LLC|LP|Co)\\.?)\\s*/.*");
+
+    private String normalizeCompanyName(String name) {
+        if (name == null) return null;
+        String trimmed = name.trim();
+        java.util.regex.Matcher m = COMPANY_NAME_SUFFIX.matcher(trimmed);
+        return m.matches() ? m.group(1) : trimmed;
+    }
+
     private Ipo toIpo(IpoItem item) {
         LocalDate listingDate     = item.date() != null ? LocalDate.parse(item.date()) : null;
         BigDecimal[] prices       = parsePrice(item.price());
         String ipoStatus          = "priced".equals(item.status()) ? "OPEN" : "UPCOMING";
         BigDecimal confirmedPrice = calcConfirmedPrice(prices[0], prices[1]);
         FmpData fmpData           = fetchFmpData(item.symbol());
+        String companyName        = normalizeCompanyName(item.name());
 
         return Ipo.create(
                 item.symbol(),
-                item.name(),
+                companyName,
                 item.exchange(),
                 fmpData.sector(),
                 listingDate != null ? calcSubscriptionStartDate(listingDate) : null,
@@ -145,7 +161,7 @@ class FinnhubSyncScheduler {
                 BigDecimal.valueOf(100),
                 ipoStatus,
                 item.numberOfShares(),
-                toTradingViewLogoUrl(item.name()),
+                toTradingViewLogoUrl(companyName),
                 null // totalAllocableShares: 중개사 계약값, 외부 API에 없음 — 운영자가 별도 입력
         );
     }
