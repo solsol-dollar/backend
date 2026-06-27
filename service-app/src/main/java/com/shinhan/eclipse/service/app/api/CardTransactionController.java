@@ -1,6 +1,8 @@
 package com.shinhan.eclipse.service.app.api;
 
 import com.shinhan.eclipse.auth.AuthUser;
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.service.card.CardService;
 import com.shinhan.eclipse.service.card.CardTransactionSummary;
@@ -30,6 +32,10 @@ public class CardTransactionController {
         LocalDate now = LocalDate.now();
         int targetYear  = (year  != null) ? year  : now.getYear();
         int targetMonth = (month != null) ? month : now.getMonthValue();
+
+        if (targetMonth < 1 || targetMonth > 12) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "month는 1~12 사이여야 합니다.");
+        }
 
         return ResponseEntity.ok(ApiResponse.success(
                 cardService.getMonthlySummary(authUser.userId(), targetYear, targetMonth)));

@@ -1,6 +1,5 @@
 package com.shinhan.eclipse.service.card.internal;
 
-import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 import com.shinhan.eclipse.domain.account.CardTransaction;
 import com.shinhan.eclipse.service.card.CardService;
 import com.shinhan.eclipse.service.card.CardTransactionSummary;
@@ -21,7 +20,6 @@ import java.util.stream.Collectors;
 class CardServiceImpl implements CardService {
 
     private final CardTransactionRepository txRepository;
-    private final MerchantCategoryClassifier classifier;
     private final ExchangeService exchangeService;
 
     @Override
