@@ -44,7 +44,7 @@ public class Card extends BaseEntity {
         c.linkedAccountId = linkedAccountId;
         c.cardType = "CHECK_CARD";
         c.cardStatus = "LINKED";
-        c.cardName = "신한 CMA 체크카드";
+        c.cardName = "신한 체인지업 체크카드";
         c.cardNumberMasked = generateMaskedNumber();
         c.issuerName = "신한카드";
         c.linked = true;
