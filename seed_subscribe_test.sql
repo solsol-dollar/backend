@@ -46,7 +46,7 @@ ON DUPLICATE KEY UPDATE `name` = `name`;
 -- =============================================================================
 INSERT INTO `financial_accounts`
     (`id`, `user_id`, `account_type`, `institution_type`, `institution_name`, `account_name`,
-     `account_number_masked`, `currency`, `balance`, `reserved_balance`,
+     `account_number`, `currency`, `balance`, `reserved_balance`,
      `linked`, `linked_at`, `created_at`, `updated_at`, `status`)
 VALUES
     (1, 1, 'SECURITIES', 'SECURITIES', '신한투자증권', 'CMA USD',
@@ -56,7 +56,7 @@ ON DUPLICATE KEY UPDATE `balance` = 10000.0000, `reserved_balance` = 1000.0000;
 
 INSERT INTO `financial_accounts`
     (`id`, `user_id`, `account_type`, `institution_type`, `institution_name`, `account_name`,
-     `account_number_masked`, `currency`, `balance`, `reserved_balance`,
+     `account_number`, `currency`, `balance`, `reserved_balance`,
      `linked`, `linked_at`, `created_at`, `updated_at`, `status`)
 VALUES
     (2, 1, 'SECURITIES', 'SECURITIES', '신한투자증권', 'CMA KRW',
@@ -66,7 +66,7 @@ ON DUPLICATE KEY UPDATE `balance` = 10000000.0000;
 
 INSERT INTO `financial_accounts`
     (`id`, `user_id`, `account_type`, `institution_type`, `institution_name`, `account_name`,
-     `account_number_masked`, `currency`, `balance`, `interest_rate`, `maturity_date`,
+     `account_number`, `currency`, `balance`, `interest_rate`, `maturity_date`,
      `linked`, `linked_at`, `created_at`, `updated_at`, `status`)
 VALUES
     (3, 1, 'SAVINGS', 'BANK', '신한은행', '신한 Value-up 외화적립예금',
@@ -76,7 +76,7 @@ ON DUPLICATE KEY UPDATE `linked` = TRUE;
 
 INSERT INTO `financial_accounts`
     (`id`, `user_id`, `account_type`, `institution_type`, `institution_name`, `account_name`,
-     `account_number_masked`, `currency`, `balance`, `interest_rate`, `maturity_date`,
+     `account_number`, `currency`, `balance`, `interest_rate`, `maturity_date`,
      `linked`, `linked_at`, `created_at`, `updated_at`, `status`)
 VALUES
     (4, 1, 'DEPOSIT', 'BANK', '신한은행', '외화 체인지업 예금',

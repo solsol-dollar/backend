@@ -33,7 +33,10 @@ public class FinancialAccount extends BaseEntity {
     private String accountName;
 
     @Column(length = 50)
-    private String accountNumberMasked;
+    private String accountNumber;
+
+    @Column(length = 50)
+    private String virtualAccountNumber;
 
     @Column(nullable = false, length = 10)
     private String currency = "USD";
@@ -55,14 +58,14 @@ public class FinancialAccount extends BaseEntity {
 
     private LocalDateTime linkedAt;
 
-    public static FinancialAccount createCmaAccount(Long userId, String accountNumberMasked, String currency) {
+    public static FinancialAccount createCmaAccount(Long userId, String accountNumber, String currency) {
         FinancialAccount a = new FinancialAccount();
         a.userId = userId;
         a.accountType = "SECURITIES";
         a.institutionType = "SECURITIES_FIRM";
         a.institutionName = "신한투자증권";
         a.accountName = "CMA 계좌";
-        a.accountNumberMasked = accountNumberMasked;
+        a.accountNumber = accountNumber;
         a.currency = currency;
         a.balance = BigDecimal.ZERO;
         a.linked = true;
@@ -77,7 +80,7 @@ public class FinancialAccount extends BaseEntity {
         a.institutionType = "BANK";
         a.institutionName = "신한은행";
         a.accountName = "외화 체인지업 예금";
-        a.accountNumberMasked = generateMaskedAccountNumber();
+        a.accountNumber = generateAccountNumber();
         a.currency = "USD";
         a.balance = BigDecimal.ZERO;
         a.interestRate = new BigDecimal("3.00");
@@ -94,7 +97,7 @@ public class FinancialAccount extends BaseEntity {
         a.institutionType = "BANK";
         a.institutionName = "신한은행";
         a.accountName = "신한 Value-up 외화적립예금";
-        a.accountNumberMasked = generateMaskedAccountNumber();
+        a.accountNumber = generateAccountNumber();
         a.currency = "USD";
         a.balance = BigDecimal.ZERO;
         a.interestRate = new BigDecimal("4.00");
@@ -104,7 +107,7 @@ public class FinancialAccount extends BaseEntity {
         return a;
     }
 
-    private static String generateMaskedAccountNumber() {
+    private static String generateAccountNumber() {
         int suffix = (int) (Math.random() * 9000) + 1000;
         return "****-****-" + suffix;
     }

@@ -30,6 +30,7 @@ CREATE TABLE `users` (
 	`email`	VARCHAR(100)	NULL	COMMENT 'SSO 연동 시 존재 (현재 NULL 허용 - 정책 확정 후 NOT NULL 검토)',
 	`phone_number`	VARCHAR(30)	NULL,
 	`onboarding_status`	VARCHAR(30)	NOT NULL	DEFAULT 'REQUIRED',
+	`investment_status`	VARCHAR(30)	NOT NULL	DEFAULT 'REQUIRED'	COMMENT 'REQUIRED(미진단) / COMPLETED(진단완료)',
 	`simple_password`	VARCHAR(255)	NULL	COMMENT '간편 비밀번호 BCrypt 해시',
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
@@ -44,7 +45,8 @@ CREATE TABLE `financial_accounts` (
 	`institution_type`	VARCHAR(30)	NOT NULL,
 	`institution_name`	VARCHAR(50)	NOT NULL,
 	`account_name`	VARCHAR(100)	NULL,
-	`account_number_masked`	VARCHAR(50)	NULL,
+	`account_number`	VARCHAR(50)	NULL,
+	`virtual_account_number`	VARCHAR(50)	NULL	COMMENT '증권 외화(USD) 계좌에만 사용. 원화 계좌 및 기타 계좌는 NULL',
 	`currency`	VARCHAR(10)	NOT NULL	DEFAULT 'USD',
 	`balance`	DECIMAL(18,4)	NOT NULL,
 	`reserved_balance`	DECIMAL(18,4)	NOT NULL	DEFAULT 0	COMMENT '청약 등으로 잠긴 금액(홀딩). available = balance - reserved_balance',
@@ -73,6 +75,14 @@ CREATE TABLE `cards` (
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
 	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `merchants` (
+	`merchant_name`	VARCHAR(100)	NOT NULL	COMMENT '가맹점명 (card_transactions.merchant_name 과 매핑)',
+	`image_url`	VARCHAR(500)	NULL	COMMENT '가맹점 로고 이미지 URL',
+	`created_at`	DATETIME	NOT NULL,
+	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`merchant_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `card_transactions` (

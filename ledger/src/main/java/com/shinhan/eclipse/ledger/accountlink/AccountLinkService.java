@@ -10,7 +10,7 @@ public interface AccountLinkService {
 
     /** 사용자의 특정 유형(연동) 계좌 1건 조회. 여러 건이면 첫 번째. */
     Optional<FinancialAccount> findAccountByType(Long userId, String accountType);
-    FinancialAccount linkAccount(Long userId, String accountType, String institutionName, String accountNumberMasked);
+    FinancialAccount linkAccount(Long userId, String accountType, String institutionName, String accountNumber);
     void unlinkAccount(Long userId, Long accountId);
 
     /** 연동 계좌 단건 조회. 본인 소유가 아니거나 연동되지 않은 계좌면 L005(ACCOUNT_NOT_LINKED). */
