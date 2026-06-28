@@ -5,5 +5,8 @@ public record IpoFinancialItem(
         Long revenue,
         Long operatingIncome,
         Long netIncome,
-        String currency
+        String currency,
+        Long revenueKrw,
+        Long operatingIncomeKrw,
+        Long netIncomeKrw
 ) {}

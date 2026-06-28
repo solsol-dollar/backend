@@ -5,6 +5,7 @@ import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.ipo.FavoriteIpo;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.ipo.IpoNews;
+import com.shinhan.eclipse.service.exchange.ExchangeService;
 import com.shinhan.eclipse.service.ipo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,6 +34,7 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     private final FavoriteIpoRepository favoriteIpoRepository;
     private final IpoFinancialRepository ipoFinancialRepository;
     private final IpoScoreRepository ipoScoreRepository;
+    private final ExchangeService exchangeService;
 
     @Override
     public IpoListResult getIpos(String status, boolean favoriteOnly, Long userId, int page, int size) {
@@ -151,9 +153,31 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
             throw new BusinessException(ErrorCode.IPO_NOT_FOUND);
         }
         return ipoFinancialRepository.findByIpoIdOrderByFiscalYearDesc(ipoId).stream()
-                .map(f -> new IpoFinancialItem(
-                        f.getFiscalYear(), f.getRevenue(), f.getOperatingIncome(), f.getNetIncome(), f.getCurrency()))
+                .map(f -> {
+                    BigDecimal rate = safeGetRate(f.getCurrency());
+                    return new IpoFinancialItem(
+                            f.getFiscalYear(),
+                            f.getRevenue(), f.getOperatingIncome(), f.getNetIncome(),
+                            f.getCurrency(),
+                            toKrw(f.getRevenue(), rate),
+                            toKrw(f.getOperatingIncome(), rate),
+                            toKrw(f.getNetIncome(), rate)
+                    );
+                })
                 .toList();
+    }
+
+    private BigDecimal safeGetRate(String currency) {
+        try {
+            return exchangeService.getExchangeRate(currency).baseRate();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Long toKrw(Long amount, BigDecimal rate) {
+        if (amount == null || rate == null) return null;
+        return BigDecimal.valueOf(amount).multiply(rate).setScale(0, RoundingMode.HALF_UP).longValue();
     }
 
     private List<Long> parseTopNewsIds(String json) {
