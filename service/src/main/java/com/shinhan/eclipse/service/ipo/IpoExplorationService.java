@@ -11,4 +11,5 @@ public interface IpoExplorationService {
     void removeFavorite(Long userId, Long ipoId);
     List<FavoriteIpoItem> getFavoriteIpos(Long userId, Integer limit);
     Optional<IpoScoreResult> getIpoScore(Long ipoId);
+    List<IpoFinancialItem> getIpoFinancials(Long ipoId);
 }

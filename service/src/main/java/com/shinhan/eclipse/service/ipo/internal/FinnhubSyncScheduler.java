@@ -154,7 +154,7 @@ public class FinnhubSyncScheduler {
                 listingDate != null ? prevBusinessDay(listingDate) : null,
                 listingDate,
                 listingDate != null ? nextBusinessDay(listingDate) : null,
-                listingDate != null ? nextBusinessDay(listingDate) : null,
+                listingDate != null ? calcDepositDate(listingDate) : null,
                 prices[0],
                 prices[1],
                 confirmedPrice,
@@ -204,7 +204,6 @@ public class FinnhubSyncScheduler {
         return "https://s3-symbol-logo.tradingview.com/" + slug + "--big.svg";
     }
 
-    /** 기준일 다음 영업일 (토→월, 일→월, 평일→다음날) */
     private LocalDate nextBusinessDay(LocalDate date) {
         LocalDate next = date.plusDays(1);
         if (next.getDayOfWeek() == DayOfWeek.SATURDAY) return next.plusDays(2);
@@ -212,12 +211,15 @@ public class FinnhubSyncScheduler {
         return next;
     }
 
-    /** 기준일 직전 영업일 (월→금, 일→금, 토→금, 평일→전날) */
     private LocalDate prevBusinessDay(LocalDate date) {
         LocalDate prev = date.minusDays(1);
         if (prev.getDayOfWeek() == DayOfWeek.SATURDAY) return prev.minusDays(1);
         if (prev.getDayOfWeek() == DayOfWeek.SUNDAY)   return prev.minusDays(2);
         return prev;
+    }
+
+    private LocalDate calcDepositDate(LocalDate listingDate) {
+        return nextBusinessDay(listingDate);
     }
 
     private LocalDate calcSubscriptionStartDate(LocalDate listingDate) {

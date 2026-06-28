@@ -1,6 +1,7 @@
 package com.shinhan.eclipse.worker.admin;
 
 import com.shinhan.eclipse.worker.allocation.IpoAllocationJob;
+import com.shinhan.eclipse.worker.ipo.sync.IpoFinancialSyncService;
 import com.shinhan.eclipse.worker.candle.CandleSyncService;
 import com.shinhan.eclipse.worker.candle.job.DailyCandleJob;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class JobTriggerController {
     private final DailyCandleJob dailyCandleJob;
     private final CandleSyncService candleSyncService;
     private final JobLauncher jobLauncher;
+    private final IpoFinancialSyncService ipoFinancialSyncService;
 
     @Qualifier("ipoNewsFetchOnlyJob")
     private final Job ipoNewsFetchOnlyJob;
@@ -84,6 +86,21 @@ public class JobTriggerController {
             }
         });
         return ResponseEntity.accepted().body(Map.of("status", "started", "job", "candle-daily"));
+    }
+
+    /** IPO 재무데이터 수집 (SEC EDGAR 424B4/S-1/F-1/20-F 파싱) */
+    @PostMapping("/ipo-financials-sync")
+    public ResponseEntity<Map<String, Object>> triggerIpoFinancialSync() {
+        log.info("[MANUAL] IPO 재무데이터 수집 시작");
+        CompletableFuture.runAsync(() -> {
+            try {
+                Map<String, String> results = ipoFinancialSyncService.syncAll();
+                log.info("[MANUAL] IPO 재무데이터 수집 완료: {}", results);
+            } catch (Exception e) {
+                log.error("[MANUAL] IPO 재무데이터 수집 실패", e);
+            }
+        });
+        return ResponseEntity.accepted().body(Map.of("status", "started", "job", "ipo-financials-sync"));
     }
 
     /** 5년치 캔들 전체 백필 */
