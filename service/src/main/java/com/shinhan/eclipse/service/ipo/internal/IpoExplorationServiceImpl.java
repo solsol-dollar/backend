@@ -8,6 +8,7 @@ import com.shinhan.eclipse.domain.ipo.IpoNews;
 import com.shinhan.eclipse.service.exchange.ExchangeService;
 import com.shinhan.eclipse.service.ipo.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -171,6 +173,7 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
         try {
             return exchangeService.getExchangeRate(currency).baseRate();
         } catch (Exception e) {
+            log.warn("환율 조회 실패 ({}), KRW 환산 생략: {}", currency, e.getMessage());
             return null;
         }
     }

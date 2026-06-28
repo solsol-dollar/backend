@@ -31,9 +31,7 @@ class ExchangeRateScheduler {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     // 수출입은행 API cur_unit 코드 (JPY는 100엔 기준으로 고시됨)
-    private static final List<String> API_CURRENCY_CODES   = List.of("USD", "JPY(100)", "BRL");
-    // 정규화 후 캐시 키 (refreshDaily prev 백업 시 사용)
-    private static final List<String> CACHE_CURRENCY_CODES = List.of("USD", "JPY",       "BRL");
+    private static final List<String> API_CURRENCY_CODES = List.of("USD", "JPY(100)", "BRL");
 
     /** 앱 시작 시 즉시 캐시 초기화 (오늘 + 전날 환율) */
     @Scheduled(initialDelay = 0, fixedDelay = Long.MAX_VALUE)
@@ -66,8 +64,12 @@ class ExchangeRateScheduler {
                     .findFirst()
                     .map(this::normalize)
                     .ifPresent(r -> {
-                        if (prev) rateCache.putPrev(r);
-                        else rateCache.put(r);
+                        if (prev) {
+                            rateCache.putPrev(r);
+                        } else {
+                            rateCache.get(r.currencyCode()).ifPresent(rateCache::putPrev);
+                            rateCache.put(r);
+                        }
                         log.info("[환율 갱신] {}={} ({})", r.currencyCode(), r.baseRate(), prev ? "전날" : "오늘");
                     });
         }
@@ -108,11 +110,7 @@ class ExchangeRateScheduler {
         log.info("[환율 갱신] 시작");
         try {
             apiClient.fetchAll().ifPresentOrElse(
-                    rates -> {
-                        CACHE_CURRENCY_CODES.forEach(code -> rateCache.get(code).ifPresent(rateCache::putPrev));
-                        storeRates(rates, false);
-                        log.info("[환율 갱신] 완료");
-                    },
+                    rates -> { storeRates(rates, false); log.info("[환율 갱신] 완료"); },
                     () -> log.warn("[환율 갱신] API 응답 없음 — 기존 캐시 유지")
             );
         } catch (Exception e) {
