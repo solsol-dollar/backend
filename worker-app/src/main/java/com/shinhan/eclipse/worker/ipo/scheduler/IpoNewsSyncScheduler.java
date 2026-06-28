@@ -32,7 +32,7 @@ public class IpoNewsSyncScheduler {
         this.transactionTemplate = transactionTemplate;
     }
 
-    @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(cron = "0 59 19 * * *")
     public void triggerIpoNewsSync() {
         try {
             JobParameters params = new JobParametersBuilder()
@@ -47,6 +47,7 @@ public class IpoNewsSyncScheduler {
             log.info("뉴스 부족 IPO INACTIVE 처리: {}건", count);
         } catch (Exception e) {
             log.error("IPO 뉴스 수집 잡 실행 실패", e);
+            
         }
     }
 }

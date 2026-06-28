@@ -1,14 +1,18 @@
 package com.shinhan.eclipse.service.exchange.internal;
 
+import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -26,34 +30,64 @@ class ExchangeRateScheduler {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
+    // 수출입은행 API cur_unit 코드 (JPY는 100엔 기준으로 고시됨)
+    private static final List<String> API_CURRENCY_CODES = List.of("USD", "JPY(100)", "BRL");
+
     /** 앱 시작 시 즉시 캐시 초기화 (오늘 + 전날 환율) */
     @Scheduled(initialDelay = 0, fixedDelay = Long.MAX_VALUE)
     void initCacheOnStartup() {
         log.info("[환율 갱신] 앱 시작 초기화");
         LocalDate today = LocalDate.now(KST);
-        LocalDate prevBusinessDay = prevBusinessDay(today);
+        LocalDate prevDay = prevBusinessDay(today);
         try {
-            apiClient.fetchOne("USD", today).ifPresentOrElse(
-                    rate -> {
-                        rateCache.put(rate);
-                        log.info("[환율 갱신] 오늘 초기화 완료: USD={}", rate.baseRate());
-                    },
+            apiClient.fetchAll(today).ifPresentOrElse(
+                    rates -> { storeRates(rates, false); log.info("[환율 갱신] 오늘 초기화 완료"); },
                     () -> log.warn("[환율 갱신] 오늘 환율 API 응답 없음")
             );
         } catch (Exception e) {
             log.error("[환율 갱신] 오늘 환율 초기화 실패: {}", e.getMessage());
         }
         try {
-            apiClient.fetchOne("USD", prevBusinessDay).ifPresentOrElse(
-                    rate -> {
-                        rateCache.putPrev(rate);
-                        log.info("[환율 갱신] 전날 초기화 완료: USD={} ({})", rate.baseRate(), prevBusinessDay);
-                    },
-                    () -> log.warn("[환율 갱신] 전날 환율 API 응답 없음 ({})", prevBusinessDay)
+            apiClient.fetchAll(prevDay).ifPresentOrElse(
+                    rates -> { storeRates(rates, true); log.info("[환율 갱신] 전날 초기화 완료 ({})", prevDay); },
+                    () -> log.warn("[환율 갱신] 전날 환율 API 응답 없음 ({})", prevDay)
             );
         } catch (Exception e) {
             log.error("[환율 갱신] 전날 환율 초기화 실패: {}", e.getMessage());
         }
+    }
+
+    private void storeRates(List<ExchangeRateInfo> rates, boolean prev) {
+        for (String apiCode : API_CURRENCY_CODES) {
+            rates.stream()
+                    .filter(r -> apiCode.equalsIgnoreCase(r.currencyCode()))
+                    .findFirst()
+                    .map(this::normalize)
+                    .ifPresent(r -> {
+                        if (prev) {
+                            rateCache.putPrev(r);
+                        } else {
+                            rateCache.get(r.currencyCode()).ifPresent(rateCache::putPrev);
+                            rateCache.put(r);
+                        }
+                        log.info("[환율 갱신] {}={} ({})", r.currencyCode(), r.baseRate(), prev ? "전날" : "오늘");
+                    });
+        }
+    }
+
+    /** JPY(100) → JPY: 100엔 기준 환율을 1엔 기준으로 정규화 */
+    private ExchangeRateInfo normalize(ExchangeRateInfo r) {
+        if (r.currencyCode().toUpperCase().startsWith("JPY")) {
+            BigDecimal hundred = BigDecimal.valueOf(100);
+            return new ExchangeRateInfo(
+                    "JPY", r.currencyName(),
+                    r.baseRate().divide(hundred, 6, RoundingMode.HALF_UP),
+                    r.buyingRate().divide(hundred, 6, RoundingMode.HALF_UP),
+                    r.sellingRate().divide(hundred, 6, RoundingMode.HALF_UP),
+                    r.fetchedAt()
+            );
+        }
+        return r;
     }
 
     private LocalDate prevBusinessDay(LocalDate date) {
@@ -75,15 +109,10 @@ class ExchangeRateScheduler {
         }
         log.info("[환율 갱신] 시작");
         try {
-            apiClient.fetchOne("USD").ifPresentOrElse(
-                    rate -> {
-                        rateCache.get("USD").ifPresent(rateCache::putPrev);
-                        rateCache.put(rate);
-                        log.info("[환율 갱신] 완료: USD={}", rate.baseRate());
-                    },
+            apiClient.fetchAll().ifPresentOrElse(
+                    rates -> { storeRates(rates, false); log.info("[환율 갱신] 완료"); },
                     () -> log.warn("[환율 갱신] API 응답 없음 — 기존 캐시 유지")
             );
-
         } catch (Exception e) {
             log.error("[환율 갱신] 실패: {}", e.getMessage());
         }

@@ -9,7 +9,7 @@ import java.util.List;
 
 interface TxTransferRepository extends JpaRepository<TransferTransaction, Long> {
 
-    @Query("SELECT t FROM TransferTransaction t WHERE t.userId = :userId AND (t.fromAccountId IN :ids OR t.toAccountId IN :ids) ORDER BY t.requestedAt DESC")
+    @Query("SELECT t FROM TransferTransaction t WHERE t.userId = :userId AND (t.fromAccountId IN :ids OR t.toAccountId IN :ids) AND t.transferType != 'CARD' ORDER BY t.requestedAt DESC")
     List<TransferTransaction> findAllByAccounts(@Param("userId") Long userId, @Param("ids") List<Long> ids);
 
     @Query("SELECT t FROM TransferTransaction t WHERE t.userId = :userId AND t.toAccountId IN :ids ORDER BY t.requestedAt DESC")

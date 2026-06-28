@@ -12,6 +12,7 @@ dependencies {
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
     implementation 'org.springframework.ai:spring-ai-client-chat'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.jsoup:jsoup:1.17.2'
     runtimeOnly 'com.mysql:mysql-connector-j'
     testImplementation 'org.springframework.batch:spring-batch-test'
     testRuntimeOnly 'com.h2database:h2'

@@ -53,6 +53,12 @@ public class IpoController {
                 ipoExplorationService.getIpoNews(ipoId, size)));
     }
 
+    /** IPO 연간 재무 데이터 */
+    @GetMapping("/{ipoId}/financials")
+    public ResponseEntity<ApiResponse<List<IpoFinancialItem>>> getIpoFinancials(@PathVariable Long ipoId) {
+        return ResponseEntity.ok(ApiResponse.success(ipoExplorationService.getIpoFinancials(ipoId)));
+    }
+
     /** IPO-008: IPO 뉴스 스코어 조회 */
     @GetMapping("/{ipoId}/score")
     public ResponseEntity<ApiResponse<IpoScoreResult>> getIpoScore(@PathVariable Long ipoId) {

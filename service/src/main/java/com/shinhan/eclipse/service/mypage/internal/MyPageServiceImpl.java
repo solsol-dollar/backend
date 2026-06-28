@@ -41,7 +41,7 @@ class MyPageServiceImpl implements MyPageService {
         List<MyPageAccountsResponse.AccountItem> accountItems = accounts.stream()
                 .map(a -> new MyPageAccountsResponse.AccountItem(
                         a.getId(), a.getAccountType(), a.getAccountName(),
-                        a.getAccountNumberMasked(), a.getCurrency(),
+                        a.getAccountNumber(), a.getCurrency(),
                         a.getBalance(), a.getReservedBalance(), a.availableBalance(),
                         a.getInterestRate(), a.getMaturityDate()))
                 .toList();
@@ -65,7 +65,7 @@ class MyPageServiceImpl implements MyPageService {
             FinancialAccount account = accountRepository.save(FinancialAccount.createDepositAccount(userId));
             return new MyPageAccountsResponse.AccountItem(
                     account.getId(), account.getAccountType(), account.getAccountName(),
-                    account.getAccountNumberMasked(), account.getCurrency(),
+                    account.getAccountNumber(), account.getCurrency(),
                     account.getBalance(), account.getReservedBalance(), account.availableBalance(),
                     account.getInterestRate(), account.getMaturityDate());
         } catch (DataIntegrityViolationException e) {
@@ -84,7 +84,7 @@ class MyPageServiceImpl implements MyPageService {
             FinancialAccount account = accountRepository.save(FinancialAccount.createSavingsAccount(userId));
             return new MyPageAccountsResponse.AccountItem(
                     account.getId(), account.getAccountType(), account.getAccountName(),
-                    account.getAccountNumberMasked(), account.getCurrency(),
+                    account.getAccountNumber(), account.getCurrency(),
                     account.getBalance(), account.getReservedBalance(), account.availableBalance(),
                     account.getInterestRate(), account.getMaturityDate());
         } catch (DataIntegrityViolationException e) {
