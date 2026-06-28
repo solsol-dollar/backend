@@ -77,6 +77,14 @@ CREATE TABLE `cards` (
 	PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE `merchants` (
+	`merchant_name`	VARCHAR(100)	NOT NULL	COMMENT '가맹점명 (card_transactions.merchant_name 과 매핑)',
+	`image_url`	VARCHAR(500)	NULL	COMMENT '가맹점 로고 이미지 URL',
+	`created_at`	DATETIME	NOT NULL,
+	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`merchant_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE `card_transactions` (
 	`id`                BIGINT          NOT NULL AUTO_INCREMENT,
 	`user_id`           BIGINT          NOT NULL,

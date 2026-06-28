@@ -230,6 +230,31 @@ INSERT IGNORE INTO card_transactions (id, user_id, card_id, merchant_name, categ
 (321, 1, 1, 'DoorDash',        '여행',      35.6000, 'USD', '2026-06-24 18:30:00', 1537.2000, 1552.5700, @now, @now, 'ACTIVE');
 
 -- ---------------------------------------------------------------------
+-- 가맹점 (merchants) — image_url 은 앱에서 직접 등록
+-- ---------------------------------------------------------------------
+INSERT IGNORE INTO merchants (merchant_name, created_at, updated_at) VALUES
+('Anthropic',     @now, @now),
+('Adobe',         @now, @now),
+('Microsoft 365', @now, @now),
+('Spotify',       @now, @now),
+('Notion',        @now, @now),
+('OpenAI',        @now, @now),
+('GitHub',        @now, @now),
+('Netflix',       @now, @now),
+('Amazon',        @now, @now),
+('Starbucks',     @now, @now),
+('Uber',          @now, @now),
+('Uber Eats',     @now, @now),
+('Chipotle',      @now, @now),
+('Walmart',       @now, @now),
+('McDonald',      @now, @now),
+('Target',        @now, @now),
+('Shake Shack',   @now, @now),
+('AliExpress',    @now, @now),
+('PlayStation',   @now, @now),
+('DoorDash',      @now, @now);
+
+-- ---------------------------------------------------------------------
 -- 확인
 -- ---------------------------------------------------------------------
 SELECT 'users'               AS tbl, COUNT(*) AS cnt FROM users WHERE id IN (1, 4)
