@@ -31,7 +31,7 @@ class AccountLinkServiceImpl implements AccountLinkService {
     }
 
     @Override
-    public FinancialAccount linkAccount(Long userId, String accountType, String institutionName, String accountNumberMasked) {
+    public FinancialAccount linkAccount(Long userId, String accountType, String institutionName, String accountNumber) {
         // TODO: 구현
         throw new UnsupportedOperationException("TODO");
     }

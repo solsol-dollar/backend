@@ -123,6 +123,6 @@ class TransactionHistoryServiceImpl implements TransactionHistoryService {
         if (accountId == null) return null;
         FinancialAccount a = accountMap.get(accountId);
         if (a == null) return new AccountInfo(accountId, null, null, null);
-        return new AccountInfo(a.getId(), a.getAccountName(), a.getAccountNumberMasked(), a.getInstitutionName());
+        return new AccountInfo(a.getId(), a.getAccountName(), a.getAccountNumber(), a.getInstitutionName());
     }
 }

@@ -102,7 +102,7 @@ class HomeServiceImpl implements HomeService {
                 .map(FinancialAccount::getId)
                 .findFirst().orElse(null);
         String cmaAccountNumber = securities.stream()
-                .map(FinancialAccount::getAccountNumberMasked)
+                .map(FinancialAccount::getAccountNumber)
                 .findFirst()
                 .orElse(null);
 
@@ -118,7 +118,7 @@ class HomeServiceImpl implements HomeService {
                         a.getId(),
                         a.getAccountType(),
                         a.getAccountName(),
-                        a.getAccountNumberMasked(),
+                        a.getAccountNumber(),
                         a.getBalance(),
                         a.getInterestRate(),
                         a.getMaturityDate()

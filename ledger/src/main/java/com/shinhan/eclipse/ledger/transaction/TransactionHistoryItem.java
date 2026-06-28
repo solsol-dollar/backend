@@ -28,7 +28,7 @@ public record TransactionHistoryItem(
     public record AccountInfo(
             Long accountId,
             String accountName,
-            String accountNumberMasked,
+            String accountNumber,
             String institutionName
     ) {}
 

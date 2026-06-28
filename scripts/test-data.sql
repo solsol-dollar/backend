@@ -10,12 +10,12 @@ SET @now = NOW();
 -- 1. 목 유저 4명 (간편 비밀번호 BCrypt 해시)
 --    김하늘: 123456 / 이서준: 654321 / 박지민: 111111 / 장원영: 222222
 -- ---------------------------------------------------------------------
-INSERT IGNORE INTO users (id, name, email, phone_number, onboarding_status, simple_password, created_at, updated_at, status)
+INSERT IGNORE INTO users (id, name, email, phone_number, onboarding_status, investment_status, simple_password, created_at, updated_at, status)
 VALUES
-    (1, '김하늘', 'kim@eclipse.dev',  '010-1111-1111', 'COMPLETED', '$2a$10$pSFAP6RtRspRqB4zmpNZWOCBkT1HYzlcSsamx5f5EfqiJfgR1ZvaK', @now, @now, 'ACTIVE'),
-    (2, '이서준', 'lee@eclipse.dev',  '010-2222-2222', 'COMPLETED', '$2a$10$YckxBJxddvv6XcyZ0U2NH.YyD6sOKMLF1SEOBZtRfBmMYb5kzr9qq', @now, @now, 'ACTIVE'),
-    (3, '박지민', 'park@eclipse.dev', '010-3333-3333', 'COMPLETED', '$2a$10$qmwLYEVLCrbRFLBsKgPNuO.RDFvHT.Ikjvhl5fEDZcPuHKSbdIwhu', @now, @now, 'ACTIVE'),
-    (4, '장원영', 'jwy@eclipse.dev',  '010-4444-4444', 'REQUIRED',  '$2a$10$5f.jG/EF0XnaPcKt5SRfeudpjDHPoE1hK9O831BBwJwVkUXq05Iie', @now, @now, 'ACTIVE');
+    (1, '김하늘', 'kim@eclipse.dev',  '010-1111-1111', 'COMPLETED', 'COMPLETED', '$2a$10$pSFAP6RtRspRqB4zmpNZWOCBkT1HYzlcSsamx5f5EfqiJfgR1ZvaK', @now, @now, 'ACTIVE'),
+    (2, '이서준', 'lee@eclipse.dev',  '010-2222-2222', 'COMPLETED', 'COMPLETED', '$2a$10$YckxBJxddvv6XcyZ0U2NH.YyD6sOKMLF1SEOBZtRfBmMYb5kzr9qq', @now, @now, 'ACTIVE'),
+    (3, '박지민', 'park@eclipse.dev', '010-3333-3333', 'COMPLETED', 'COMPLETED', '$2a$10$qmwLYEVLCrbRFLBsKgPNuO.RDFvHT.Ikjvhl5fEDZcPuHKSbdIwhu', @now, @now, 'ACTIVE'),
+    (4, '장원영', 'jwy@eclipse.dev',  '010-4444-4444', 'REQUIRED',  'REQUIRED',  '$2a$10$5f.jG/EF0XnaPcKt5SRfeudpjDHPoE1hK9O831BBwJwVkUXq05Iie', @now, @now, 'ACTIVE');
 
 
 -- ---------------------------------------------------------------------
@@ -23,29 +23,29 @@ VALUES
 -- ---------------------------------------------------------------------
 INSERT IGNORE INTO financial_accounts (
     id, user_id, account_type, institution_type, institution_name,
-    account_name, account_number_masked, currency, balance,
+    account_name, account_number, virtual_account_number, currency, balance,
     interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
 ) VALUES (
     1, 1, 'SECURITIES', 'SECURITIES_FIRM', '신한투자증권',
-    '신한 외화증권 계좌', '****-****-1234', 'USD', 50000.0000,
+    '신한 외화증권 계좌', '****-****-1234', '110-456-789012', 'USD', 50000.0000,
     NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
 );
 INSERT IGNORE INTO financial_accounts (
     id, user_id, account_type, institution_type, institution_name,
-    account_name, account_number_masked, currency, balance,
+    account_name, account_number, virtual_account_number, currency, balance,
     interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
 ) VALUES (
     2, 1, 'DEPOSIT', 'BANK', '신한은행',
-    '외화 체인지업 예금', '****-****-5678', 'USD', 10000.0000,
+    '외화 체인지업 예금', '****-****-5678', NULL, 'USD', 10000.0000,
     NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
 );
 INSERT IGNORE INTO financial_accounts (
     id, user_id, account_type, institution_type, institution_name,
-    account_name, account_number_masked, currency, balance,
+    account_name, account_number, virtual_account_number, currency, balance,
     interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
 ) VALUES (
     3, 1, 'SAVINGS', 'BANK', '신한은행',
-    '신한 Value-up 외화적립예금', '****-****-9012', 'USD', 0.0000,
+    '신한 Value-up 외화적립예금', '****-****-9012', NULL, 'USD', 0.0000,
     3.5000, '2027-06-22', TRUE, @now, @now, @now, 'ACTIVE'
 );
 
@@ -54,11 +54,11 @@ INSERT IGNORE INTO financial_accounts (
 -- ---------------------------------------------------------------------
 INSERT IGNORE INTO financial_accounts (
     id, user_id, account_type, institution_type, institution_name,
-    account_name, account_number_masked, currency, balance,
+    account_name, account_number, virtual_account_number, currency, balance,
     interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
 ) VALUES (
     4, 1, 'SECURITIES', 'SECURITIES_FIRM', '신한투자증권',
-    '신한 원화증권 계좌', '****-****-5678', 'KRW', 5000000.0000,
+    '신한 원화증권 계좌', '****-****-5678', NULL, 'KRW', 5000000.0000,
     NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
 );
 
@@ -67,20 +67,20 @@ INSERT IGNORE INTO financial_accounts (
 -- ---------------------------------------------------------------------
 INSERT IGNORE INTO financial_accounts (
     id, user_id, account_type, institution_type, institution_name,
-    account_name, account_number_masked, currency, balance,
+    account_name, account_number, virtual_account_number, currency, balance,
     interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
 ) VALUES (
     5, 4, 'SECURITIES', 'SECURITIES_FIRM', '신한투자증권',
-    '신한 외화증권 계좌', '****-****-2024', 'USD', 2000.0000,
+    '신한 외화증권 계좌', '****-****-2024', '110-456-202400', 'USD', 2000.0000,
     NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
 );
 INSERT IGNORE INTO financial_accounts (
     id, user_id, account_type, institution_type, institution_name,
-    account_name, account_number_masked, currency, balance,
+    account_name, account_number, virtual_account_number, currency, balance,
     interest_rate, maturity_date, linked, linked_at, created_at, updated_at, status
 ) VALUES (
     6, 4, 'SECURITIES', 'SECURITIES_FIRM', '신한투자증권',
-    '신한 원화증권 계좌', '****-****-2025', 'KRW', 0.0000,
+    '신한 원화증권 계좌', '****-****-2025', NULL, 'KRW', 0.0000,
     NULL, NULL, TRUE, @now, @now, @now, 'ACTIVE'
 );
 
