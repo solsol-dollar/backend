@@ -78,29 +78,26 @@ public class SecEdgarFinancialParser {
 
     // ── public entry point ──────────────────────────────────────────────────
 
-    public List<AnnualFinancial> fetch(String ticker) {
+    public List<AnnualFinancial> fetch(String ticker) throws Exception {
         Long cik = CIK_MAP.get(ticker);
         if (cik == null) {
             log.warn("{}: CIK 없음", ticker);
             return List.of();
         }
-        try {
-            String docUrl = resolveFilingUrl(ticker, cik);
-            if (docUrl == null) {
-                log.warn("{}: 공시 문서 URL 못 찾음", ticker);
-                return List.of();
-            }
-            log.info("{}: 문서 다운로드 중 - {}", ticker, docUrl);
-            String html = secClient.get().uri(docUrl).retrieve().body(String.class);
-            if (html == null || html.isBlank()) return List.of();
 
-            List<AnnualFinancial> result = parseIncomeStatement(html);
-            log.info("{}: {}건 파싱 완료", ticker, result.size());
-            return result;
-        } catch (Exception e) {
-            log.error("{}: 파싱 실패 - {}", ticker, e.getMessage());
+        String docUrl = resolveFilingUrl(ticker, cik);
+        if (docUrl == null) {
+            log.warn("{}: 공시 문서 URL 못 찾음", ticker);
             return List.of();
         }
+
+        log.info("{}: 문서 다운로드 중 - {}", ticker, docUrl);
+        String html = secClient.get().uri(docUrl).retrieve().body(String.class);
+        if (html == null || html.isBlank()) return List.of();
+
+        List<AnnualFinancial> result = parseIncomeStatement(html);
+        log.info("{}: {}건 파싱 완료", ticker, result.size());
+        return result;
     }
 
     // ── SEC EDGAR 공시 URL 조회 ─────────────────────────────────────────────
@@ -196,8 +193,33 @@ public class SecEdgarFinancialParser {
         return null;
     }
 
+    // ── 단위 감지 (천 단위 기준 정규화 배수) ──────────────────────────────────
+    // DB 저장 규약: 천 단위 (예: 509991 = $509,991 thousand)
+    // EDGAR 원문이 million/billion 단위인 경우 천 단위로 변환하기 위한 배수를 반환
+    private static final java.util.regex.Pattern UNIT_PATTERN =
+            java.util.regex.Pattern.compile("in\\s+(thousands?|millions?|billions?)", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private long detectUnitMultiplier(Element table) {
+        // 테이블 상단 5행 + 앞 5개 형제 요소에서 단위 힌트 검색
+        StringBuilder ctx = new StringBuilder();
+        List<Element> rows = table.select("tr");
+        for (int i = 0; i < Math.min(5, rows.size()); i++) ctx.append(rows.get(i).text()).append(' ');
+        Element prev = table.previousElementSibling();
+        for (int i = 0; i < 5 && prev != null; i++) { ctx.append(prev.text()).append(' '); prev = prev.previousElementSibling(); }
+
+        java.util.regex.Matcher m = UNIT_PATTERN.matcher(ctx);
+        String unit = null;
+        while (m.find()) unit = m.group(1).toLowerCase(); // 마지막 매치 사용
+
+        if (unit == null) return 1L;
+        if (unit.startsWith("billion")) return 1_000_000L;
+        if (unit.startsWith("million")) return 1_000L;
+        return 1L; // thousands
+    }
+
     private List<AnnualFinancial> parseTable(Element table) {
         List<Element> rows = table.select("tr");
+        long unitMultiplier = detectUnitMultiplier(table);
 
         // 연도 컬럼 위치 파악
         int[] yearCols = null;
@@ -288,7 +310,10 @@ public class SecEdgarFinancialParser {
             Long opIn = operatingIncomes.get(year);
             Long net  = netIncomes.get(year);
             if (rev != null || opIn != null || net != null) {
-                result.add(new AnnualFinancial(year, rev, opIn, net));
+                result.add(new AnnualFinancial(year,
+                        rev  != null ? rev  * unitMultiplier : null,
+                        opIn != null ? opIn * unitMultiplier : null,
+                        net  != null ? net  * unitMultiplier : null));
             }
         }
         return result;

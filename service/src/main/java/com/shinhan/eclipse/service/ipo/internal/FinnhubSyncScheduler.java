@@ -151,9 +151,9 @@ public class FinnhubSyncScheduler {
                 item.exchange(),
                 fmpData.sector(),
                 listingDate != null ? calcSubscriptionStartDate(listingDate) : null,
-                listingDate != null ? listingDate.minusDays(1) : null,
+                listingDate != null ? prevBusinessDay(listingDate) : null,
                 listingDate,
-                listingDate != null ? listingDate.plusDays(1) : null,
+                listingDate != null ? nextBusinessDay(listingDate) : null,
                 listingDate != null ? calcDepositDate(listingDate) : null,
                 prices[0],
                 prices[1],
@@ -204,19 +204,29 @@ public class FinnhubSyncScheduler {
         return "https://s3-symbol-logo.tradingview.com/" + slug + "--big.svg";
     }
 
+    private LocalDate nextBusinessDay(LocalDate date) {
+        LocalDate next = date.plusDays(1);
+        if (next.getDayOfWeek() == DayOfWeek.SATURDAY) return next.plusDays(2);
+        if (next.getDayOfWeek() == DayOfWeek.SUNDAY)   return next.plusDays(1);
+        return next;
+    }
+
+    private LocalDate prevBusinessDay(LocalDate date) {
+        LocalDate prev = date.minusDays(1);
+        if (prev.getDayOfWeek() == DayOfWeek.SATURDAY) return prev.minusDays(1);
+        if (prev.getDayOfWeek() == DayOfWeek.SUNDAY)   return prev.minusDays(2);
+        return prev;
+    }
+
     private LocalDate calcDepositDate(LocalDate listingDate) {
-        LocalDate candidate = listingDate.plusDays(1);
-        if (candidate.getDayOfWeek() == DayOfWeek.SATURDAY) return candidate.plusDays(2);
-        if (candidate.getDayOfWeek() == DayOfWeek.SUNDAY)   return candidate.plusDays(1);
-        return candidate;
+        return nextBusinessDay(listingDate);
     }
 
     private LocalDate calcSubscriptionStartDate(LocalDate listingDate) {
         int daysBack = ThreadLocalRandom.current().nextInt(12, 18);
         LocalDate candidate = listingDate.minusDays(daysBack);
-        if (candidate.getDayOfWeek() == DayOfWeek.SUNDAY) {
-            candidate = candidate.minusDays(1);
-        }
+        if (candidate.getDayOfWeek() == DayOfWeek.SATURDAY) return candidate.minusDays(1);
+        if (candidate.getDayOfWeek() == DayOfWeek.SUNDAY)   return candidate.minusDays(2);
         return candidate;
     }
 
