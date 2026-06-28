@@ -14,6 +14,7 @@ import com.shinhan.eclipse.ledger.subscription.SubscriptionFacade;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,9 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
     private final BalanceHoldRepository balanceHoldRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
+
+    @Value("${eclipse.subscription.skip-time-check:false}")
+    private boolean skipTimeCheck;
 
     @Override
     @Transactional
@@ -201,7 +205,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
         if (today.isBefore(ipo.getSubscriptionStartDate()) || today.isAfter(ipo.getSubscriptionEndDate())) {
             throw new BusinessException(ErrorCode.SUBSCRIPTION_PERIOD_INVALID);
         }
-        if (checkTime) {
+        if (checkTime && !skipTimeCheck) {
             LocalTime time = now.toLocalTime();
             if (time.isBefore(SUBSCRIPTION_OPEN) || !time.isBefore(SUBSCRIPTION_CLOSE)) {
                 throw new BusinessException(ErrorCode.SUBSCRIPTION_PERIOD_INVALID, "청약 신청은 09:00 ~ 17:00(KST)에만 가능합니다.");
