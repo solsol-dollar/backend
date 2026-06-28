@@ -87,8 +87,7 @@ class TransactionHistoryServiceImpl implements TransactionHistoryService {
                     t.getAmount(), t.getCurrency(),
                     t.getTransferStatus(),
                     t.getCompletedAt() != null ? t.getCompletedAt() : t.getRequestedAt(),
-                    toAccountInfo(t.getFromAccountId(), accountMap),
-                    t.getDescription()
+                    toAccountInfo(t.getFromAccountId(), accountMap)
             );
         } else if (toMine && !fromMine) {
             type = "IN";

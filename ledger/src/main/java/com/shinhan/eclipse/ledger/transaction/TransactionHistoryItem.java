@@ -41,9 +41,9 @@ public record TransactionHistoryItem(
 
     public static TransactionHistoryItem ofCard(Long id,
             BigDecimal amount, String currency, String status, LocalDateTime executedAt,
-            AccountInfo fromAccount, String description) {
+            AccountInfo fromAccount) {
         return new TransactionHistoryItem(id, "CARD", amount, currency, status, executedAt,
-                fromAccount, null, null, null, null, null, null, description);
+                fromAccount, null, null, null, null, null, null, null);
     }
 
     public static TransactionHistoryItem ofExchange(Long id,
