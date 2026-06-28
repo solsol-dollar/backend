@@ -1,5 +1,7 @@
 package com.shinhan.eclipse.ledger.transaction.internal;
 
+import com.shinhan.eclipse.common.exception.BusinessException;
+import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.account.BalanceHold;
 import com.shinhan.eclipse.domain.account.CardTransaction;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
@@ -30,6 +32,9 @@ class TransactionHistoryServiceImpl implements TransactionHistoryService {
     @Override
     @Transactional(readOnly = true)
     public TransactionHistoryService.TransactionPage getHistory(Long userId, List<Long> accountIds, String filter, int page) {
+        if (page < 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "페이지 번호는 0 이상이어야 합니다.");
+        }
         List<TransferTransaction> transfers;
         List<FxExchangeTransaction> fxList;
         List<Object[]> holdRows;
