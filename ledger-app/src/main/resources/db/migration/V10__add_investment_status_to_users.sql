@@ -1,0 +1,3 @@
+ALTER TABLE `users`
+    ADD COLUMN `investment_status` VARCHAR(30) NOT NULL DEFAULT 'REQUIRED'
+        COMMENT 'REQUIRED(미진단) / COMPLETED(진단완료)';
