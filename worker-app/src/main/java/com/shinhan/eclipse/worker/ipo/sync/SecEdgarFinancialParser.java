@@ -270,7 +270,8 @@ public class SecEdgarFinancialParser {
             // 콜론, 점, 공백 등 후행 문자 제거 ("Revenues:" → "revenues")
             String label = rawLabel.replaceAll("[:\\s.]+$", "");
 
-            if (revenues.isEmpty() && matchesRevenue(label)) {
+            if (matchesRevenue(label) && (revenues.isEmpty() || label.startsWith("total"))) {
+                // "total revenue" 등 합계 라인이 나오면 이전 부분항목 값을 덮어씀
                 extractValues(cells, yearCols, years, revenues);
             } else if (operatingIncomes.isEmpty() && matchesOperatingIncome(label)) {
                 extractValues(cells, yearCols, years, operatingIncomes);

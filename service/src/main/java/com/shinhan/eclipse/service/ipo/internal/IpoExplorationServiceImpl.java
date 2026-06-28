@@ -16,8 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -30,6 +32,7 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     private final IpoNewsRepository ipoNewsRepository;
     private final FavoriteIpoRepository favoriteIpoRepository;
     private final IpoFinancialRepository ipoFinancialRepository;
+    private final IpoScoreRepository ipoScoreRepository;
 
     @Override
     public IpoListResult getIpos(String status, boolean favoriteOnly, Long userId, int page, int size) {
@@ -127,6 +130,22 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     }
 
     @Override
+    public Optional<IpoScoreResult> getIpoScore(Long ipoId) {
+        return ipoScoreRepository.findByIpoId(ipoId)
+                .map(score -> new IpoScoreResult(
+                        score.getIpoId(),
+                        score.getTicker(),
+                        score.getFinalScore(),
+                        score.getGrade(),
+                        score.getReason(),
+                        score.getSummary(),
+                        parseTopNewsIds(score.getTopNewsIds()),
+                        score.getNewsCount(),
+                        score.getScoredAt()
+                ));
+    }
+
+    @Override
     public List<IpoFinancialItem> getIpoFinancials(Long ipoId) {
         if (!ipoRepository.existsById(ipoId)) {
             throw new BusinessException(ErrorCode.IPO_NOT_FOUND);
@@ -135,6 +154,19 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                 .map(f -> new IpoFinancialItem(
                         f.getFiscalYear(), f.getRevenue(), f.getOperatingIncome(), f.getNetIncome(), f.getCurrency()))
                 .toList();
+    }
+
+    private List<Long> parseTopNewsIds(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            String cleaned = json.trim().replaceAll("[\\[\\]\\s]", "");
+            if (cleaned.isEmpty()) return List.of();
+            return Arrays.stream(cleaned.split(","))
+                    .map(Long::parseLong)
+                    .toList();
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 
     private String computeStatus(Ipo ipo) {
