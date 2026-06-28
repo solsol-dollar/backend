@@ -8,6 +8,8 @@ import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlanAllocation;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
+import com.shinhan.eclipse.ledger.returnplan.dto.ImmediateAllocationReq;
+import com.shinhan.eclipse.ledger.returnplan.dto.ImmediateAllocationRes;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanCreateReq;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanListItemRes;
 import com.shinhan.eclipse.ledger.returnplan.dto.ReturnPlanListRes;
@@ -122,6 +124,16 @@ public class ReturnPlanController {
         return ResponseEntity.ok(ApiResponse.success(ReturnPlanSummaryRes.of(plans,
                 id -> allocationsByPlanId.getOrDefault(id, List.of()),
                 subscriptionFacade.findNextUpcomingIpo().orElse(null))));
+    }
+
+    // RP-008 (명세 외 추가): 현재 CMA 가용 예수금 즉시 분배 (IPO 청약과 무관)
+    @PostMapping("/immediate")
+    public ResponseEntity<ApiResponse<ImmediateAllocationRes>> executeImmediate(
+            @UserHeader Long userId,
+            @Valid @RequestBody ImmediateAllocationReq request) {
+        log.info("즉시 분배 요청: userId={}", userId);
+        return ResponseEntity.ok(ApiResponse.success(
+                returnPlanFacade.executeImmediateAllocation(userId, request.allocations())));
     }
 
     private ReturnPlanRes toRes(ReturnPlan plan, Long userId) {
