@@ -65,7 +65,7 @@ public class IpoAllocationJob {
         if (!isNewYorkInDst()) run();
     }
 
-    void run() {
+    public void run() {
         LocalDate today = LocalDate.now();
         List<Ipo> listingTodayIpos = ipoRepository.findByListingDate(today);
         if (listingTodayIpos.isEmpty()) {
