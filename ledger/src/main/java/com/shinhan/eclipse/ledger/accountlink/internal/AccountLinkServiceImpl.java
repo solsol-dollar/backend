@@ -31,7 +31,8 @@ class AccountLinkServiceImpl implements AccountLinkService {
     }
 
     @Override
-    public FinancialAccount linkAccount(Long userId, String accountType, String institutionName, String accountNumberMasked) {
+    @Transactional
+    public FinancialAccount linkAccount(Long userId, String accountType, String institutionName, String accountNumber) {
         // TODO: 구현
         throw new UnsupportedOperationException("TODO");
     }
@@ -62,6 +63,28 @@ class AccountLinkServiceImpl implements AccountLinkService {
             throw new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED);
         }
         return account;
+    }
+
+    @Override
+    @Transactional
+    public void reserve(Long userId, Long accountId, BigDecimal amount) {
+        FinancialAccount account = financialAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED));
+        if (!Boolean.TRUE.equals(account.getLinked())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED);
+        }
+        account.reserve(amount);
+    }
+
+    @Override
+    @Transactional
+    public void releaseReserved(Long userId, Long accountId, BigDecimal amount) {
+        FinancialAccount account = financialAccountRepository.findByIdAndUserIdForUpdate(accountId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED));
+        if (!Boolean.TRUE.equals(account.getLinked())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED);
+        }
+        account.releaseReserved(amount);
     }
 
     @Override

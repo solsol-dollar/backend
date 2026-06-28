@@ -4,6 +4,10 @@ spring:
       ddl-auto: update
     show-sql: true
 
+eclipse:
+  subscription:
+    skip-time-check: true
+
 logging:
   level:
     com.shinhan.eclipse: DEBUG

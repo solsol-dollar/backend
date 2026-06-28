@@ -54,7 +54,7 @@ public class OnboardingService {
                 .findByUserIdAndAccountTypeInAndLinkedFalse(userId, List.of("DEPOSIT", "SAVINGS"))
                 .stream()
                 .map(a -> new AccountInfo(a.getId(), a.getAccountType(), a.getAccountName(),
-                        a.getAccountNumberMasked(), a.getCurrency(), a.getBalance()))
+                        a.getAccountNumber(), a.getCurrency(), a.getBalance()))
                 .toList();
 
         List<CardInfo> cards = cardRepository.findByUserIdAndLinkedFalse(userId)

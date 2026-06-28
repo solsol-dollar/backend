@@ -12,6 +12,7 @@ import com.shinhan.eclipse.ledger.accountlink.AccountLinkService;
 import com.shinhan.eclipse.ledger.event.AllocationCompletedEvent;
 import com.shinhan.eclipse.ledger.returnplan.ReturnPlanFacade;
 import com.shinhan.eclipse.ledger.returnplan.dto.AllocationItem;
+import com.shinhan.eclipse.ledger.returnplan.dto.ImmediateAllocationRes;
 import com.shinhan.eclipse.ledger.subscription.SubscriptionFacade;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -25,10 +26,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -261,5 +264,39 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
         if (sum != 100) {
             throw new BusinessException(ErrorCode.RATIO_SUM_INVALID);
         }
+    }
+
+    @Override
+    @Transactional
+    public ImmediateAllocationRes executeImmediateAllocation(Long userId, List<AllocationItem> items) {
+        validateRatioSum(items.stream().mapToInt(AllocationItem::ratio).sum());
+
+        FinancialAccount cmaAccount = accountLinkService.findAccountByType(userId, "SECURITIES")
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED, "증권 CMA 계좌가 연동되지 않았습니다."));
+
+        BigDecimal available = cmaAccount.availableBalance();
+        if (available.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE, "분배 가능한 예수금이 없습니다.");
+        }
+
+        List<ImmediateAllocationRes.AllocationView> views = new ArrayList<>();
+        for (AllocationItem item : items) {
+            BigDecimal amount = available
+                    .multiply(BigDecimal.valueOf(item.ratio()))
+                    .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+
+            if (!"SECURITIES".equals(item.destinationType()) && item.ratio() > 0) {
+                FinancialAccount destAccount = accountLinkService.findAccountByType(userId, item.destinationType())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED,
+                                item.destinationType() + " 계좌가 연동되지 않았습니다."));
+                accountLinkService.deduct(userId, cmaAccount.getId(), amount);
+                accountLinkService.credit(userId, destAccount.getId(), amount);
+            }
+
+            views.add(new ImmediateAllocationRes.AllocationView(item.destinationType(), item.ratio(), amount));
+        }
+
+        log.info("즉시 분배 실행: userId={}, totalAmount={}", userId, available);
+        return new ImmediateAllocationRes(available, views);
     }
 }

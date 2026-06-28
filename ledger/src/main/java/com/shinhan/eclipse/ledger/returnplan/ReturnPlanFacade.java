@@ -4,6 +4,7 @@ import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlanAllocation;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlanPreset;
 import com.shinhan.eclipse.ledger.returnplan.dto.AllocationItem;
+import com.shinhan.eclipse.ledger.returnplan.dto.ImmediateAllocationRes;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -41,4 +42,10 @@ public interface ReturnPlanFacade {
      * 비율 합이 100이 아니면 SECURITIES 100%로 기본값을 적용한 뒤 실행한다.
      */
     ReturnPlan executeReturnPlan(Long returnPlanId);
+
+    /**
+     * RP-008: 현재 CMA(증권 예수금) 가용 잔액을 비율대로 즉시 분배한다. IPO 청약과 무관하게 바로 실행된다.
+     * SECURITIES 비율분은 CMA에 그대로 두고, SAVINGS/DEPOSIT 비율분만 각 계좌로 이체한다.
+     */
+    ImmediateAllocationRes executeImmediateAllocation(Long userId, List<AllocationItem> items);
 }

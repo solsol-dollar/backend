@@ -6,6 +6,7 @@ import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
 import lombok.extern.slf4j.Slf4j;
 import com.shinhan.eclipse.domain.account.Card;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
+import com.shinhan.eclipse.service.card.CardService;
 import com.shinhan.eclipse.service.exchange.ExchangeService;
 import com.shinhan.eclipse.service.home.AssetsSummaryResponse;
 import com.shinhan.eclipse.service.home.HomeService;
@@ -30,6 +31,7 @@ class HomeServiceImpl implements HomeService {
     private final AssetCardRepository cardRepository;
     private final ExchangeService exchangeService;
     private final IpoExplorationService ipoExplorationService;
+    private final CardService cardService;
 
     @Override
     @Transactional(readOnly = true)
@@ -76,11 +78,22 @@ class HomeServiceImpl implements HomeService {
                 .map(FinancialAccount::getBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // 사용가능잔액(= 실제잔액 - 청약 등으로 잠긴 reservedBalance)
+        BigDecimal cmaUsdAvailable = securities.stream()
+                .filter(a -> "USD".equals(a.getCurrency()))
+                .map(FinancialAccount::availableBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal cmaKrwAvailable = securities.stream()
+                .filter(a -> "KRW".equals(a.getCurrency()))
+                .map(FinancialAccount::availableBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         // KRW → USD 환산 (환율 없으면 null — 환산 불가 상태 명시)
         BigDecimal krwInUsd = (exchangeRate != null)
-                ? cmaKrw.divide(exchangeRate, 4, RoundingMode.HALF_UP)
+                ? cmaKrwAvailable.divide(exchangeRate, 4, RoundingMode.HALF_UP)
                 : null;
-        BigDecimal securitiesTotalUsd = (krwInUsd != null) ? cmaUsd.add(krwInUsd) : null;
+        BigDecimal securitiesTotalUsd = (krwInUsd != null) ? cmaUsdAvailable.add(krwInUsd) : null;
 
         Long usdAccountId = securities.stream()
                 .filter(a -> "USD".equals(a.getCurrency()))
@@ -91,12 +104,14 @@ class HomeServiceImpl implements HomeService {
                 .map(FinancialAccount::getId)
                 .findFirst().orElse(null);
         String cmaAccountNumber = securities.stream()
-                .map(FinancialAccount::getAccountNumberMasked)
+                .map(FinancialAccount::getAccountNumber)
                 .findFirst()
                 .orElse(null);
 
         AssetsSummaryResponse.SecuritiesAsset securitiesAsset =
-                new AssetsSummaryResponse.SecuritiesAsset(usdAccountId, krwAccountId, cmaAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd);
+                new AssetsSummaryResponse.SecuritiesAsset(
+                        usdAccountId, krwAccountId, cmaAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd,
+                        cmaUsdAvailable, cmaKrwAvailable);
 
         // 예금/적금 계좌
         List<AssetsSummaryResponse.AccountAsset> accountAssets = accounts.stream()
@@ -105,16 +120,32 @@ class HomeServiceImpl implements HomeService {
                         a.getId(),
                         a.getAccountType(),
                         a.getAccountName(),
-                        a.getAccountNumberMasked(),
+                        a.getAccountNumber(),
                         a.getBalance(),
                         a.getInterestRate(),
                         a.getMaturityDate()
                 ))
                 .toList();
 
-        // 카드
+        // 이번 달 카드 소비 합계
+        BigDecimal monthlySpend = BigDecimal.ZERO;
+        int monthlyCount = 0;
+        try {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            var summary = cardService.getMonthlySummary(userId, today.getYear(), today.getMonthValue());
+            monthlySpend = summary.totalAmount();
+            monthlyCount = summary.totalCount();
+        } catch (Exception e) {
+            log.warn("[홈] 카드 소비 요약 조회 실패: {}", e.getMessage());
+        }
+
+        // 카드 (현재 유저당 카드 1장 기준, 소비 합계 공유)
+        final BigDecimal finalMonthlySpend = monthlySpend;
+        final int finalMonthlyCount = monthlyCount;
         List<AssetsSummaryResponse.CardAsset> cardAssets = cards.stream()
-                .map(c -> new AssetsSummaryResponse.CardAsset(c.getCardName(), c.getCardNumberMasked(), c.getIssuerName()))
+                .map(c -> new AssetsSummaryResponse.CardAsset(
+                        c.getCardName(), c.getCardNumberMasked(), c.getIssuerName(),
+                        finalMonthlySpend, "USD", finalMonthlyCount))
                 .toList();
 
         // 전체 총합 (USD 기준)

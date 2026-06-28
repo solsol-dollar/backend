@@ -30,6 +30,7 @@ CREATE TABLE `users` (
 	`email`	VARCHAR(100)	NULL	COMMENT 'SSO 연동 시 존재 (현재 NULL 허용 - 정책 확정 후 NOT NULL 검토)',
 	`phone_number`	VARCHAR(30)	NULL,
 	`onboarding_status`	VARCHAR(30)	NOT NULL	DEFAULT 'REQUIRED',
+	`investment_status`	VARCHAR(30)	NOT NULL	DEFAULT 'REQUIRED'	COMMENT 'REQUIRED(미진단) / COMPLETED(진단완료)',
 	`simple_password`	VARCHAR(255)	NULL	COMMENT '간편 비밀번호 BCrypt 해시',
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
@@ -44,9 +45,11 @@ CREATE TABLE `financial_accounts` (
 	`institution_type`	VARCHAR(30)	NOT NULL,
 	`institution_name`	VARCHAR(50)	NOT NULL,
 	`account_name`	VARCHAR(100)	NULL,
-	`account_number_masked`	VARCHAR(50)	NULL,
+	`account_number`	VARCHAR(50)	NULL,
+	`virtual_account_number`	VARCHAR(50)	NULL	COMMENT '증권 외화(USD) 계좌에만 사용. 원화 계좌 및 기타 계좌는 NULL',
 	`currency`	VARCHAR(10)	NOT NULL	DEFAULT 'USD',
 	`balance`	DECIMAL(18,4)	NOT NULL,
+	`reserved_balance`	DECIMAL(18,4)	NOT NULL	DEFAULT 0	COMMENT '청약 등으로 잠긴 금액(홀딩). available = balance - reserved_balance',
 	`interest_rate`	DECIMAL(7,4)	NULL,
 	`maturity_date`	DATE	NULL,
 	`linked`	BOOLEAN	NOT NULL,
@@ -71,6 +74,31 @@ CREATE TABLE `cards` (
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
+	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `merchants` (
+	`merchant_name`	VARCHAR(100)	NOT NULL	COMMENT '가맹점명 (card_transactions.merchant_name 과 매핑)',
+	`image_url`	VARCHAR(500)	NULL	COMMENT '가맹점 로고 이미지 URL',
+	`created_at`	DATETIME	NOT NULL,
+	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`merchant_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `card_transactions` (
+	`id`                BIGINT          NOT NULL AUTO_INCREMENT,
+	`user_id`           BIGINT          NOT NULL,
+	`card_id`           BIGINT          NOT NULL,
+	`merchant_name`     VARCHAR(100)    NOT NULL,
+	`category`          VARCHAR(50)     NOT NULL,
+	`amount`            DECIMAL(18,4)   NOT NULL,
+	`currency`          VARCHAR(10)     NOT NULL DEFAULT 'USD',
+	`transacted_at`     DATETIME        NOT NULL,
+	`base_rate_at_time` DECIMAL(18,4)   NULL,
+	`tts_at_time`       DECIMAL(18,4)   NULL,
+	`created_at`        DATETIME        NOT NULL,
+	`updated_at`        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`status`            VARCHAR(20)     NOT NULL DEFAULT 'ACTIVE',
 	PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -271,6 +299,23 @@ CREATE TABLE `ipo_subscriptions` (
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
 	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- [신규] 청약 홀딩 모델: 신청 시점에 actual balance는 그대로, reserved_balance만 잠근다.
+-- 배정 확정 시 SETTLED(실차감)/RELEASED(잠금해제)로 정리된다.
+CREATE TABLE `balance_holds` (
+	`id`	BIGINT	NOT NULL	AUTO_INCREMENT,
+	`account_id`	BIGINT	NOT NULL,
+	`subscription_id`	BIGINT	NOT NULL,
+	`amount`	DECIMAL(18,4)	NOT NULL,
+	`hold_status`	VARCHAR(20)	NOT NULL	DEFAULT 'LOCKED'	COMMENT 'LOCKED / RELEASED / SETTLED',
+	`released_at`	DATETIME	NULL,
+	`settled_at`	DATETIME	NULL,
+	`created_at`	DATETIME	NOT NULL,
+	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
+	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `UQ_balance_holds_subscription` (`subscription_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- [변경] subscription_result_id → subscription_id, FK: ipo_subscriptions
@@ -544,6 +589,9 @@ ALTER TABLE `financial_accounts`
 ALTER TABLE `cards`
 	ADD CONSTRAINT `FK_cards_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
 	ADD CONSTRAINT `FK_cards_account` FOREIGN KEY (`linked_account_id`) REFERENCES `financial_accounts` (`id`);
+ALTER TABLE `card_transactions`
+	ADD CONSTRAINT `FK_card_transactions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+	ADD CONSTRAINT `FK_card_transactions_card` FOREIGN KEY (`card_id`) REFERENCES `cards` (`id`);
 ALTER TABLE `investment_profiles`
 	ADD CONSTRAINT `FK_investment_profiles_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 
@@ -566,6 +614,9 @@ ALTER TABLE `ipo_subscriptions`
 	ADD CONSTRAINT `FK_ipo_subscriptions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
 	ADD CONSTRAINT `FK_ipo_subscriptions_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`),
 	ADD CONSTRAINT `FK_ipo_subscriptions_account` FOREIGN KEY (`securities_account_id`) REFERENCES `financial_accounts` (`id`);
+ALTER TABLE `balance_holds`
+	ADD CONSTRAINT `FK_balance_holds_account` FOREIGN KEY (`account_id`) REFERENCES `financial_accounts` (`id`),
+	ADD CONSTRAINT `FK_balance_holds_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `ipo_subscriptions` (`id`);
 -- [변경] return_plans FK: subscription_results → ipo_subscriptions
 ALTER TABLE `return_plans`
 	ADD CONSTRAINT `FK_return_plans_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),

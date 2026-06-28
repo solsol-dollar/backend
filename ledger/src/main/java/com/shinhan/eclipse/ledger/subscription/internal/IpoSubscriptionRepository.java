@@ -16,6 +16,9 @@ interface IpoSubscriptionRepository extends JpaRepository<IpoSubscription, Long>
 
     Optional<IpoSubscription> findByIdAndUserId(Long id, Long userId);
 
+    /** 동일 종목 중복 청약 방지 — 취소되지 않은(REQUESTED/CONFIRMED) 신청이 이미 있는지 확인. */
+    boolean existsByUserIdAndIpoIdAndSubscriptionStatusIn(Long userId, Long ipoId, List<String> statuses);
+
     /** 동일 청약 동시 확정(REQ-05-93-01) 방지를 위한 락 조회. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from IpoSubscription s where s.id = :id and s.userId = :userId")

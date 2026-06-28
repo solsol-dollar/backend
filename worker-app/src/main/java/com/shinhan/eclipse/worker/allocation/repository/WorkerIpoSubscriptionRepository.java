@@ -11,4 +11,7 @@ public interface WorkerIpoSubscriptionRepository extends JpaRepository<IpoSubscr
 
     /** 상장일에 배정 대상이 되는, 확정됐지만 아직 배정 결과가 없는 청약. */
     List<IpoSubscription> findByIpoIdAndSubscriptionStatusAndResultStatusIsNull(Long ipoId, String subscriptionStatus);
+
+    /** 배정 완료됐고 1주 이상 배정받은 청약 — 개장 시 주식 입고 대상. */
+    List<IpoSubscription> findByIpoIdAndResultStatusAndAllocatedSharesGreaterThan(Long ipoId, String resultStatus, int minShares);
 }

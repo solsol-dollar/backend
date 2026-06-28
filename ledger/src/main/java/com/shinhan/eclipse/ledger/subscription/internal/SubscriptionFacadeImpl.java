@@ -2,9 +2,11 @@ package com.shinhan.eclipse.ledger.subscription.internal;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
+import com.shinhan.eclipse.domain.account.BalanceHold;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
+
 import java.util.Optional;
 import com.shinhan.eclipse.ledger.accountlink.AccountLinkService;
 import com.shinhan.eclipse.ledger.event.SubscriptionConfirmedEvent;
@@ -12,6 +14,7 @@ import com.shinhan.eclipse.ledger.subscription.SubscriptionFacade;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -34,7 +38,12 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
     private final IpoSubscriptionRepository subscriptionRepository;
     private final IpoRepository ipoRepository;
     private final AccountLinkService accountLinkService;
+    private final BalanceHoldRepository balanceHoldRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final Clock clock;
+
+    @Value("${eclipse.subscription.skip-time-check:false}")
+    private boolean skipTimeCheck;
 
     @Override
     @Transactional
@@ -42,7 +51,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
                                                 BigDecimal subscriptionAmount, BigDecimal offerPrice) {
         Ipo ipo = ipoRepository.findById(ipoId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        validateSubscriptionPeriod(ipo);
+        validateSubscriptionPeriod(ipo, true);
         validateOfferPrice(ipo, offerPrice);
 
         if (ipo.getMinimumSubscriptionAmount() != null
@@ -56,16 +65,17 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "청약신청금액이 공모가 1주 가격보다 작습니다.");
         }
 
-        IpoSubscription draft = IpoSubscription.request(userId, ipoId, securitiesAccountId, shares, offerPrice);
+        IpoSubscription draft = IpoSubscription.request(userId, ipoId, securitiesAccountId, shares, offerPrice, subscriptionAmount);
 
-        FinancialAccount account = accountLinkService.getLinkedAccount(userId, securitiesAccountId);
-        if (!account.hasSufficientBalance(draft.getSubscriptionAmount())) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
+        // 신청 시점에 실제 현금은 그대로 두고 reservedBalance만 잠근다 (즉시 출금 아님 - 홀딩 모델).
+        accountLinkService.reserve(userId, securitiesAccountId, draft.getSubscriptionAmount());
+        FinancialAccount account = accountLinkService.lockAccount(userId, securitiesAccountId);
 
         IpoSubscription saved = subscriptionRepository.save(draft);
-        log.info("청약 신청 생성: subscriptionId={}, userId={}, ipoId={}, shares={}",
-                saved.getId(), saved.getUserId(), saved.getIpoId(), shares);
+        balanceHoldRepository.save(BalanceHold.lock(account.getId(), saved.getId(), draft.getSubscriptionAmount()));
+
+        log.info("청약 신청 생성(홀딩): subscriptionId={}, userId={}, ipoId={}, shares={}, holdAmount={}",
+                saved.getId(), saved.getUserId(), saved.getIpoId(), shares, draft.getSubscriptionAmount());
         return saved;
     }
 
@@ -83,15 +93,10 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
 
         Ipo ipo = ipoRepository.findById(subscription.getIpoId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        validateSubscriptionPeriod(ipo);
+        validateSubscriptionPeriod(ipo, true);
 
-        // 잔액 재검증(REQ-05-92-01): 계좌도 락을 잡아 다른 청약의 동시 확정으로 인한 잔액 변동을 반영
-        FinancialAccount account = accountLinkService.lockAccount(userId, subscription.getSecuritiesAccountId());
-        if (!account.hasSufficientBalance(subscription.getSubscriptionAmount())) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-
-        accountLinkService.deduct(userId, account.getId(), subscription.getSubscriptionAmount());
+        // 금액은 requestSubscription 시점에 이미 reserve(홀딩)되어 있으므로, 확정 단계에서는
+        // 추가 차감이 없다. 실제 차감(settle)은 배정 결과가 확정될 때 일어난다.
         subscription.confirm();
 
         eventPublisher.publishEvent(new SubscriptionConfirmedEvent(
@@ -113,10 +118,16 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
 
         Ipo ipo = ipoRepository.findById(subscription.getIpoId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        validateSubscriptionPeriod(ipo);
+        validateCancellationPeriod(ipo);
 
-        // REQUESTED 상태에서는 confirmSubscription() 전까지 실제 계좌 차감이 없으므로,
-        // 여기서 환불할 돈은 없다 — "환불 금액"은 취소되는 청약신청금액을 그대로 보여주는 표시값이다.
+        // LOCKED 상태인 hold가 있을 때만 계좌 잠금 해제 + hold 해제를 수행한다.
+        balanceHoldRepository.findBySubscriptionId(subscription.getId())
+                .filter(BalanceHold::isLocked)
+                .ifPresent(hold -> {
+                    accountLinkService.releaseReserved(userId, subscription.getSecuritiesAccountId(), subscription.getSubscriptionAmount());
+                    hold.release();
+                });
+
         subscription.cancel();
         log.info("청약 취소: subscriptionId={}, userId={}", subscription.getId(), userId);
         return subscription;
@@ -163,10 +174,42 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
         return upcoming.stream().findFirst();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isAlreadySubscribed(Long userId, Long ipoId) {
+        return subscriptionRepository.existsByUserIdAndIpoIdAndSubscriptionStatusIn(
+                userId, ipoId, List.of("REQUESTED", "CONFIRMED"));
+    }
+
+    private static final LocalTime SUBSCRIPTION_OPEN  = LocalTime.of(9, 0);
+    private static final LocalTime SUBSCRIPTION_CLOSE = LocalTime.of(17, 0);
+
+    /** 취소 가능 구간: subscriptionStartDate 09:00 ~ subscriptionEndDate 17:00 (KST) */
+    private void validateCancellationPeriod(Ipo ipo) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime start = ipo.getSubscriptionStartDate().atTime(SUBSCRIPTION_OPEN);
+        LocalDateTime end   = ipo.getSubscriptionEndDate().atTime(SUBSCRIPTION_CLOSE);
+        if (now.isBefore(start) || !now.isBefore(end)) {
+            throw new BusinessException(ErrorCode.SUBSCRIPTION_PERIOD_INVALID,
+                    "청약 취소는 신청 시작일 09:00 ~ 마감일 17:00(KST) 사이에만 가능합니다.");
+        }
+    }
+
     private void validateSubscriptionPeriod(Ipo ipo) {
-        LocalDate today = LocalDate.now();
+        validateSubscriptionPeriod(ipo, false);
+    }
+
+    private void validateSubscriptionPeriod(Ipo ipo, boolean checkTime) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDate today = now.toLocalDate();
         if (today.isBefore(ipo.getSubscriptionStartDate()) || today.isAfter(ipo.getSubscriptionEndDate())) {
             throw new BusinessException(ErrorCode.SUBSCRIPTION_PERIOD_INVALID);
+        }
+        if (checkTime && !skipTimeCheck) {
+            LocalTime time = now.toLocalTime();
+            if (time.isBefore(SUBSCRIPTION_OPEN) || !time.isBefore(SUBSCRIPTION_CLOSE)) {
+                throw new BusinessException(ErrorCode.SUBSCRIPTION_PERIOD_INVALID, "청약 신청은 09:00 ~ 17:00(KST)에만 가능합니다.");
+            }
         }
     }
 

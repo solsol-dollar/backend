@@ -10,7 +10,7 @@ public interface AccountLinkService {
 
     /** 사용자의 특정 유형(연동) 계좌 1건 조회. 여러 건이면 첫 번째. */
     Optional<FinancialAccount> findAccountByType(Long userId, String accountType);
-    FinancialAccount linkAccount(Long userId, String accountType, String institutionName, String accountNumberMasked);
+    FinancialAccount linkAccount(Long userId, String accountType, String institutionName, String accountNumber);
     void unlinkAccount(Long userId, Long accountId);
 
     /** 연동 계좌 단건 조회. 본인 소유가 아니거나 연동되지 않은 계좌면 L005(ACCOUNT_NOT_LINKED). */
@@ -18,6 +18,12 @@ public interface AccountLinkService {
 
     /** 청약 확정 등 잔액 차감 전 비관적 락으로 계좌를 잠금 조회. */
     FinancialAccount lockAccount(Long userId, Long accountId);
+
+    /** 비관적 락 후 reservedBalance를 증가시킨다 (홀딩). */
+    void reserve(Long userId, Long accountId, BigDecimal amount);
+
+    /** 비관적 락 후 reservedBalance를 감소시킨다 (홀딩 해제). */
+    void releaseReserved(Long userId, Long accountId, BigDecimal amount);
 
     /** 소유/연동 검증 + 비관적 락 후 차감. */
     void deduct(Long userId, Long accountId, BigDecimal amount);

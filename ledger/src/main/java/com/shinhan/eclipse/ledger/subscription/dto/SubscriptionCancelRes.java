@@ -18,7 +18,7 @@ public class SubscriptionCancelRes {
     private final BigDecimal refundAmount;
     private final String currency;
     private final Long refundAccountId;
-    private final String refundAccountNumberMasked;
+    private final String refundAccountNumber;
     private final String refundInstitutionName;
 
     public static SubscriptionCancelRes of(IpoSubscription subscription, FinancialAccount refundAccount) {
@@ -27,7 +27,7 @@ public class SubscriptionCancelRes {
                 .refundAmount(subscription.getSubscriptionAmount())
                 .currency(subscription.getCurrency())
                 .refundAccountId(refundAccount.getId())
-                .refundAccountNumberMasked(refundAccount.getAccountNumberMasked())
+                .refundAccountNumber(refundAccount.getAccountNumber())
                 .refundInstitutionName(refundAccount.getInstitutionName())
                 .build();
     }
