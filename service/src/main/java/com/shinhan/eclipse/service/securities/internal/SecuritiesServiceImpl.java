@@ -49,7 +49,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
 
     // ── SEC-001: 종목 목록 ──────────────────────────────────────────────────
     @Override
-    public List<ProductListItem> listProducts(String type, String keyword, String sort) {
+    public List<ProductListItem> listProducts(String type, String keyword, String sort, int offset, int limit) {
         List<InvestmentProduct> products = productRepository.searchProducts(type, keyword);
 
         List<Long> ids = products.stream().map(InvestmentProduct::getId).toList();
@@ -82,6 +82,8 @@ class SecuritiesServiceImpl implements SecuritiesService {
                         sparkMap.getOrDefault(p.getId(), List.of())
                 ))
                 .sorted(comparator)
+                .skip(offset)
+                .limit(limit)
                 .toList();
     }
 
@@ -398,8 +400,9 @@ class SecuritiesServiceImpl implements SecuritiesService {
     @Override
     public List<RankingItem> getRanking(String type, int limit, String productType) {
         List<InvestmentProduct> products = productRepository.searchProducts(productType, null);
+        int total = products.size();
 
-        // 캐시 히트 종목으로 우선 랭킹 구성
+        // 캐시 히트 종목으로 랭킹 구성
         List<RankingItem> cached = products.stream()
                 .map(p -> {
                     QuoteSnapshot q = quoteCache.get(p.getTicker()).orElse(null);
@@ -410,34 +413,45 @@ class SecuritiesServiceImpl implements SecuritiesService {
                 .filter(java.util.Objects::nonNull)
                 .toList();
 
-        // 캐시 미스 시 price_candles 최신 일봉 fallback
-        if (cached.isEmpty()) {
-            List<Long> ids = products.stream().map(InvestmentProduct::getId).toList();
-            java.util.Map<Long, PriceCandle> latestByProduct = priceCandleRepository
-                    .findLatestDailyByProductIds(ids).stream()
-                    .collect(java.util.stream.Collectors.toMap(
-                            PriceCandle::getProductId, c -> c));
-            return products.stream()
-                    .map(p -> {
-                        PriceCandle c = latestByProduct.get(p.getId());
-                        if (c == null) return null;
-                        BigDecimal change = c.getClosePrice().subtract(c.getOpenPrice());
-                        BigDecimal rate = c.getOpenPrice().compareTo(BigDecimal.ZERO) == 0
-                                ? BigDecimal.ZERO
-                                : change.divide(c.getOpenPrice(), 4, java.math.RoundingMode.HALF_UP)
-                                        .multiply(new BigDecimal("100"));
-                        String sign = rate.compareTo(BigDecimal.ZERO) > 0 ? "2"
-                                : rate.compareTo(BigDecimal.ZERO) < 0 ? "5" : "3";
-                        return new RankingItem(p.getId(), p.getTicker(), p.getProductName(),
-                                c.getClosePrice(), rate, sign);
-                    })
-                    .filter(java.util.Objects::nonNull)
+        // 캐시 히트 비율 50% 이상이면 실시간 랭킹 사용 (편향 없는 전체 기반 랭킹)
+        if (total > 0 && cached.size() * 2 >= total) {
+            return cached.stream()
                     .sorted(buildRankingComparator(type))
                     .limit(limit)
                     .toList();
         }
 
-        return cached.stream()
+        // fallback: price_candles 최근 2건으로 전일 종가 대비 변동률 계산
+        List<Long> ids = products.stream().map(InvestmentProduct::getId).toList();
+        Map<Long, List<PriceCandle>> candlesByProduct = new java.util.HashMap<>();
+        priceCandleRepository.findTop2DailyByProductIds(ids)
+                .stream()
+                .sorted(Comparator.comparing(PriceCandle::getCandleAt).reversed())
+                .forEach(c -> candlesByProduct
+                        .computeIfAbsent(c.getProductId(), k -> new ArrayList<>())
+                        .add(c));
+
+        return products.stream()
+                .map(p -> {
+                    List<PriceCandle> candles = candlesByProduct.get(p.getId());
+                    if (candles == null || candles.isEmpty()) return null;
+                    PriceCandle latest = candles.get(0);
+                    BigDecimal close = latest.getClosePrice();
+                    // 전일 종가 기준. 전일 데이터 없으면 당일 시가로 대체
+                    BigDecimal prevClose = candles.size() >= 2
+                            ? candles.get(1).getClosePrice()
+                            : latest.getOpenPrice();
+                    BigDecimal rate = prevClose.compareTo(BigDecimal.ZERO) == 0
+                            ? BigDecimal.ZERO
+                            : close.subtract(prevClose)
+                                    .divide(prevClose, 4, RoundingMode.HALF_UP)
+                                    .multiply(new BigDecimal("100"));
+                    String sign = rate.compareTo(BigDecimal.ZERO) > 0 ? "2"
+                            : rate.compareTo(BigDecimal.ZERO) < 0 ? "5" : "3";
+                    return new RankingItem(p.getId(), p.getTicker(), p.getProductName(),
+                            close, rate, sign);
+                })
+                .filter(java.util.Objects::nonNull)
                 .sorted(buildRankingComparator(type))
                 .limit(limit)
                 .toList();

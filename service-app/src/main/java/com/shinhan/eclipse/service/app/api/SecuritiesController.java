@@ -28,8 +28,11 @@ public class SecuritiesController {
     public ResponseEntity<ApiResponse<List<ProductListItem>>> listProducts(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String sort) {
-        return ResponseEntity.ok(ApiResponse.success(securitiesService.listProducts(type, keyword, sort)));
+            @RequestParam(required = false) String sort,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(
+                securitiesService.listProducts(type, keyword, sort, offset, Math.min(limit, 100))));
     }
 
     /** SEC-008: 종목 랭킹 */
