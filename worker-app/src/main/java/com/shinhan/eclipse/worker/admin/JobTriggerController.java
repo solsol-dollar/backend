@@ -1,5 +1,6 @@
 package com.shinhan.eclipse.worker.admin;
 
+import com.shinhan.eclipse.worker.allocation.IpoAllocationJob;
 import com.shinhan.eclipse.worker.candle.CandleSyncService;
 import com.shinhan.eclipse.worker.candle.job.DailyCandleJob;
 import lombok.RequiredArgsConstructor;
@@ -29,12 +30,28 @@ public class JobTriggerController {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
+    private final IpoAllocationJob ipoAllocationJob;
     private final DailyCandleJob dailyCandleJob;
     private final CandleSyncService candleSyncService;
     private final JobLauncher jobLauncher;
 
     @Qualifier("ipoNewsFetchOnlyJob")
     private final Job ipoNewsFetchOnlyJob;
+
+    /** IPO 배정 수동 실행 */
+    @PostMapping("/allocation")
+    public ResponseEntity<Map<String, Object>> triggerAllocation() {
+        log.info("[MANUAL] IPO 배정 잡 시작");
+        CompletableFuture.runAsync(() -> {
+            try {
+                ipoAllocationJob.run();
+                log.info("[MANUAL] IPO 배정 잡 완료");
+            } catch (Exception e) {
+                log.error("[MANUAL] IPO 배정 잡 실패", e);
+            }
+        });
+        return ResponseEntity.accepted().body(Map.of("status", "started", "job", "ipo-allocation"));
+    }
 
     /** IPO 뉴스 수집 Spring Batch 잡 */
     @PostMapping("/ipo-news-sync")

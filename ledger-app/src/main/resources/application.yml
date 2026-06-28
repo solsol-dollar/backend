@@ -43,6 +43,8 @@ service-app:
 eclipse:
   internal:
     api-key: ${ECLIPSE_INTERNAL_API_KEY:}
+  subscription:
+    skip-time-check: ${SKIP_SUBSCRIPTION_TIME_CHECK:false}
 
 springdoc:
   swagger-ui:
