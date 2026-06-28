@@ -270,6 +270,23 @@ CREATE TABLE `ipo_score` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+-- IPO 연간 재무 데이터 (SEC EDGAR 424B4/S-1/F-1/20-F 파싱)
+CREATE TABLE `ipo_financials` (
+	`id`               BIGINT     NOT NULL AUTO_INCREMENT,
+	`ipo_id`           BIGINT     NOT NULL,
+	`fiscal_year`      SMALLINT   NOT NULL,
+	`revenue`          BIGINT     NULL     COMMENT '매출액 (천 단위, 예: 509991 = $509,991 thousand)',
+	`operating_income` BIGINT     NULL     COMMENT '영업이익/손실 (음수 = 손실)',
+	`net_income`       BIGINT     NULL     COMMENT '순이익/손실 (음수 = 손실)',
+	`currency`         VARCHAR(3) NOT NULL DEFAULT 'USD',
+	`created_at`       DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at`       DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uq_ipo_financial_year` (`ipo_id`, `fiscal_year`),
+	CONSTRAINT `fk_ipo_financials_ipo` FOREIGN KEY (`ipo_id`) REFERENCES `ipos` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 -- =====================================================================
 -- 3. 청약 / 리턴 플랜
 --    [v1.1.0] subscription_results 제거 → ipo_subscriptions 통합

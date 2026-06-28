@@ -1,7 +1,5 @@
 package com.shinhan.eclipse.service.ipo.internal;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.ipo.FavoriteIpo;
@@ -20,7 +18,6 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,7 +29,7 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     private final IpoRepository ipoRepository;
     private final IpoNewsRepository ipoNewsRepository;
     private final FavoriteIpoRepository favoriteIpoRepository;
-    private final IpoScoreRepository ipoScoreRepository;
+    private final IpoFinancialRepository ipoFinancialRepository;
 
     @Override
     public IpoListResult getIpos(String status, boolean favoriteOnly, Long userId, int page, int size) {
@@ -129,6 +126,17 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
         return result;
     }
 
+    @Override
+    public List<IpoFinancialItem> getIpoFinancials(Long ipoId) {
+        if (!ipoRepository.existsById(ipoId)) {
+            throw new BusinessException(ErrorCode.IPO_NOT_FOUND);
+        }
+        return ipoFinancialRepository.findByIpoIdOrderByFiscalYearDesc(ipoId).stream()
+                .map(f -> new IpoFinancialItem(
+                        f.getFiscalYear(), f.getRevenue(), f.getOperatingIncome(), f.getNetIncome(), f.getCurrency()))
+                .toList();
+    }
+
     private String computeStatus(Ipo ipo) {
         LocalDate today = LocalDate.now();
         if (ipo.getSubscriptionStartDate() == null || today.isBefore(ipo.getSubscriptionStartDate())) {
@@ -205,30 +213,5 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                 ipo.getNumberOfShares(),
                 ipo.getLogoUrl()
         );
-    }
-
-    @Override
-    public Optional<IpoScoreResult> getIpoScore(Long ipoId) {
-        return ipoScoreRepository.findByIpoId(ipoId)
-                .map(score -> new IpoScoreResult(
-                        score.getIpoId(),
-                        score.getTicker(),
-                        score.getFinalScore(),
-                        score.getGrade(),
-                        score.getReason(),
-                        score.getSummary(),
-                        parseTopNewsIds(score.getTopNewsIds()),
-                        score.getNewsCount(),
-                        score.getScoredAt()
-                ));
-    }
-
-    private List<Long> parseTopNewsIds(String json) {
-        if (json == null || json.isBlank()) return null;
-        try {
-            return new ObjectMapper().readValue(json, new TypeReference<List<Long>>() {});
-        } catch (Exception e) {
-            return null;
-        }
     }
 }
