@@ -22,7 +22,7 @@ public record TransactionHistoryItem(
         BigDecimal sourceAmount,
         BigDecimal targetAmount,
 
-        // IPO 청약 전용 — 회사명 등 표시용
+        // 카드 결제 전용 및 IPO 청약 — 표시용 텍스트
         String description
 ) {
     public record AccountInfo(
@@ -37,6 +37,13 @@ public record TransactionHistoryItem(
             AccountInfo fromAccount, AccountInfo toAccount) {
         return new TransactionHistoryItem(id, type, amount, currency, status, executedAt,
                 fromAccount, toAccount, null, null, null, null, null, null);
+    }
+
+    public static TransactionHistoryItem ofCard(Long id,
+            BigDecimal amount, String currency, String status, LocalDateTime executedAt,
+            AccountInfo fromAccount, String description) {
+        return new TransactionHistoryItem(id, "CARD", amount, currency, status, executedAt,
+                fromAccount, null, null, null, null, null, null, description);
     }
 
     public static TransactionHistoryItem ofExchange(Long id,
