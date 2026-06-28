@@ -72,7 +72,7 @@ class SecuritiesServiceImplTest {
         given(priceCandleRepository.findLatestDailyByProductIds(any())).willReturn(List.of());
         given(priceCandleRepository.findDailyClosePricesForSpark(any(), any())).willReturn(List.of());
 
-        List<ProductListItem> result = service.listProducts(null, null, null);
+        List<ProductListItem> result = service.listProducts(null, null, null, 0, Integer.MAX_VALUE);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).price()).isEqualByComparingTo("250.00");
@@ -85,7 +85,7 @@ class SecuritiesServiceImplTest {
         given(priceCandleRepository.findLatestDailyByProductIds(any())).willReturn(List.of());
         given(priceCandleRepository.findDailyClosePricesForSpark(any(), any())).willReturn(List.of());
 
-        List<ProductListItem> result = service.listProducts("OVERSEAS", "TSLA", null);
+        List<ProductListItem> result = service.listProducts("OVERSEAS", "TSLA", null, 0, Integer.MAX_VALUE);
 
         assertThat(result).isEmpty();
         org.mockito.Mockito.verify(productRepository).searchProducts("OVERSEAS", "TSLA");
