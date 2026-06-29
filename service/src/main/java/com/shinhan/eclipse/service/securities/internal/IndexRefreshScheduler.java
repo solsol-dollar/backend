@@ -19,8 +19,11 @@ class IndexRefreshScheduler {
             new String[]{"SPY", "NYSE"},
             new String[]{"QQQ", "NASDAQ"}
     );
+    // 장 외 Yahoo Finance로 갱신할 ticker 목록 (USDKRW 포함)
+    private static final List<String> YAHOO_TICKERS = List.of("SPY", "QQQ", "USDKRW");
 
-    private final KisRestClient            kisRestClient;
+    private final KisRestClient             kisRestClient;
+    private final YahooFinanceClient        yahooFinanceClient;
     private final ApplicationEventPublisher publisher;
 
     /** 장 중 60초마다 SPY/QQQ 현재가를 KIS REST로 갱신 */
@@ -73,5 +76,24 @@ class IndexRefreshScheduler {
                 log.warn("종가 스냅샷 실패 [{}]: {}", ticker, e.getMessage());
             }
         }
+    }
+
+    /** 장 외 5분마다 Yahoo Finance로 SPY/QQQ/USDKRW 갱신 (키 불필요) */
+    @Scheduled(fixedDelay = 300_000, initialDelay = 3_000)
+    void refreshOffHours() {
+        if (MarketHoursUtil.isUsMarketOpen()) return;
+        for (String ticker : YAHOO_TICKERS) {
+            yahooFinanceClient.fetch(ticker).ifPresent(snapshot ->
+                publisher.publishEvent(QuoteReceivedEvent.of(
+                        snapshot.ticker(),
+                        snapshot.price(),
+                        snapshot.change(),
+                        snapshot.changeRate(),
+                        snapshot.volume(),
+                        snapshot.sign()
+                ))
+            );
+        }
+        log.debug("장 외 Yahoo Finance 갱신 완료");
     }
 }
