@@ -56,10 +56,10 @@ public class IpoListingDeliveryService {
 
             if (holding == null) {
                 holding = Holding.create(userId, productId, shares, subscription.getOfferPrice());
-                holding = holdingRepository.save(holding);
             } else {
                 holding.addBuy(shares, subscription.getOfferPrice());
             }
+            holding = holdingRepository.save(holding);
 
             holdingLotRepository.save(
                     HoldingLot.ofIpoAllocation(holding.getId(), userId, productId,
