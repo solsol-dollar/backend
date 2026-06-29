@@ -92,9 +92,16 @@ class HomeServiceImpl implements HomeService {
                 .findFirst()
                 .orElse(null);
 
+        String cmaVirtualAccountNumber = securities.stream()
+                .filter(a -> "USD".equals(a.getCurrency()))
+                .map(FinancialAccount::getVirtualAccountNumber)
+                .filter(v -> v != null)
+                .findFirst()
+                .orElse(null);
+
         AssetsSummaryResponse.SecuritiesAsset securitiesAsset =
                 new AssetsSummaryResponse.SecuritiesAsset(
-                        usdAccountId, krwAccountId, cmaAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd,
+                        usdAccountId, krwAccountId, cmaAccountNumber, cmaVirtualAccountNumber, cmaUsd, cmaKrw, securitiesTotalUsd,
                         cmaUsdAvailable, cmaKrwAvailable);
 
         // 예금/적금 계좌

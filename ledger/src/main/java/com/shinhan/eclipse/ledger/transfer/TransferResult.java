@@ -9,6 +9,7 @@ public record TransferResult(
         String        fromAccountType,
         Long          toAccountId,
         String        toAccountType,
+        String        toVirtualAccountNumber,
         BigDecimal    amount,
         String        currency,
         String        status,
