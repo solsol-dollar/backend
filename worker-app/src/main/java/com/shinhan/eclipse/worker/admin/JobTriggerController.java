@@ -5,6 +5,7 @@ import com.shinhan.eclipse.worker.allocation.IpoListingJob;
 import com.shinhan.eclipse.worker.ipo.sync.IpoFinancialSyncService;
 import com.shinhan.eclipse.worker.candle.CandleSyncService;
 import com.shinhan.eclipse.worker.candle.job.DailyCandleJob;
+import com.shinhan.eclipse.worker.settlement.IpoListingCompletionJob;
 import com.shinhan.eclipse.worker.settlement.ReturnPlanSettlementJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class JobTriggerController {
     private final IpoAllocationJob ipoAllocationJob;
     private final IpoListingJob ipoListingJob;
     private final ReturnPlanSettlementJob returnPlanSettlementJob;
+    private final IpoListingCompletionJob ipoListingCompletionJob;
     private final DailyCandleJob dailyCandleJob;
     private final CandleSyncService candleSyncService;
     private final JobLauncher jobLauncher;
@@ -98,6 +100,26 @@ public class JobTriggerController {
             }
         });
         return ResponseEntity.accepted().body(Map.of("status", "started", "job", "return-plan-settlement"));
+    }
+
+    /** IPO 상장완료 상태 전환 수동 실행 */
+    @PostMapping("/listing-completion")
+    public ResponseEntity<Map<String, Object>> triggerListingCompletion() {
+        if (ipoListingCompletionJob.isRunning()) {
+            log.warn("[MANUAL] IPO 상장완료 전환 잡 이미 실행 중 — 요청 거절");
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("status", "already-running", "job", "ipo-listing-completion"));
+        }
+        log.info("[MANUAL] IPO 상장완료 전환 잡 시작");
+        CompletableFuture.runAsync(() -> {
+            try {
+                ipoListingCompletionJob.run();
+                log.info("[MANUAL] IPO 상장완료 전환 잡 완료");
+            } catch (Exception e) {
+                log.error("[MANUAL] IPO 상장완료 전환 잡 실패", e);
+            }
+        });
+        return ResponseEntity.accepted().body(Map.of("status", "started", "job", "ipo-listing-completion"));
     }
 
     /** IPO 뉴스 수집 Spring Batch 잡 */
