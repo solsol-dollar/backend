@@ -74,14 +74,21 @@ class NotificationServiceImpl implements NotificationService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "FCM 토큰이 유효하지 않습니다.");
         }
         NotificationSettings settings = notificationSettingsRepository.findByUserId(userId)
-                .orElseGet(() -> notificationSettingsRepository.save(NotificationSettings.create(userId)));
+                .orElseGet(() -> {
+                    try {
+                        return notificationSettingsRepository.save(NotificationSettings.create(userId));
+                    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                        return notificationSettingsRepository.findByUserId(userId)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "알림 설정을 찾을 수 없습니다."));
+                    }
+                });
         settings.updateFcmToken(fcmToken);
     }
 
     @Override
     @Transactional
     public void unregisterFcmToken(Long userId) {
-        getSettingsOrThrow(userId).updateFcmToken(null);
+        notificationSettingsRepository.findByUserId(userId).ifPresent(s -> s.updateFcmToken(null));
     }
 
     @Override
