@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RestController
-@RequestMapping("/internal/jobs")
+@RequestMapping("/api/v1/internal/jobs")
 @RequiredArgsConstructor
 public class AdminController {
 
