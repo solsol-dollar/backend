@@ -32,6 +32,11 @@ interface IpoRepository extends JpaRepository<Ipo, Long> {
             :favoriteOnly = false
             OR EXISTS (SELECT f FROM FavoriteIpo f WHERE f.ipoId = i.id AND f.userId = :userId)
         )
+        AND (
+            :keyword IS NULL
+            OR LOWER(i.companyName) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+            OR LOWER(i.ticker) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+        )
         ORDER BY i.listingDate ASC
         """,
         countQuery = """
@@ -48,11 +53,17 @@ interface IpoRepository extends JpaRepository<Ipo, Long> {
             :favoriteOnly = false
             OR EXISTS (SELECT f FROM FavoriteIpo f WHERE f.ipoId = i.id AND f.userId = :userId)
         )
+        AND (
+            :keyword IS NULL
+            OR LOWER(i.companyName) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+            OR LOWER(i.ticker) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+        )
         """)
     Page<Ipo> findWithFilters(
             @Param("status") String status,
             @Param("favoriteOnly") boolean favoriteOnly,
             @Param("userId") Long userId,
+            @Param("keyword") String keyword,
             Pageable pageable
     );
 }
