@@ -42,13 +42,14 @@ class SecuritiesServiceImpl implements SecuritiesService {
     private final QuoteCache                quoteCache;
     private final LsRestClient              lsRestClient;   // 유지 (LS 코드 보존)
     private final KisRestClient             kisRestClient;
+    private final YahooFinanceClient        yahooFinanceClient;
     private final ChatClient                chatClient;
     private final MyPageService             myPageService;
     private final EtfRecommendationIpoRepository ipoRepository;
     private final SectorMapper              sectorMapper;
 
     @Value("${eclipse.fx.usd-krw:1368.5}")
-    private BigDecimal usdKrw;
+    private BigDecimal defaultUsdKrw;
 
     // ── SEC-001: 종목 목록 ──────────────────────────────────────────────────
     @Override
@@ -218,7 +219,8 @@ class SecuritiesServiceImpl implements SecuritiesService {
                 .map(FinancialAccount::availableBalance)
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
-        BigDecimal cashKrw = cashUsd.multiply(usdKrw).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal liveUsdKrw = quoteCache.get("USDKRW").map(QuoteSnapshot::price).orElse(defaultUsdKrw);
+        BigDecimal cashKrw = cashUsd.multiply(liveUsdKrw).setScale(0, RoundingMode.HALF_UP);
 
         return new HoldingsSummary(
                 totalCurrentValueUsd,
@@ -330,7 +332,14 @@ class SecuritiesServiceImpl implements SecuritiesService {
         boolean marketOpen = MarketHoursUtil.isUsMarketOpen();
         MarketIndex spy = resolveIndexSnapshot("SPY", "NYSE", marketOpen);
         MarketIndex qqq = resolveIndexSnapshot("QQQ", "NAS",  marketOpen);
-        MarketIndex usdKrwIndex = new MarketIndex("USD/KRW", usdKrw, BigDecimal.ZERO, BigDecimal.ZERO, false, false);
+
+        // USD/KRW: 캐시(Yahoo Finance 갱신) 우선, 없으면 config 기본값
+        BigDecimal krwRate = quoteCache.get("USDKRW")
+                .map(QuoteSnapshot::price)
+                .orElseGet(() -> yahooFinanceClient.fetch("USDKRW")
+                        .map(QuoteSnapshot::price)
+                        .orElse(defaultUsdKrw));
+        MarketIndex usdKrwIndex = new MarketIndex("USD/KRW", krwRate, BigDecimal.ZERO, BigDecimal.ZERO, false, false);
 
         return List.of(spy, qqq, usdKrwIndex);
     }
@@ -342,11 +351,16 @@ class SecuritiesServiceImpl implements SecuritiesService {
 
     private MarketIndex resolveIndexSnapshot(String ticker, String exchange, boolean marketOpen) {
         String displayName = INDEX_DISPLAY_NAMES.getOrDefault(ticker, ticker);
-        QuoteSnapshot snapshot = quoteCache.get(ticker).orElseGet(() ->
-                kisRestClient.getCurrentPrice(ticker, exchange)
+        QuoteSnapshot snapshot = quoteCache.get(ticker).orElseGet(() -> {
+            // 장 중: KIS 우선, 실패 시 Yahoo Finance fallback
+            // 장 외: Yahoo Finance 직접 조회 (스케줄러 캐시 미스 방어)
+            if (marketOpen) {
+                return kisRestClient.getCurrentPrice(ticker, exchange)
                         .map(dto -> kisToSnapshot(ticker, dto))
-                        .orElse(null)
-        );
+                        .orElseGet(() -> yahooFinanceClient.fetch(ticker).orElse(null));
+            }
+            return yahooFinanceClient.fetch(ticker).orElse(null);
+        });
         if (snapshot == null) {
             return new MarketIndex(displayName, null, BigDecimal.ZERO, BigDecimal.ZERO, false, marketOpen);
         }
