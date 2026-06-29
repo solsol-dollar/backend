@@ -7,6 +7,8 @@ public interface IpoExplorationService {
     IpoListResult getIpos(String status, boolean favoriteOnly, Long userId, int page, int size);
     IpoDetailResult getIpoDetail(Long ipoId, Long userId);
     List<IpoNewsItem> getIpoNews(Long ipoId, int size);
+    IpoTopNewsResult getTopIpoNews(Long ipoId);
+    IpoNewsDetailItem getIpoNewsDetail(Long ipoId, Long newsId);
     FavoriteIpoResponse addFavorite(Long userId, Long ipoId);
     void removeFavorite(Long userId, Long ipoId);
     List<FavoriteIpoItem> getFavoriteIpos(Long userId, Integer limit);

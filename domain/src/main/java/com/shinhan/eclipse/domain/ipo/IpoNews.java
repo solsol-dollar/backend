@@ -33,6 +33,9 @@ public class IpoNews extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(columnDefinition = "TEXT")
+    private String contentKo;
+
     @Column(length = 255)
     private String titleKo;
 
