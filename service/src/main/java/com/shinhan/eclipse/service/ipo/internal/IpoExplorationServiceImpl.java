@@ -41,8 +41,12 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
 
     @Override
     public IpoListResult getIpos(String status, boolean favoriteOnly, Long userId, int page, int size, String keyword) {
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
         Page<Ipo> ipoPage = ipoRepository.findWithFilters(
-                status, favoriteOnly, userId, keyword, PageRequest.of(page, size));
+                status, favoriteOnly, userId, normalizedKeyword, PageRequest.of(page, size));
 
         Set<Long> favoriteIds = favoriteIpoRepository.findByUserId(userId).stream()
                 .map(FavoriteIpo::getIpoId)

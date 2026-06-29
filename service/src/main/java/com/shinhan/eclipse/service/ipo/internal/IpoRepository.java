@@ -34,8 +34,8 @@ interface IpoRepository extends JpaRepository<Ipo, Long> {
         )
         AND (
             :keyword IS NULL
-            OR LOWER(i.companyName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(i.ticker) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(i.companyName) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+            OR LOWER(i.ticker) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
         )
         ORDER BY i.listingDate ASC
         """,
@@ -55,8 +55,8 @@ interface IpoRepository extends JpaRepository<Ipo, Long> {
         )
         AND (
             :keyword IS NULL
-            OR LOWER(i.companyName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(i.ticker) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(i.companyName) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+            OR LOWER(i.ticker) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
         )
         """)
     Page<Ipo> findWithFilters(
