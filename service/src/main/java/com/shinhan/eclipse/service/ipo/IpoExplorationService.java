@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IpoExplorationService {
-    IpoListResult getIpos(String status, boolean favoriteOnly, Long userId, int page, int size);
+    IpoListResult getIpos(String status, boolean favoriteOnly, Long userId, int page, int size, String keyword);
     IpoDetailResult getIpoDetail(Long ipoId, Long userId);
     List<IpoNewsItem> getIpoNews(Long ipoId, int size);
     IpoTopNewsResult getTopIpoNews(Long ipoId);

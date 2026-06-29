@@ -29,14 +29,15 @@ public class AllocationResultController {
     private final ReturnPlanFacade returnPlanFacade;
     private final QuoteClient quoteClient;
 
-    // ALLOC-001 (from/to/statusGroup: 명세 외 추가 — 조회 조건 설정 모달용)
+    // ALLOC-001 (from/to/statusGroup/keyword: 명세 외 추가 — 조회 조건 설정 모달용)
     @GetMapping
     public ResponseEntity<ApiResponse<AllocationResultListRes>> getAllocationResults(
             @UserHeader Long userId,
             @RequestParam(name = "subscriptionId", required = false) Long subscriptionId,
             @RequestParam(name = "from", required = false) LocalDate from,
             @RequestParam(name = "to", required = false) LocalDate to,
-            @RequestParam(name = "statusGroup", required = false) String statusGroup) {
+            @RequestParam(name = "statusGroup", required = false) String statusGroup,
+            @RequestParam(name = "keyword", required = false) String keyword) {
         if (from != null && to != null && from.isAfter(to)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "from은 to보다 늦을 수 없습니다.");
         }
@@ -45,6 +46,7 @@ public class AllocationResultController {
                 .filter(s -> matchesDateRange(s, from, to))
                 .filter(s -> matchesStatusGroup(s, statusGroup))
                 .map(this::toRes)
+                .filter(r -> matchesKeyword(r, keyword))
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(AllocationResultListRes.builder().results(results).build()));
     }
@@ -63,6 +65,13 @@ public class AllocationResultController {
      * "DEPOSITED"로 바뀐다. ALLOCATED는 배정만 됐으면 충족(COMPLETED/DEPOSITED 둘 다 포함),
      * LISTED는 실제 입고까지 끝난 DEPOSITED만 충족한다.
      */
+    private boolean matchesKeyword(AllocationResultRes result, String keyword) {
+        if (!StringUtils.hasText(keyword)) return true;
+        String lower = keyword.toLowerCase();
+        return (result.getCompanyName() != null && result.getCompanyName().toLowerCase().contains(lower))
+                || (result.getTicker() != null && result.getTicker().toLowerCase().contains(lower));
+    }
+
     private boolean matchesStatusGroup(IpoSubscription subscription, String statusGroup) {
         if (!StringUtils.hasText(statusGroup) || "ALL".equalsIgnoreCase(statusGroup)) return true;
         if ("REQUESTED".equalsIgnoreCase(statusGroup)) {

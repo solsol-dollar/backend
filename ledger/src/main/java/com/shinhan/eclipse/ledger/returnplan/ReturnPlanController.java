@@ -81,17 +81,22 @@ public class ReturnPlanController {
             @RequestParam(name = "size", defaultValue = "20") int size,
             @RequestParam(name = "from", required = false) LocalDate from,
             @RequestParam(name = "to", required = false) LocalDate to,
-            @RequestParam(name = "status", required = false) String status) {
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "keyword", required = false) String keyword) {
         if (page < 0 || size < 1 || size > 100) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "page는 0 이상, size는 1~100 사이여야 합니다.");
         }
         if (from != null && to != null && from.isAfter(to)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "from은 to보다 늦을 수 없습니다.");
         }
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim().toLowerCase();
         Pageable pageable = PageRequest.of(page, size);
         Page<ReturnPlan> plans = returnPlanFacade.getReturnPlans(userId, from, to, status, pageable);
         List<ReturnPlanListItemRes> items = plans.getContent().stream()
                 .map(plan -> ReturnPlanListItemRes.from(plan, getSourceIpo(plan, userId)))
+                .filter(item -> normalizedKeyword == null
+                        || (item.getSourceCompanyName() != null && item.getSourceCompanyName().toLowerCase().contains(normalizedKeyword))
+                        || (item.getSourceTicker() != null && item.getSourceTicker().toLowerCase().contains(normalizedKeyword)))
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(ReturnPlanListRes.builder().returnPlans(items).build()));
     }
