@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -49,36 +50,51 @@ public class ReturnPlanSettlementJob {
 
     private static final List<String> DESTINATION_TYPES = List.of("SECURITIES", "SAVINGS", "DEPOSIT");
 
+    private final AtomicBoolean running = new AtomicBoolean(false);
+
+    /** 이미 실행 중이면 true. 수동 트리거가 중복 실행을 막기 위해 사용. */
+    public boolean isRunning() {
+        return running.get();
+    }
+
     @Scheduled(cron = "0 0 21 * * *", zone = "Asia/Seoul")
     public void run() {
-        LocalDate today = LocalDate.now(KST);
-        autoCreateMissingReturnPlans(today);
-        List<ReturnPlan> targets = returnPlanRepository.findDraftPlansDueForSettlement(today);
-        if (targets.isEmpty()) {
+        if (!running.compareAndSet(false, true)) {
+            log.warn("ReturnPlanSettlementJob 이미 실행 중 — 이번 실행은 건너뜀");
             return;
         }
-
-        log.info("ReturnPlanSettlementJob 시작: 대상 {}건", targets.size());
-
-        List<Long> subscriptionIds = targets.stream().map(ReturnPlan::getSubscriptionId).toList();
-        Map<Long, String> companyBySubscriptionId = returnPlanRepository.findCompanyNamesBySubscriptionIds(subscriptionIds)
-                .stream().collect(Collectors.toMap(row -> (Long) row[0], row -> (String) row[1]));
-
-        int executed = 0;
-        for (ReturnPlan plan : targets) {
-            if (executeWithRetry(plan.getId())) {
-                executed++;
-                String companyName = companyBySubscriptionId.getOrDefault(plan.getSubscriptionId(), "IPO");
-                notificationRepository.save(Notification.create(
-                        plan.getUserId(),
-                        "IPO_REFUND",
-                        "리턴 플랜 완료",
-                        companyName + " 청약 환불금 $" + plan.getTotalRefundAmount().stripTrailingZeros().toPlainString() + "가 리턴 플랜되었어요!",
-                        "RETURN_PLAN", plan.getId()
-                ));
+        try {
+            LocalDate today = LocalDate.now(KST);
+            autoCreateMissingReturnPlans(today);
+            List<ReturnPlan> targets = returnPlanRepository.findDraftPlansDueForSettlement(today);
+            if (targets.isEmpty()) {
+                return;
             }
+
+            log.info("ReturnPlanSettlementJob 시작: 대상 {}건", targets.size());
+
+            List<Long> subscriptionIds = targets.stream().map(ReturnPlan::getSubscriptionId).toList();
+            Map<Long, String> companyBySubscriptionId = returnPlanRepository.findCompanyNamesBySubscriptionIds(subscriptionIds)
+                    .stream().collect(Collectors.toMap(row -> (Long) row[0], row -> (String) row[1]));
+
+            int executed = 0;
+            for (ReturnPlan plan : targets) {
+                if (executeWithRetry(plan.getId())) {
+                    executed++;
+                    String companyName = companyBySubscriptionId.getOrDefault(plan.getSubscriptionId(), "IPO");
+                    notificationRepository.save(Notification.create(
+                            plan.getUserId(),
+                            "IPO_REFUND",
+                            "리턴 플랜 완료",
+                            companyName + " 청약 환불금 $" + plan.getTotalRefundAmount().stripTrailingZeros().toPlainString() + "가 리턴 플랜되었어요!",
+                            "RETURN_PLAN", plan.getId()
+                    ));
+                }
+            }
+            log.info("ReturnPlanSettlementJob 완료: {}건 실행", executed);
+        } finally {
+            running.set(false);
         }
-        log.info("ReturnPlanSettlementJob 완료: {}건 실행", executed);
     }
 
     /** 일시적인 네트워크/타임아웃 오류에 대비해 짧은 backoff로 몇 번 더 시도한다. */

@@ -145,7 +145,13 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                         score.getSummary(),
                         parseTopNewsIds(score.getTopNewsIds()),
                         score.getNewsCount(),
-                        score.getScoredAt()
+                        score.getScoredAt(),
+                        score.getPostFinalScore(),
+                        score.getPostGrade(),
+                        score.getPostReason(),
+                        score.getPostSummary(),
+                        parseTopNewsIds(score.getPostTopNewsIds()),
+                        score.getPostNewsCount()
                 ));
     }
 

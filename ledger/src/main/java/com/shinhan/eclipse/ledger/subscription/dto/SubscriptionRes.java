@@ -16,6 +16,8 @@ public class SubscriptionRes {
     private static final BigDecimal AGENCY_DEPOSIT_RATE = new BigDecimal("1.01");
 
     private final Long subscriptionId;
+    private final Long subscriptionResultId;
+    private final String resultStatus;
     private final Long ipoId;
     private final Integer requestedShares;
     private final BigDecimal subscriptionAmount;
@@ -36,6 +38,8 @@ public class SubscriptionRes {
     public static SubscriptionRes from(IpoSubscription subscription, Ipo ipo) {
         return SubscriptionRes.builder()
                 .subscriptionId(subscription.getId())
+                .subscriptionResultId("COMPLETED".equals(subscription.getResultStatus()) || "DEPOSITED".equals(subscription.getResultStatus()) ? subscription.getId() : null)
+                .resultStatus(subscription.getResultStatus())
                 .ipoId(subscription.getIpoId())
                 .requestedShares(subscription.getRequestedShares())
                 .subscriptionAmount(subscription.getSubscriptionAmount())
