@@ -23,6 +23,8 @@ interface ProductRepository extends JpaRepository<InvestmentProduct, Long> {
 
     Optional<InvestmentProduct> findByTickerAndStatus(String ticker, String status);
 
+    List<InvestmentProduct> findByTickerIn(List<String> tickers);
+
     boolean existsByTicker(String ticker);
 
     @Query("SELECT COUNT(p) FROM InvestmentProduct p WHERE p.status = 'ACTIVE'")

@@ -4,6 +4,7 @@ import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.holding.Holding;
+import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
 import com.shinhan.eclipse.domain.product.PriceCandle;
 import com.shinhan.eclipse.domain.user.InvestmentProfile;
@@ -43,6 +44,8 @@ class SecuritiesServiceImpl implements SecuritiesService {
     private final KisRestClient             kisRestClient;
     private final ChatClient                chatClient;
     private final MyPageService             myPageService;
+    private final EtfRecommendationIpoRepository ipoRepository;
+    private final SectorMapper              sectorMapper;
 
     @Value("${eclipse.fx.usd-krw:1368.5}")
     private BigDecimal usdKrw;
@@ -281,6 +284,44 @@ class SecuritiesServiceImpl implements SecuritiesService {
             log.warn("AI 추천 실패, 기본 추천으로 대체: {}", e.getMessage());
             return fallbackRecommendations(products);
         }
+    }
+
+    // ── SEC-005-IPO: IPO 섹터 기반 ETF 추천 ──────────────────────────────────
+    // 투자성향(riskType) 기반 AI 추천(getRecommended(userId))은 이 경로에서 절대 사용하지 않는다.
+    // 섹터 매핑/ETF 조회가 실패하면 빈 리스트를 반환한다.
+    @Override
+    public List<RecommendedProduct> getRecommended(Long userId, Long ipoId) {
+        if (ipoId == null) {
+            return List.of();
+        }
+
+        return ipoRepository.findById(ipoId)
+                .flatMap(ipo -> sectorMapper.resolveSectorGroup(ipo.getTicker(), ipo.getSector())
+                        .map(sectorMapper::getEtfTickers)
+                        .map(productRepository::findByTickerIn)
+                        .map(products -> products.stream()
+                                .filter(p -> "ETF".equals(p.getProductType()))
+                                .toList())
+                        .filter(products -> !products.isEmpty())
+                        .map(products -> toEtfRecommendations(products, ipo)))
+                .orElseGet(List::of);
+    }
+
+    private List<RecommendedProduct> toEtfRecommendations(List<InvestmentProduct> products, Ipo ipo) {
+        String reason = ipo.getCompanyName() + "와 같은 분야의 ETF예요.";
+        return products.stream()
+                .map(p -> {
+                    QuoteSnapshot q = quoteCache.get(p.getTicker()).orElse(null);
+                    return new RecommendedProduct(
+                            p.getId(), p.getTicker(), p.getProductName(),
+                            p.getProductType(), p.getSector(), p.getExchangeName(),
+                            q != null ? q.price()      : null,
+                            q != null ? q.changeRate() : null,
+                            q != null ? q.sign()       : null,
+                            reason
+                    );
+                })
+                .toList();
     }
 
     // ── B-01: 시장 지수 ────────────────────────────────────────────────────
