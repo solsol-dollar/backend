@@ -1,9 +1,11 @@
 package com.shinhan.eclipse.worker.admin;
 
 import com.shinhan.eclipse.worker.allocation.IpoAllocationJob;
+import com.shinhan.eclipse.worker.allocation.IpoListingJob;
 import com.shinhan.eclipse.worker.ipo.sync.IpoFinancialSyncService;
 import com.shinhan.eclipse.worker.candle.CandleSyncService;
 import com.shinhan.eclipse.worker.candle.job.DailyCandleJob;
+import com.shinhan.eclipse.worker.settlement.ReturnPlanSettlementJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -11,6 +13,7 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +35,8 @@ public class JobTriggerController {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final IpoAllocationJob ipoAllocationJob;
+    private final IpoListingJob ipoListingJob;
+    private final ReturnPlanSettlementJob returnPlanSettlementJob;
     private final DailyCandleJob dailyCandleJob;
     private final CandleSyncService candleSyncService;
     private final JobLauncher jobLauncher;
@@ -53,6 +58,46 @@ public class JobTriggerController {
             }
         });
         return ResponseEntity.accepted().body(Map.of("status", "started", "job", "ipo-allocation"));
+    }
+
+    /** IPO 상장 입고 수동 실행 */
+    @PostMapping("/listing")
+    public ResponseEntity<Map<String, Object>> triggerListing() {
+        if (ipoListingJob.isRunning()) {
+            log.warn("[MANUAL] IPO 입고 잡 이미 실행 중 — 요청 거절");
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("status", "already-running", "job", "ipo-listing"));
+        }
+        log.info("[MANUAL] IPO 입고 잡 시작");
+        CompletableFuture.runAsync(() -> {
+            try {
+                ipoListingJob.run();
+                log.info("[MANUAL] IPO 입고 잡 완료");
+            } catch (Exception e) {
+                log.error("[MANUAL] IPO 입고 잡 실패", e);
+            }
+        });
+        return ResponseEntity.accepted().body(Map.of("status", "started", "job", "ipo-listing"));
+    }
+
+    /** 리턴플랜 정산 수동 실행 */
+    @PostMapping("/settlement")
+    public ResponseEntity<Map<String, Object>> triggerSettlement() {
+        if (returnPlanSettlementJob.isRunning()) {
+            log.warn("[MANUAL] 리턴플랜 정산 잡 이미 실행 중 — 요청 거절");
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("status", "already-running", "job", "return-plan-settlement"));
+        }
+        log.info("[MANUAL] 리턴플랜 정산 잡 시작");
+        CompletableFuture.runAsync(() -> {
+            try {
+                returnPlanSettlementJob.run();
+                log.info("[MANUAL] 리턴플랜 정산 잡 완료");
+            } catch (Exception e) {
+                log.error("[MANUAL] 리턴플랜 정산 잡 실패", e);
+            }
+        });
+        return ResponseEntity.accepted().body(Map.of("status", "started", "job", "return-plan-settlement"));
     }
 
     /** IPO 뉴스 수집 Spring Batch 잡 */

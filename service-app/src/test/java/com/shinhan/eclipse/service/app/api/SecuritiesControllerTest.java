@@ -92,7 +92,7 @@ class SecuritiesControllerTest {
                 "Consumer Discretionary", new BigDecimal("250.00"), new BigDecimal("1.29"), "2",
                 1000000L, new BigDecimal("250000000"), List.of()
         );
-        given(securitiesService.listProducts(null, null, null)).willReturn(List.of(item));
+        given(securitiesService.listProducts(null, null, null, 0, 20)).willReturn(List.of(item));
 
         mockMvc.perform(get("/api/v1/securities/products"))
                 .andExpect(status().isOk())
@@ -103,7 +103,7 @@ class SecuritiesControllerTest {
 
     @Test
     void listProducts_타입_키워드_파라미터_전달() throws Exception {
-        given(securitiesService.listProducts("OVERSEAS", "TSLA", null)).willReturn(List.of());
+        given(securitiesService.listProducts("OVERSEAS", "TSLA", null, 0, 20)).willReturn(List.of());
 
         mockMvc.perform(get("/api/v1/securities/products")
                         .param("type", "OVERSEAS")
@@ -111,7 +111,7 @@ class SecuritiesControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isEmpty());
 
-        org.mockito.Mockito.verify(securitiesService).listProducts("OVERSEAS", "TSLA", null);
+        org.mockito.Mockito.verify(securitiesService).listProducts("OVERSEAS", "TSLA", null, 0, 20);
     }
 
     // ── SEC-002 ──────────────────────────────────────────────────────────────

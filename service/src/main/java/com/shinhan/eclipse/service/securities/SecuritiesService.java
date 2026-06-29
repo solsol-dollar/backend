@@ -3,7 +3,7 @@ package com.shinhan.eclipse.service.securities;
 import java.util.List;
 
 public interface SecuritiesService {
-    List<ProductListItem>   listProducts(String type, String keyword, String sort);
+    List<ProductListItem>   listProducts(String type, String keyword, String sort, int offset, int limit);
     ProductDetail           getProduct(Long id);
     OrderBookResponse       getOrderBook(Long id);
     HoldingsSummary         getHoldings(Long userId);

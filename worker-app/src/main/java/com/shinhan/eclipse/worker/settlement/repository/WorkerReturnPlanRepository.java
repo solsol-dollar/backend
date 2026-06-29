@@ -42,7 +42,7 @@ public interface WorkerReturnPlanRepository extends JpaRepository<ReturnPlan, Lo
      */
     @Query("""
             select s from IpoSubscription s
-            where s.resultStatus = 'COMPLETED'
+            where s.resultStatus in ('COMPLETED', 'DEPOSITED')
               and s.refundAmount > 0
               and s.ipoId in (select i.id from Ipo i where i.refundDate <= :today)
               and s.id not in (select p.subscriptionId from ReturnPlan p)

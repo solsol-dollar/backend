@@ -67,4 +67,22 @@ interface PriceCandleRepository extends JpaRepository<PriceCandle, Long> {
                      AND pc.candle_type = 'DAY'
             """, nativeQuery = true)
     List<PriceCandle> findLatestDailyByProductIds(@Param("ids") List<Long> ids);
+
+    /** productId별 최근 DAY 캔들 2건씩 벌크 조회 — 전일 대비 변동률 계산용 */
+    @Query(value = """
+            SELECT pc.* FROM price_candles pc
+            INNER JOIN (
+                SELECT product_id, candle_at
+                FROM (
+                    SELECT product_id, candle_at,
+                           ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY candle_at DESC) AS rn
+                    FROM price_candles
+                    WHERE candle_type = 'DAY' AND product_id IN :ids
+                ) ranked
+                WHERE rn <= 2
+            ) top2 ON pc.product_id = top2.product_id
+                   AND pc.candle_at = top2.candle_at
+                   AND pc.candle_type = 'DAY'
+            """, nativeQuery = true)
+    List<PriceCandle> findTop2DailyByProductIds(@Param("ids") List<Long> ids);
 }
