@@ -107,6 +107,13 @@ public class IpoSubscription extends BaseEntity {
      * @param allocationRatePercent 0~100 사이 퍼센트 값
      * @param heldAmount 청약 시점에 잠긴 실제 금액(증거금). refundAmount = heldAmount - allocatedAmount.
      */
+    public void deposit() {
+        if (!"COMPLETED".equals(this.resultStatus)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "배정 완료된 청약만 입고 처리할 수 있습니다.");
+        }
+        this.resultStatus = "DEPOSITED";
+    }
+
     public void allocate(int allocatedShares, BigDecimal allocationRatePercent, BigDecimal heldAmount) {
         if (!"CONFIRMED".equals(this.subscriptionStatus)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "확정된 청약만 배정할 수 있습니다.");
