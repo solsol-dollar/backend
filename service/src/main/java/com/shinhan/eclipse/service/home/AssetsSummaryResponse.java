@@ -23,6 +23,7 @@ public record AssetsSummaryResponse(
             Long usdAccountId,
             Long krwAccountId,
             String accountNumberMasked,
+            String virtualAccountNumber,
             BigDecimal usdBalance,
             BigDecimal krwBalance,
             BigDecimal totalUsdBalance,
