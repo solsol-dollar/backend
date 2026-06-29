@@ -34,6 +34,7 @@ public class SecurityConfig {
                                 "/api-docs/**",
                                 "/actuator/**",
                                 "/api/v1/exchange/**"
+                                "/webjars/**"
                         ).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

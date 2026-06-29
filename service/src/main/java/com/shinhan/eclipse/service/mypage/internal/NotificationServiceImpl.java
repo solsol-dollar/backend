@@ -85,7 +85,16 @@ class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void updateNotificationSettings(Long userId, Boolean ipoAllocation, Boolean ipoRefund, Boolean idleDollar) {
-        getSettingsOrThrow(userId).updateSettings(ipoAllocation, ipoRefund, idleDollar);
+        NotificationSettings settings = notificationSettingsRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    try {
+                        return notificationSettingsRepository.save(NotificationSettings.create(userId));
+                    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                        return notificationSettingsRepository.findByUserId(userId)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "알림 설정을 찾을 수 없습니다."));
+                    }
+                });
+        settings.updateSettings(ipoAllocation, ipoRefund, idleDollar);
     }
 
     @Override
@@ -121,11 +130,17 @@ class NotificationServiceImpl implements NotificationService {
         return notificationRepository.save(Notification.create(userId, notificationType, title, message, targetType, targetId)).getId();
     }
 
+    @Override
+    public List<Long> getAllUserIdsWithFcmToken() {
+        return notificationSettingsRepository.findAllUserIdsWithFcmToken();
+    }
+
     private boolean isTypeEnabled(NotificationSettings settings, String notificationType) {
         return switch (notificationType) {
             case "IPO_ALLOCATION" -> settings.getIpoAllocationEnabled();
             case "IPO_REFUND" -> settings.getIpoRefundEnabled();
             case "IDLE_DOLLAR" -> settings.getIdleDollarEnabled();
+            case "SPENDING_REPORT" -> true;
             default -> false;
         };
     }
