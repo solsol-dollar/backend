@@ -2,12 +2,12 @@ package com.shinhan.eclipse.service.home.internal;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo;
+import com.shinhan.eclipse.service.exchange.market.MarketRateData;
+import com.shinhan.eclipse.service.exchange.market.MarketRateRedisStore;
 import lombok.extern.slf4j.Slf4j;
 import com.shinhan.eclipse.domain.account.Card;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.service.card.CardService;
-import com.shinhan.eclipse.service.exchange.ExchangeService;
 import com.shinhan.eclipse.service.home.AssetsSummaryResponse;
 import com.shinhan.eclipse.service.home.HomeService;
 import com.shinhan.eclipse.service.ipo.FavoriteIpoItem;
@@ -29,9 +29,9 @@ class HomeServiceImpl implements HomeService {
 
     private final AssetAccountRepository accountRepository;
     private final AssetCardRepository cardRepository;
-    private final ExchangeService exchangeService;
     private final IpoExplorationService ipoExplorationService;
     private final CardService cardService;
+    private final MarketRateRedisStore marketRateRedisStore;
 
     @Override
     @Transactional(readOnly = true)
@@ -39,29 +39,13 @@ class HomeServiceImpl implements HomeService {
         List<FinancialAccount> accounts = accountRepository.findByUserIdAndLinkedTrueAndStatus(userId, "ACTIVE");
         List<Card> cards = cardRepository.findByUserIdAndLinkedTrueAndStatus(userId, "ACTIVE");
 
-        BigDecimal exchangeRate = null;
-        try {
-            ExchangeRateInfo rateInfo = exchangeService.getExchangeRate("USD");
-            BigDecimal rate = rateInfo.baseRate();
-            if (rate != null && rate.compareTo(BigDecimal.ZERO) > 0) {
-                exchangeRate = rate;
-            }
-        } catch (Exception e) {
-            log.warn("[홈] 환율 조회 실패 — 환율 null 처리: {}", e.getMessage());
-        }
-
-        BigDecimal prevRate = null;
-        try {
-            prevRate = exchangeService.getPreviousExchangeRate("USD")
-                    .map(com.shinhan.eclipse.common.redis.exchange.ExchangeRateInfo::baseRate)
-                    .orElse(null);
-        } catch (Exception e) {
-            log.warn("[홈] 전날 환율 조회 실패: {}", e.getMessage());
-        }
-        BigDecimal changeAmount = (exchangeRate != null && prevRate != null) ? exchangeRate.subtract(prevRate) : null;
-        BigDecimal changeRate = (changeAmount != null && prevRate != null && prevRate.compareTo(BigDecimal.ZERO) > 0)
-                ? changeAmount.divide(prevRate, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
-                : null;
+        // 실시간 시장 환율 (Redis)
+        MarketRateData marketRate = marketRateRedisStore.get().orElse(null);
+        BigDecimal exchangeRate   = marketRate != null ? marketRate.price()      : null;
+        BigDecimal changeAmount   = marketRate != null ? marketRate.change()     : null;
+        BigDecimal changeRate     = marketRate != null ? marketRate.changeRate() : null;
+        BigDecimal prevRate       = (exchangeRate != null && changeAmount != null)
+                ? exchangeRate.subtract(changeAmount) : null;
 
         // 증권(CMA) 계좌 분리
         List<FinancialAccount> securities = accounts.stream()
@@ -89,8 +73,8 @@ class HomeServiceImpl implements HomeService {
                 .map(FinancialAccount::availableBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // KRW → USD 환산 (환율 없으면 null — 환산 불가 상태 명시)
-        BigDecimal krwInUsd = (exchangeRate != null)
+        // KRW → USD 환산 (환율 없거나 0이면 null — 환산 불가 상태 명시)
+        BigDecimal krwInUsd = (exchangeRate != null && exchangeRate.compareTo(BigDecimal.ZERO) > 0)
                 ? cmaKrwAvailable.divide(exchangeRate, 4, RoundingMode.HALF_UP)
                 : null;
         BigDecimal securitiesTotalUsd = (krwInUsd != null) ? cmaUsdAvailable.add(krwInUsd) : null;

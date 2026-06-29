@@ -17,6 +17,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-admin:9.3.0'
     implementation 'software.amazon.awssdk:secretsmanager:2.26.25'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
     testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
 }
