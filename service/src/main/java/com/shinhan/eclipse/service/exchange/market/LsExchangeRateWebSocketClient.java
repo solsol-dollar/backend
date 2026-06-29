@@ -39,9 +39,14 @@ public class LsExchangeRateWebSocketClient {
     private final MarketRateRedisStore redisStore;
     private final ObjectMapper        objectMapper;
 
-    private volatile boolean   running      = false;
-    private volatile String    lastPrice    = null;
+    private volatile boolean    running      = false;
+    private volatile String     lastPrice    = null;
     private volatile Disposable subscription = null;
+
+    // TTS/TTB는 5분 스케줄러에서만 갱신 — 매 tick마다 바꾸지 않음
+    private volatile BigDecimal cachedTts    = null;
+    private volatile BigDecimal cachedTtb    = null;
+    private volatile BigDecimal cachedSpread = null;
 
     @PostConstruct
     void init() {
@@ -168,6 +173,32 @@ public class LsExchangeRateWebSocketClient {
         }
     }
 
+    /** 5분마다 현재 price 기준으로 TTS/TTB 재계산 */
+    @Scheduled(fixedDelay = 300_000, initialDelay = 5_000)
+    void refreshRates() {
+        if (lastPrice == null) return;
+        try {
+            BigDecimal price  = new BigDecimal(lastPrice);
+            BigDecimal spread = price.multiply(SPREAD_RATE).setScale(1, RoundingMode.HALF_UP);
+            cachedSpread = spread;
+            cachedTts    = price.add(spread);
+            cachedTtb    = price.subtract(spread);
+            log.info("[LS 고시환율] TTS={} TTB={} ({})", cachedTts, cachedTtb, lastPrice);
+
+            // Redis에 저장된 최신 데이터에 TTS/TTB 반영
+            redisStore.get().ifPresent(current -> {
+                MarketRateData updated = new MarketRateData(
+                        current.price(), cachedTts, cachedTtb, cachedSpread,
+                        current.change(), current.changeRate(), current.sign(),
+                        current.high(), current.low(), current.open(),
+                        current.source(), LocalDateTime.now(KST));
+                redisStore.save(updated);
+            });
+        } catch (Exception e) {
+            log.warn("[LS 고시환율] 계산 실패: {}", e.getMessage());
+        }
+    }
+
     private MarketRateData buildData(JsonNode body) {
         BigDecimal price  = bd(body, "price");
         BigDecimal change = bd(body, "change");
@@ -177,9 +208,11 @@ public class LsExchangeRateWebSocketClient {
         BigDecimal open   = bd(body, "open");
         String     sign   = body.path("sign").asText("3");
 
-        BigDecimal spread = price.multiply(SPREAD_RATE).setScale(1, RoundingMode.HALF_UP);
-        BigDecimal tts    = price.add(spread);
-        BigDecimal ttb    = price.subtract(spread);
+        // TTS/TTB는 캐시값 사용 (없으면 최초 1회만 계산)
+        BigDecimal spread = cachedSpread != null ? cachedSpread
+                : price.multiply(SPREAD_RATE).setScale(1, RoundingMode.HALF_UP);
+        BigDecimal tts    = cachedTts != null ? cachedTts : price.add(spread);
+        BigDecimal ttb    = cachedTtb != null ? cachedTtb : price.subtract(spread);
 
         return new MarketRateData(price, tts, ttb, spread, change, drate, sign,
                 high, low, open, "LS_CUR", LocalDateTime.now(KST));
