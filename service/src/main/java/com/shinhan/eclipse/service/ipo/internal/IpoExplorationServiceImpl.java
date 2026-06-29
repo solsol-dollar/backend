@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -215,6 +216,42 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
             return "CLOSED";
         }
         return "UPCOMING";
+    }
+
+    @Override
+    public IpoTopNewsResult getTopIpoNews(Long ipoId) {
+        return ipoScoreRepository.findByIpoId(ipoId)
+                .map(score -> new IpoTopNewsResult(
+                        fetchNewsByIds(parseTopNewsIds(score.getTopNewsIds())),
+                        fetchNewsByIds(parseTopNewsIds(score.getPostTopNewsIds()))
+                ))
+                .orElse(new IpoTopNewsResult(List.of(), List.of()));
+    }
+
+    @Override
+    public IpoNewsDetailItem getIpoNewsDetail(Long ipoId, Long newsId) {
+        IpoNews news = ipoNewsRepository.findByIdAndIpoId(newsId, ipoId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.IPO_NOT_FOUND));
+        return new IpoNewsDetailItem(
+                news.getId(),
+                news.getTitle(),
+                news.getTitleKo(),
+                news.getSource(),
+                news.getPublishedAt(),
+                news.getUrl(),
+                news.getSummary(),
+                news.getContent(),
+                news.getContentKo()
+        );
+    }
+
+    private List<IpoNewsItem> fetchNewsByIds(List<Long> ids) {
+        return ids.stream()
+                .limit(2)
+                .map(id -> ipoNewsRepository.findById(id).orElse(null))
+                .filter(Objects::nonNull)
+                .map(this::toNewsItem)
+                .toList();
     }
 
     private IpoNewsItem toNewsItem(IpoNews news) {
