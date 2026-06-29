@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.Optional;
-
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/exchange")
@@ -36,11 +34,7 @@ public class ExchangeRateSseController {
     /** EX-003: 현재 시장 환율 스냅샷 */
     @GetMapping("/rate/market")
     public ResponseEntity<ApiResponse<MarketRateData>> marketRate() {
-        Optional<MarketRateData> data = marketExchangeRateService.getCurrent();
-        if (data.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.ok(ApiResponse.success(data.get()));
+        return ResponseEntity.ok(ApiResponse.success(marketExchangeRateService.getCurrent().orElse(null)));
     }
 
     /** TEST: 웹소켓 수동 연결 트리거 */

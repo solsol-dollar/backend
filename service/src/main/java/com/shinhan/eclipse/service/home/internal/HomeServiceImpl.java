@@ -73,8 +73,8 @@ class HomeServiceImpl implements HomeService {
                 .map(FinancialAccount::availableBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // KRW → USD 환산 (환율 없으면 null — 환산 불가 상태 명시)
-        BigDecimal krwInUsd = (exchangeRate != null)
+        // KRW → USD 환산 (환율 없거나 0이면 null — 환산 불가 상태 명시)
+        BigDecimal krwInUsd = (exchangeRate != null && exchangeRate.compareTo(BigDecimal.ZERO) > 0)
                 ? cmaKrwAvailable.divide(exchangeRate, 4, RoundingMode.HALF_UP)
                 : null;
         BigDecimal securitiesTotalUsd = (krwInUsd != null) ? cmaUsdAvailable.add(krwInUsd) : null;

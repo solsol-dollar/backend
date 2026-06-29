@@ -2,9 +2,6 @@ package com.shinhan.eclipse.service.exchange.market;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -87,16 +84,12 @@ public class LsExchangeRateWebSocketClient {
             log.warn("[LS WebSocket] 토큰 없음 — 연결 생략");
             return;
         }
+        disconnect(); // 기존 구독 먼저 정리 (중복 세션 방지)
         running = true;
-        lastPrice = null;
 
         try {
-            SslContext ssl = SslContextBuilder.forClient()
-                    .trustManager(InsecureTrustManagerFactory.INSTANCE)
-                    .build();
-
             ReactorNettyWebSocketClient client = new ReactorNettyWebSocketClient(
-                    HttpClient.create().secure(spec -> spec.sslContext(ssl))
+                    HttpClient.create().secure()
             );
 
             String subscribeMsg = objectMapper.writeValueAsString(Map.of(
@@ -138,6 +131,9 @@ public class LsExchangeRateWebSocketClient {
     public void disconnect() {
         running = false;
         lastPrice = null;
+        cachedTts    = null;
+        cachedTtb    = null;
+        cachedSpread = null;
         if (subscription != null && !subscription.isDisposed()) {
             subscription.dispose();
         }

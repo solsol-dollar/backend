@@ -15,6 +15,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
@@ -39,6 +40,7 @@ public class LsTokenManager {
 
     @Scheduled(cron = "0 5 7 * * MON-FRI", zone = "Asia/Seoul")
     void scheduledRefresh() {
+        if (!props.isConfigured()) return;
         log.info("[LS토큰] 일일 갱신");
         refreshToken();
     }
@@ -57,6 +59,7 @@ public class LsTokenManager {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(props.getBaseUrl() + "/oauth2/token"))
                     .header("Content-Type", "application/x-www-form-urlencoded")
+                    .timeout(Duration.ofSeconds(10))
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
 

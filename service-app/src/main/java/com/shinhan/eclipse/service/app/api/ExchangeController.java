@@ -19,8 +19,6 @@ public class ExchangeController {
     /** EX-001: 환율 조회 (실시간 시장 환율) */
     @GetMapping("/rate")
     public ResponseEntity<ApiResponse<MarketRateData>> getExchangeRate() {
-        return marketRateRedisStore.get()
-                .map(data -> ResponseEntity.ok(ApiResponse.success(data)))
-                .orElseGet(() -> ResponseEntity.noContent().build());
+        return ResponseEntity.ok(ApiResponse.success(marketRateRedisStore.get().orElse(null)));
     }
 }

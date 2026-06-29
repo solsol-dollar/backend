@@ -17,6 +17,7 @@ public class LsCurProperties {
     private String appSecret = "";
 
     public boolean isConfigured() {
-        return appKey != null && !appKey.isBlank();
+        return appKey != null && !appKey.isBlank()
+                && appSecret != null && !appSecret.isBlank();
     }
 }

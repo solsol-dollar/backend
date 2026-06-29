@@ -43,14 +43,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IOException.class)
-    public ResponseEntity<Void> handleIoException(IOException e) {
+    public ResponseEntity<ApiResponse<Void>> handleIoException(IOException e) {
         // SSE 클라이언트 disconnect 시 Tomcat async context에서 발생하는 정상 케이스
         if (e.getMessage() != null && e.getMessage().contains("Broken pipe")) {
             log.debug("SSE client disconnected (broken pipe)");
             return ResponseEntity.noContent().build();
         }
         log.error("IO exception", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("C003", "서버 내부 오류입니다."));
     }
 
     @ExceptionHandler(Exception.class)

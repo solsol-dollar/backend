@@ -18,7 +18,7 @@ public class MarketRateRedisStore {
     public static final String KEY            = "exchange_rate:market:USD";
     public static final String PUBSUB_CHANNEL = "exchange_rate:update";
 
-    private static final Duration LS_TTL    = Duration.ofSeconds(30);
+    private static final Duration LS_TTL    = Duration.ofMinutes(6);
     private static final Duration YAHOO_TTL = Duration.ofMinutes(6);
 
     private final StringRedisTemplate redisTemplate;

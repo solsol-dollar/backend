@@ -10,6 +10,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
@@ -29,9 +30,10 @@ public class YahooExchangeRatePoller {
 
     @Scheduled(fixedDelay = 300_000, initialDelay = 10_000)
     void poll() {
-        // LS WebSocket이 살아있으면 스킵 (Redis에 LS_CUR 데이터가 있음)
+        // LS 데이터가 5분 이내 갱신됐으면 스킵 (오래됐으면 폴백)
         MarketRateData current = redisStore.get().orElse(null);
-        if (current != null && "LS_CUR".equals(current.source())) {
+        if (current != null && "LS_CUR".equals(current.source())
+                && current.updatedAt().isAfter(LocalDateTime.now(KST).minusMinutes(5))) {
             log.debug("[Yahoo폴링] LS 연결 중 — 스킵");
             return;
         }
@@ -43,7 +45,7 @@ public class YahooExchangeRatePoller {
                     .header("User-Agent", "Mozilla/5.0")
                     .retrieve()
                     .bodyToMono(String.class)
-                    .block();
+                    .block(Duration.ofSeconds(10));
 
             if (body == null) return;
 
