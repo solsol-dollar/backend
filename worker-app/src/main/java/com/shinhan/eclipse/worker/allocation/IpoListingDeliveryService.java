@@ -38,6 +38,7 @@ public class IpoListingDeliveryService {
             return 0;
         }
 
+        int deliveredCount = 0;
         for (IpoSubscription subscription : subscriptions) {
             Long userId = subscription.getUserId();
             Long productId = ipo.getProductId();
@@ -73,9 +74,11 @@ public class IpoListingDeliveryService {
                     shares + "주가 내 계좌에 추가됐습니다.",
                     "IPO", ipo.getId()
             ));
+
+            deliveredCount++;
         }
 
-        log.info("IpoListingJob 입고 완료: ipoId={}, ticker={}, {}건", ipo.getId(), ipo.getTicker(), subscriptions.size());
-        return subscriptions.size();
+        log.info("IpoListingJob 입고 완료: ipoId={}, ticker={}, {}건", ipo.getId(), ipo.getTicker(), deliveredCount);
+        return deliveredCount;
     }
 }
