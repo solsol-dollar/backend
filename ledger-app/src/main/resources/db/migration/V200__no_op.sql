@@ -1,2 +1,3 @@
--- no-op: V200 was applied to the database by the worker-app AI pipeline.
--- This placeholder prevents FlywayValidateException on ledger-app startup.
+-- post_* columns were added directly to DB before this migration ran.
+-- This migration is intentionally a no-op.
+SELECT 1;
