@@ -67,6 +67,14 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
         FinancialAccount savingsAccount = requireLinkedAccount(userId, "SAVINGS", "외화적립예금");
         requireLinkedAccount(userId, "DEPOSIT", "외화통장");
 
+        Ipo subIpo = subscriptionFacade.getIpo(subscription.getIpoId());
+        if (subIpo.getRefundDate() != null) {
+            LocalDateTime editDeadline = LocalDateTime.of(subIpo.getRefundDate(), EDIT_CUTOFF_TIME);
+            if (!LocalDateTime.now(KST).isBefore(editDeadline)) {
+                throw new BusinessException(ErrorCode.RETURN_PLAN_EDIT_WINDOW_CLOSED);
+            }
+        }
+
         Ipo nextIpo = subscriptionFacade.findNextUpcomingIpo().orElse(null);
 
         ReturnPlan plan = ReturnPlan.create(

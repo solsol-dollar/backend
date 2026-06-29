@@ -20,7 +20,7 @@ public class AuthService {
     private final TokenIssuer tokenIssuer;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public record LoginResult(Long userId, String token, long expiresInSeconds, String onboardingStatus) {}
+    public record LoginResult(Long userId, String token, long expiresInSeconds, String onboardingStatus, String investmentStatus) {}
 
     @Transactional(readOnly = true)
     public LoginResult login(SimpleLoginRequest request) {
@@ -31,6 +31,6 @@ public class AuthService {
 
         String token = tokenIssuer.issue(new AuthUser(matched.getId(), matched.getName(), "USER"));
 
-        return new LoginResult(matched.getId(), token, tokenIssuer.getExpirationMs() / 1000, matched.getOnboardingStatus());
+        return new LoginResult(matched.getId(), token, tokenIssuer.getExpirationMs() / 1000, matched.getOnboardingStatus(), matched.getInvestmentStatus());
     }
 }
