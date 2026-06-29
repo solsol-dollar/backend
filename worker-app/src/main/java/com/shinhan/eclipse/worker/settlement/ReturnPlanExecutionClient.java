@@ -17,22 +17,18 @@ public class ReturnPlanExecutionClient {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
     private final RestClient restClient;
-    private final String apiKey;
 
-    public ReturnPlanExecutionClient(@Value("${eclipse.ledger.url:http://localhost:8080}") String ledgerBaseUrl,
-                                      @Value("${eclipse.internal.api-key:}") String apiKey) {
+    public ReturnPlanExecutionClient(@Value("${eclipse.ledger.url:http://localhost:8080}") String ledgerBaseUrl) {
         ClientHttpRequestFactory requestFactory = ClientHttpRequestFactories.get(
                 ClientHttpRequestFactorySettings.DEFAULTS
                         .withConnectTimeout(CONNECT_TIMEOUT)
                         .withReadTimeout(READ_TIMEOUT));
         this.restClient = RestClient.builder().baseUrl(ledgerBaseUrl).requestFactory(requestFactory).build();
-        this.apiKey = apiKey;
     }
 
     public void execute(Long returnPlanId) {
         restClient.put()
                 .uri("/internal/return-plans/{id}/execute", returnPlanId)
-                .header("X-Internal-Api-Key", apiKey)
                 .retrieve()
                 .toBodilessEntity();
     }
