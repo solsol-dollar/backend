@@ -41,6 +41,24 @@ public class IpoScore {
 
     private LocalDateTime scoredAt;
 
+    private Integer postFinalScore;
+
+    @Column(length = 30)
+    private String postGrade;
+
+    @Column(length = 500)
+    private String postReason;
+
+    @Column(columnDefinition = "JSON")
+    private String postTopNewsIds;
+
+    @Column(columnDefinition = "TEXT")
+    private String postSummary;
+
+    private Integer postNewsCount;
+
+    private LocalDateTime postScoredAt;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
