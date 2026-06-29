@@ -59,8 +59,9 @@ public class AllocationResultController {
 
     /**
      * statusGroup: ALL(전체) | REQUESTED(청약신청/취소완료) | ALLOCATED(배정완료) | LISTED(상장완료)
-     * resultStatus는 배정 시점에 "COMPLETED" 하나로만 채워지고, 배정과 상장 거래 가능 시점이
-     * 사실상 같은 순간으로 통일됐기 때문에 ALLOCATED/LISTED 둘 다 같은 값으로 매칭한다.
+     * 배정 시점에 resultStatus="COMPLETED"가 채워지고, 이후 IpoListingJob이 입고를 마치면
+     * "DEPOSITED"로 바뀐다. ALLOCATED는 배정만 됐으면 충족(COMPLETED/DEPOSITED 둘 다 포함),
+     * LISTED는 실제 입고까지 끝난 DEPOSITED만 충족한다.
      */
     private boolean matchesStatusGroup(IpoSubscription subscription, String statusGroup) {
         if (!StringUtils.hasText(statusGroup) || "ALL".equalsIgnoreCase(statusGroup)) return true;
@@ -68,9 +69,12 @@ public class AllocationResultController {
             return "REQUESTED".equals(subscription.getSubscriptionStatus())
                     || "CANCELLED".equals(subscription.getSubscriptionStatus());
         }
-        if ("ALLOCATED".equalsIgnoreCase(statusGroup) || "LISTED".equalsIgnoreCase(statusGroup)) {
+        if ("ALLOCATED".equalsIgnoreCase(statusGroup)) {
             return "COMPLETED".equals(subscription.getResultStatus())
                     || "DEPOSITED".equals(subscription.getResultStatus());
+        }
+        if ("LISTED".equalsIgnoreCase(statusGroup)) {
+            return "DEPOSITED".equals(subscription.getResultStatus());
         }
         return false;
     }

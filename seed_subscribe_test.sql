@@ -11,7 +11,10 @@
 --  7.  오늘 환불일 + DRAFT 리턴플랜 있음 (정산 대상)
 --  8.  오늘 환불일 + 리턴플랜 없음 (자동 생성 대상)
 --  9.  취소된 청약 (CANCELLED) — balance_hold RELEASED
---  10. 배정완료 + 상장완료 + 주식 입고됨 (ARM, 과거) — 히스토리 확인용
+--  10. 배정완료 + 상장완료 + 주식 입고됨 (ARM, 과거) — resultStatus=DEPOSITED, 히스토리 확인용
+--  11. 청약 신청 직후, 확정 전 (REQUESTED) — resultStatus=NULL
+--  12. 청약 확정, 배정 대기중 (CONFIRMED) — resultStatus=NULL
+--  13. 배정 결과 낙첨 (배정 0주, 전액 환불) — COMPLETED, allocatedShares=0
 --
 -- 영업일 계산 (MySQL DAYOFWEEK: 1=일, 2=월, ..., 6=금, 7=토):
 --   @next_biz : CURDATE() 다음 영업일
@@ -39,7 +42,8 @@ ON DUPLICATE KEY UPDATE `name` = `name`;
 
 -- =============================================================================
 -- 1. 금융 계좌
---    account 1 : SECURITIES USD  — 청약/보유 메인 계좌 (reservedBalance=1000: sub 300 LOCKED)
+--    account 1 : SECURITIES USD  — 청약/보유 메인 계좌
+--                (reservedBalance=1480: sub 300 LOCKED 1000 + sub 900 LOCKED 200 + sub 1000 LOCKED 280)
 --    account 2 : SECURITIES KRW
 --    account 3 : SAVINGS USD     — 리턴플랜 SAVINGS 분배 대상
 --    account 4 : DEPOSIT USD     — 리턴플랜 DEPOSIT 분배 대상
@@ -50,9 +54,9 @@ INSERT INTO `financial_accounts`
      `linked`, `linked_at`, `created_at`, `updated_at`, `status`)
 VALUES
     (1, 1, 'SECURITIES', 'SECURITIES', '신한투자증권', 'CMA USD',
-     '270-91-175039[01]', 'USD', 10000.0000, 1000.0000,
+     '270-91-175039[01]', 'USD', 10000.0000, 1480.0000,
      TRUE, NOW(), NOW(), NOW(), 'ACTIVE')
-ON DUPLICATE KEY UPDATE `balance` = 10000.0000, `reserved_balance` = 1000.0000;
+ON DUPLICATE KEY UPDATE `balance` = 10000.0000, `reserved_balance` = 1480.0000;
 
 INSERT INTO `financial_accounts`
     (`id`, `user_id`, `account_type`, `institution_type`, `institution_name`, `account_name`,
@@ -259,7 +263,7 @@ ON DUPLICATE KEY UPDATE
 -- 4. ipo_subscriptions
 -- =============================================================================
 
--- [케이스 10] sub 100 — ARM 배정완료, 정산+입고 완료 (히스토리)
+-- [케이스 10] sub 100 — ARM 배정완료, 정산+입고 완료 (히스토리) — resultStatus=DEPOSITED
 --   20주 신청 / 15주 배정(75%) / refund=261.375
 INSERT INTO `ipo_subscriptions`
     (`id`, `user_id`, `ipo_id`, `securities_account_id`, `requested_shares`, `offer_price`, `subscription_amount`,
@@ -269,11 +273,11 @@ INSERT INTO `ipo_subscriptions`
 VALUES
     (100, 1, 4, 1, 20, 51.0000, 1020.0000,
      'USD', 'CONFIRMED', 'MOCK', DATE_SUB(CURDATE(), INTERVAL 15 DAY),
-     15, 765.0000, 261.3750, 75.0000, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL 14 DAY),
+     15, 765.0000, 261.3750, 75.0000, 'DEPOSITED', DATE_SUB(CURDATE(), INTERVAL 14 DAY),
      NOW(), NOW(), 'ACTIVE')
 ON DUPLICATE KEY UPDATE
     `allocated_shares` = 15, `allocated_amount` = 765.0000,
-    `refund_amount` = 261.3750, `result_status` = 'COMPLETED';
+    `refund_amount` = 261.3750, `result_status` = 'DEPOSITED';
 
 -- [케이스 3] sub 200 — RDDT 배정완료, 리턴플랜 미생성 (refund=@next_biz, 수정 가능)
 --   10주 신청 / 8주 배정(80%) / refund=70.04
@@ -377,6 +381,43 @@ VALUES
      NOW(), NOW(), 'ACTIVE')
 ON DUPLICATE KEY UPDATE `subscription_status` = 'CANCELLED';
 
+-- [케이스 11] sub 900 — CRWV(IPO 1) 청약 신청 직후, 확정 전 (REQUESTED, resultStatus=NULL)
+INSERT INTO `ipo_subscriptions`
+    (`id`, `user_id`, `ipo_id`, `securities_account_id`, `requested_shares`, `offer_price`, `subscription_amount`,
+     `currency`, `subscription_status`, `execution_mode`, `subscribed_at`,
+     `created_at`, `updated_at`, `status`)
+VALUES
+    (900, 1, 1, 1, 5, 40.0000, 200.0000,
+     'USD', 'REQUESTED', 'MOCK', NOW(),
+     NOW(), NOW(), 'ACTIVE')
+ON DUPLICATE KEY UPDATE `subscription_status` = 'REQUESTED', `result_status` = NULL;
+
+-- [케이스 12] sub 1000 — CRCL(IPO 2) 청약 확정, 배정 대기중 (CONFIRMED, resultStatus=NULL)
+INSERT INTO `ipo_subscriptions`
+    (`id`, `user_id`, `ipo_id`, `securities_account_id`, `requested_shares`, `offer_price`, `subscription_amount`,
+     `currency`, `subscription_status`, `execution_mode`, `subscribed_at`, `confirmed_at`,
+     `created_at`, `updated_at`, `status`)
+VALUES
+    (1000, 1, 2, 1, 10, 28.0000, 280.0000,
+     'USD', 'CONFIRMED', 'MOCK', DATE_SUB(NOW(), INTERVAL 1 HOUR), NOW(),
+     NOW(), NOW(), 'ACTIVE')
+ON DUPLICATE KEY UPDATE `subscription_status` = 'CONFIRMED', `result_status` = NULL;
+
+-- [케이스 13] sub 1100 — ARM(IPO 4) 배정 낙첨 (배정 0주, 전액 환불) — COMPLETED, allocatedShares=0
+INSERT INTO `ipo_subscriptions`
+    (`id`, `user_id`, `ipo_id`, `securities_account_id`, `requested_shares`, `offer_price`, `subscription_amount`,
+     `currency`, `subscription_status`, `execution_mode`, `subscribed_at`,
+     `allocated_shares`, `allocated_amount`, `refund_amount`, `allocation_rate`, `result_status`, `confirmed_at`,
+     `created_at`, `updated_at`, `status`)
+VALUES
+    (1100, 1, 4, 1, 10, 51.0000, 510.0000,
+     'USD', 'CONFIRMED', 'MOCK', DATE_SUB(CURDATE(), INTERVAL 15 DAY),
+     0, 0.0000, 510.0000, 0.0000, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL 14 DAY),
+     NOW(), NOW(), 'ACTIVE')
+ON DUPLICATE KEY UPDATE
+    `allocated_shares` = 0, `allocated_amount` = 0.0000,
+    `refund_amount` = 510.0000, `allocation_rate` = 0.0000, `result_status` = 'COMPLETED';
+
 -- =============================================================================
 -- 5. balance_holds
 -- =============================================================================
@@ -428,6 +469,24 @@ INSERT INTO `balance_holds`
     (`id`, `account_id`, `subscription_id`, `amount`, `hold_status`, `settled_at`, `created_at`, `updated_at`, `status`)
 VALUES (800, 1, 800, 200.0000, 'RELEASED', DATE_SUB(CURDATE(), INTERVAL 1 DAY), NOW(), NOW(), 'ACTIVE')
 ON DUPLICATE KEY UPDATE `hold_status` = 'RELEASED';
+
+-- sub 900 (REQUESTED, 미확정): 증거금 LOCKED
+INSERT INTO `balance_holds`
+    (`id`, `account_id`, `subscription_id`, `amount`, `hold_status`, `created_at`, `updated_at`, `status`)
+VALUES (900, 1, 900, 200.0000, 'LOCKED', NOW(), NOW(), 'ACTIVE')
+ON DUPLICATE KEY UPDATE `hold_status` = 'LOCKED';
+
+-- sub 1000 (CONFIRMED, 배정 대기): 증거금 LOCKED
+INSERT INTO `balance_holds`
+    (`id`, `account_id`, `subscription_id`, `amount`, `hold_status`, `created_at`, `updated_at`, `status`)
+VALUES (1000, 1, 1000, 280.0000, 'LOCKED', NOW(), NOW(), 'ACTIVE')
+ON DUPLICATE KEY UPDATE `hold_status` = 'LOCKED';
+
+-- sub 1100 (낙첨, 전액 환불): 정산 완료
+INSERT INTO `balance_holds`
+    (`id`, `account_id`, `subscription_id`, `amount`, `hold_status`, `settled_at`, `created_at`, `updated_at`, `status`)
+VALUES (1100, 1, 1100, 510.0000, 'SETTLED', DATE_SUB(CURDATE(), INTERVAL 14 DAY), NOW(), NOW(), 'ACTIVE')
+ON DUPLICATE KEY UPDATE `hold_status` = 'SETTLED';
 
 -- =============================================================================
 -- 6. holdings / holding_lots
