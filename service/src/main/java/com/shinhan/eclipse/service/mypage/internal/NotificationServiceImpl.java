@@ -86,7 +86,14 @@ class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void updateNotificationSettings(Long userId, Boolean ipoAllocation, Boolean ipoRefund, Boolean idleDollar) {
         NotificationSettings settings = notificationSettingsRepository.findByUserId(userId)
-                .orElseGet(() -> notificationSettingsRepository.save(NotificationSettings.create(userId)));
+                .orElseGet(() -> {
+                    try {
+                        return notificationSettingsRepository.save(NotificationSettings.create(userId));
+                    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                        return notificationSettingsRepository.findByUserId(userId)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "알림 설정을 찾을 수 없습니다."));
+                    }
+                });
         settings.updateSettings(ipoAllocation, ipoRefund, idleDollar);
     }
 
