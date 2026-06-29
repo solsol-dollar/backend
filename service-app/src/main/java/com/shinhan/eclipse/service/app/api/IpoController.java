@@ -25,13 +25,14 @@ public class IpoController {
             @RequestParam(defaultValue = "false") boolean favoriteOnly,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String keyword,
             @AuthenticationPrincipal AuthUser authUser) {
         if (page < 0) throw new BusinessException(ErrorCode.INVALID_INPUT, "page는 0 이상이어야 합니다.");
         if (size < 1 || size > 100) throw new BusinessException(ErrorCode.INVALID_INPUT, "size는 1~100 사이어야 합니다.");
         if (status != null && !status.equals("OPEN") && !status.equals("UPCOMING") && !status.equals("CLOSED"))
             throw new BusinessException(ErrorCode.INVALID_INPUT, "status는 OPEN, UPCOMING, CLOSED 중 하나여야 합니다.");
         return ResponseEntity.ok(ApiResponse.success(
-                ipoExplorationService.getIpos(status, favoriteOnly, authUser.userId(), page, size)));
+                ipoExplorationService.getIpos(status, favoriteOnly, authUser.userId(), page, size, keyword)));
     }
 
     /** IPO-002: IPO 상세 조회 */

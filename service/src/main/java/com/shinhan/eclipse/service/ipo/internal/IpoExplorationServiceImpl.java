@@ -40,9 +40,9 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     private final ExchangeService exchangeService;
 
     @Override
-    public IpoListResult getIpos(String status, boolean favoriteOnly, Long userId, int page, int size) {
+    public IpoListResult getIpos(String status, boolean favoriteOnly, Long userId, int page, int size, String keyword) {
         Page<Ipo> ipoPage = ipoRepository.findWithFilters(
-                status, favoriteOnly, userId, PageRequest.of(page, size));
+                status, favoriteOnly, userId, keyword, PageRequest.of(page, size));
 
         Set<Long> favoriteIds = favoriteIpoRepository.findByUserId(userId).stream()
                 .map(FavoriteIpo::getIpoId)
