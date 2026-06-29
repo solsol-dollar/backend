@@ -74,6 +74,7 @@ class TransferServiceImpl implements TransferService {
                 tx.getId(),
                 from.getId(), from.getAccountType(),
                 to.getId(),   to.getAccountType(),
+                to.getVirtualAccountNumber(),
                 request.amount(), CURRENCY,
                 tx.getTransferStatus(),
                 tx.getCompletedAt()
