@@ -23,7 +23,7 @@ interface ProductRepository extends JpaRepository<InvestmentProduct, Long> {
 
     Optional<InvestmentProduct> findByTickerAndStatus(String ticker, String status);
 
-    List<InvestmentProduct> findByTickerIn(List<String> tickers);
+    List<InvestmentProduct> findByTickerInAndStatus(List<String> tickers, String status);
 
     boolean existsByTicker(String ticker);
 

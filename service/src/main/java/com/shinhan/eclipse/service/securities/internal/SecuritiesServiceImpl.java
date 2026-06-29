@@ -298,7 +298,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
         return ipoRepository.findById(ipoId)
                 .flatMap(ipo -> sectorMapper.resolveSectorGroup(ipo.getTicker(), ipo.getSector())
                         .map(sectorMapper::getEtfTickers)
-                        .map(productRepository::findByTickerIn)
+                        .map(tickers -> productRepository.findByTickerInAndStatus(tickers, "ACTIVE"))
                         .map(products -> products.stream()
                                 .filter(p -> "ETF".equals(p.getProductType()))
                                 .toList())

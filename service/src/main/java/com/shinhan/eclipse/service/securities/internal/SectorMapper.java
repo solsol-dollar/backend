@@ -8,8 +8,9 @@ import java.util.Optional;
 
 /**
  * IPO의 세부 업종(예: "Biotechnology")을 9개 대분류 섹터로 묶고, 섹터별 추천 ETF 티커를 제공한다.
- * 매핑이 없는 업종은 임의 기본값으로 떨어지지 않고 {@link Optional#empty()}를 반환해 호출 측에서
- * 다른 추천 경로(AI 추천 등)로 전환하도록 한다.
+ * 매핑이 없는 업종은 임의 기본값으로 떨어지지 않고 {@link Optional#empty()}를 반환한다.
+ * 호출 측(SecuritiesServiceImpl)은 이 경우 빈 추천 리스트를 반환하며, 투자성향 기반 AI 추천으로는
+ * 폴백하지 않는다(별도 폐기 예정 기능이라 의도적으로 분리됨).
  */
 @Component
 class SectorMapper {
