@@ -12,6 +12,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.io.IOException;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
+
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -48,6 +49,7 @@ public class GlobalExceptionHandler {
         // SSE 연결 타임아웃 — 클라이언트 재연결로 처리됨, 응답 본문 불필요
         log.debug("SSE connection timed out");
     }
+
 
     @ExceptionHandler(IOException.class)
     public ResponseEntity<ApiResponse<Void>> handleIoException(IOException e) {
