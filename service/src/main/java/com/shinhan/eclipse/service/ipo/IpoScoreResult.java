@@ -12,5 +12,11 @@ public record IpoScoreResult(
         String summary,
         List<Long> topNewsIds,
         Integer newsCount,
-        LocalDateTime scoredAt
+        LocalDateTime scoredAt,
+        Integer postScore,
+        String postGrade,
+        String postReason,
+        String postSummary,
+        List<Long> postTopNewsIds,
+        Integer postNewsCount
 ) {}
