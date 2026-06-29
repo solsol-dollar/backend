@@ -6,6 +6,6 @@ public record PendingPush(
         String fcmToken,
         String title,
         String message,
-        String targetType,
+        String notificationType,
         Long targetId
 ) {}

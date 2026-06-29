@@ -22,9 +22,9 @@ public class PushSendingScheduler {
     private final NotificationService notificationService;
     private final FirebaseMessaging firebaseMessaging;
 
-    private String resolveUrl(String targetType, Long targetId) {
-        if (targetType == null) return "/home";
-        return switch (targetType) {
+    private String resolveUrl(String notificationType, Long targetId) {
+        if (notificationType == null) return "/home";
+        return switch (notificationType) {
             case "IPO_ALLOCATION" -> targetId != null ? "/ipo?scratchId=" + targetId : "/ipo";
             case "IPO_REFUND" -> targetId != null ? "/return-plan/result/" + targetId : "/return-plan";
             case "IDLE_DOLLAR" -> "/home/sleeping-dollar";
@@ -46,7 +46,7 @@ public class PushSendingScheduler {
                                 .setTitle(push.title())
                                 .setBody(push.message())
                                 .build())
-                        .putData("url", resolveUrl(push.targetType(), push.targetId()))
+                        .putData("url", resolveUrl(push.notificationType(), push.targetId()))
                         .build();
                 firebaseMessaging.send(message);
                 notificationService.markAsSent(push.notificationId());

@@ -121,7 +121,7 @@ class NotificationServiceImpl implements NotificationService {
         for (Notification n : pending) {
             NotificationSettings s = settingsByUserId.get(n.getUserId());
             if (s != null && isTypeEnabled(s, n.getNotificationType())) {
-                result.add(new PendingPush(n.getId(), n.getUserId(), s.getFcmToken(), n.getTitle(), n.getMessage(), n.getTargetType(), n.getTargetId()));
+                result.add(new PendingPush(n.getId(), n.getUserId(), s.getFcmToken(), n.getTitle(), n.getMessage(), n.getNotificationType(), n.getTargetId()));
             }
         }
         return result;
