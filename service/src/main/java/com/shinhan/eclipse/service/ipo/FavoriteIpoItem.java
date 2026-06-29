@@ -12,5 +12,6 @@ public record FavoriteIpoItem(
         String ipoStatus,
         LocalDate subscriptionStartDate,
         LocalDate subscriptionEndDate,
+        LocalDate listingDate,
         BigDecimal confirmedOfferPrice
 ) {}

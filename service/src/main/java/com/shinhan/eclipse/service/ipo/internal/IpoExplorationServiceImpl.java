@@ -122,6 +122,7 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                             computeStatus(ipo),
                             ipo.getSubscriptionStartDate(),
                             ipo.getSubscriptionEndDate(),
+                            ipo.getListingDate(),
                             ipo.getConfirmedOfferPrice()
                     );
                 })

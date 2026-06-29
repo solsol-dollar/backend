@@ -36,11 +36,11 @@ public class NotificationController {
 
     /** MY-004: 알림 읽음 처리 */
     @PutMapping("/notifications/{notificationId}/read")
-    public ResponseEntity<Void> markAsRead(
+    public ResponseEntity<ApiResponse<Void>> markAsRead(
             @PathVariable Long notificationId,
             @AuthenticationPrincipal AuthUser authUser) {
         notificationService.markAsRead(authUser.userId(), notificationId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     /** FCM 토큰 등록 */

@@ -130,11 +130,17 @@ class NotificationServiceImpl implements NotificationService {
         return notificationRepository.save(Notification.create(userId, notificationType, title, message, targetType, targetId)).getId();
     }
 
+    @Override
+    public List<Long> getAllUserIdsWithFcmToken() {
+        return notificationSettingsRepository.findAllUserIdsWithFcmToken();
+    }
+
     private boolean isTypeEnabled(NotificationSettings settings, String notificationType) {
         return switch (notificationType) {
             case "IPO_ALLOCATION" -> settings.getIpoAllocationEnabled();
             case "IPO_REFUND" -> settings.getIpoRefundEnabled();
             case "IDLE_DOLLAR" -> settings.getIdleDollarEnabled();
+            case "SPENDING_REPORT" -> true;
             default -> false;
         };
     }
