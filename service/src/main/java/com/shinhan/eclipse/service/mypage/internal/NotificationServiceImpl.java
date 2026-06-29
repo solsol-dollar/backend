@@ -85,7 +85,9 @@ class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void updateNotificationSettings(Long userId, Boolean ipoAllocation, Boolean ipoRefund, Boolean idleDollar) {
-        getSettingsOrThrow(userId).updateSettings(ipoAllocation, ipoRefund, idleDollar);
+        NotificationSettings settings = notificationSettingsRepository.findByUserId(userId)
+                .orElseGet(() -> notificationSettingsRepository.save(NotificationSettings.create(userId)));
+        settings.updateSettings(ipoAllocation, ipoRefund, idleDollar);
     }
 
     @Override
