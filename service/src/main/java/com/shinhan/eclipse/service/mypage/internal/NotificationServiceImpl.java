@@ -73,7 +73,9 @@ class NotificationServiceImpl implements NotificationService {
         if (fcmToken == null || fcmToken.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "FCM 토큰이 유효하지 않습니다.");
         }
-        getSettingsOrThrow(userId).updateFcmToken(fcmToken);
+        NotificationSettings settings = notificationSettingsRepository.findByUserId(userId)
+                .orElseGet(() -> notificationSettingsRepository.save(NotificationSettings.create(userId)));
+        settings.updateFcmToken(fcmToken);
     }
 
     @Override
