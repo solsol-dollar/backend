@@ -39,7 +39,7 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, buildCookie(result.token(), result.expiresInSeconds()));
 
-        return ResponseEntity.ok(ApiResponse.success(new SimpleLoginResponse(result.userId(), result.onboardingStatus())));
+        return ResponseEntity.ok(ApiResponse.success(new SimpleLoginResponse(result.userId(), result.onboardingStatus(), result.investmentStatus())));
     }
 
     @PostMapping("/logout")
