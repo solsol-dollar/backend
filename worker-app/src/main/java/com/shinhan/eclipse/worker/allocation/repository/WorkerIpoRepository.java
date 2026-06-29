@@ -11,4 +11,6 @@ import java.util.List;
 public interface WorkerIpoRepository extends JpaRepository<Ipo, Long> {
 
     List<Ipo> findByListingDate(LocalDate listingDate);
+
+    List<Ipo> findByRefundDateLessThanAndIpoStatusNot(LocalDate refundDate, String ipoStatus);
 }
