@@ -36,6 +36,7 @@ class SecuritiesServiceImplTest {
     @Mock QuoteCache                 quoteCache;
     @Mock LsRestClient               lsRestClient;
     @Mock KisRestClient              kisRestClient;
+    @Mock YahooFinanceClient         yahooFinanceClient;
     @Mock ChatClient                 chatClient;
     @Mock MyPageService              myPageService;
 
@@ -45,7 +46,7 @@ class SecuritiesServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(service, "usdKrw", new BigDecimal("1368.5"));
+        ReflectionTestUtils.setField(service, "defaultUsdKrw", new BigDecimal("1368.5"));
     }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
