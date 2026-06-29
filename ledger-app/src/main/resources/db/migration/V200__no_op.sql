@@ -1,0 +1,2 @@
+-- no-op: V200 was applied to the database by the worker-app AI pipeline.
+-- This placeholder prevents FlywayValidateException on ledger-app startup.
