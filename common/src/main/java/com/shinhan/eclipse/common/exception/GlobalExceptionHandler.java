@@ -42,13 +42,12 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error("C004", "요청한 리소스를 찾을 수 없습니다."));
     }
-    
+
     @ExceptionHandler(AsyncRequestTimeoutException.class)
     public void handleAsyncTimeout(AsyncRequestTimeoutException e) {
         // SSE 연결 타임아웃 — 클라이언트 재연결로 처리됨, 응답 본문 불필요
         log.debug("SSE connection timed out");
     }
-    
 
     @ExceptionHandler(IOException.class)
     public ResponseEntity<ApiResponse<Void>> handleIoException(IOException e) {
