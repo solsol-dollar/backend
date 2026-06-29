@@ -55,7 +55,7 @@ public class IpoListingJob {
         if (!isNewYorkInDst()) run();
     }
 
-    void run() {
+    public void run() {
         LocalDate today = LocalDate.now();
         List<Ipo> listingTodayIpos = ipoRepository.findByListingDate(today);
         if (listingTodayIpos.isEmpty()) {
@@ -111,6 +111,8 @@ public class IpoListingJob {
             holdingLotRepository.save(
                     HoldingLot.ofIpoAllocation(holding.getId(), userId, productId,
                             subscription.getId(), shares, subscription.getOfferPrice()));
+
+            subscription.deposit();
 
             notificationRepository.save(Notification.create(
                     userId,

@@ -69,7 +69,8 @@ public class AllocationResultController {
                     || "CANCELLED".equals(subscription.getSubscriptionStatus());
         }
         if ("ALLOCATED".equalsIgnoreCase(statusGroup) || "LISTED".equalsIgnoreCase(statusGroup)) {
-            return "COMPLETED".equals(subscription.getResultStatus());
+            return "COMPLETED".equals(subscription.getResultStatus())
+                    || "DEPOSITED".equals(subscription.getResultStatus());
         }
         return false;
     }
