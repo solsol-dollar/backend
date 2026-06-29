@@ -8,4 +8,5 @@ import java.util.List;
 
 interface IpoNewsRepository extends JpaRepository<IpoNews, Long> {
     List<IpoNews> findByIpoIdOrderByPublishedAtDesc(Long ipoId, Pageable pageable);
+    java.util.Optional<IpoNews> findByIdAndIpoId(Long id, Long ipoId);
 }

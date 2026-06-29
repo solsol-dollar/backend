@@ -62,10 +62,15 @@ public class SecuritiesController {
         return ResponseEntity.ok(ApiResponse.success(securitiesService.getHoldings(authUser.userId())));
     }
 
-    /** SEC-005: AI 추천 */
+    /** SEC-005: AI 추천 (ipoId 있으면 해당 IPO 섹터 기반 ETF 추천으로 전환) */
     @GetMapping("/recommended")
-    public ResponseEntity<ApiResponse<List<RecommendedProduct>>> getRecommended(@AuthenticationPrincipal AuthUser authUser) {
-        return ResponseEntity.ok(ApiResponse.success(securitiesService.getRecommended(authUser.userId())));
+    public ResponseEntity<ApiResponse<List<RecommendedProduct>>> getRecommended(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(required = false) Long ipoId) {
+        List<RecommendedProduct> result = ipoId == null
+                ? securitiesService.getRecommended(authUser.userId())
+                : securitiesService.getRecommended(authUser.userId(), ipoId);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     /** SEC-007: 종목 통계 (52주 고저, 기간별 수익률) */

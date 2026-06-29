@@ -53,6 +53,22 @@ public class IpoController {
                 ipoExplorationService.getIpoNews(ipoId, size)));
     }
 
+    /** IPO-007-DETAIL: 뉴스 상세 (content 포함) */
+    @GetMapping("/{ipoId}/news/{newsId}")
+    public ResponseEntity<ApiResponse<IpoNewsDetailItem>> getIpoNewsDetail(
+            @PathVariable Long ipoId,
+            @PathVariable Long newsId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                ipoExplorationService.getIpoNewsDetail(ipoId, newsId)));
+    }
+
+    /** IPO-007-TOP: 핵심 뉴스 (상장 전 topNewsIds 2건 + 상장 후 postTopNewsIds 2건) */
+    @GetMapping("/{ipoId}/news/top")
+    public ResponseEntity<ApiResponse<IpoTopNewsResult>> getTopIpoNews(@PathVariable Long ipoId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                ipoExplorationService.getTopIpoNews(ipoId)));
+    }
+
     /** IPO 연간 재무 데이터 */
     @GetMapping("/{ipoId}/financials")
     public ResponseEntity<ApiResponse<List<IpoFinancialItem>>> getIpoFinancials(@PathVariable Long ipoId) {
