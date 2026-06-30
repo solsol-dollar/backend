@@ -86,8 +86,18 @@ UPDATE ipos SET ipo_status = 'LISTED',
     WHERE id = 89;  -- SPCX: CLOSED → LISTED, product_id 제거
 
 -- ─────────────────────────────────────────────
--- 9. SPCX 종목 제거
+-- 9. SPCX 종목 제거 (FK 순서: holding_lots → holdings → investment_products)
+--    user_id 무관하게 SPCX product 참조하는 모든 holding 먼저 제거
 -- ─────────────────────────────────────────────
+DELETE hl FROM holding_lots hl
+    JOIN holdings h ON hl.holding_id = h.id
+    JOIN investment_products p ON h.product_id = p.id
+    WHERE p.ticker = 'SPCX';
+
+DELETE h FROM holdings h
+    JOIN investment_products p ON h.product_id = p.id
+    WHERE p.ticker = 'SPCX';
+
 DELETE FROM investment_products WHERE ticker = 'SPCX';
 
 -- ─────────────────────────────────────────────

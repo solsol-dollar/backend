@@ -65,6 +65,10 @@ public class Ipo extends BaseEntity {
         this.ipoStatus = "LISTED";
     }
 
+    public void linkProduct(Long productId) {
+        this.productId = productId;
+    }
+
     public void updateFmpData(String logoUrl, Long numberOfShares) {
         if (logoUrl != null) this.logoUrl = logoUrl;
         if (numberOfShares != null) this.numberOfShares = numberOfShares;
