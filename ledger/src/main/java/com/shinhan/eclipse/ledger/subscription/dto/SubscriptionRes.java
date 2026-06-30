@@ -35,6 +35,7 @@ public class SubscriptionRes {
     private final BigDecimal confirmedOfferPrice;
     private final LocalDate listingDate;
     private final String logoUrl;
+    private final boolean scratchRevealed;
 
     public static SubscriptionRes from(IpoSubscription subscription, Ipo ipo) {
         return SubscriptionRes.builder()
@@ -57,6 +58,7 @@ public class SubscriptionRes {
                 .confirmedOfferPrice(ipo.getConfirmedOfferPrice())
                 .listingDate(ipo.getListingDate())
                 .logoUrl(ipo.getLogoUrl())
+                .scratchRevealed(subscription.isScratchRevealed())
                 .build();
     }
 }

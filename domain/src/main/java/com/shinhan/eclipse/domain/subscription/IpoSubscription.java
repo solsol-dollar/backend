@@ -64,6 +64,9 @@ public class IpoSubscription extends BaseEntity {
 
     private LocalDateTime confirmedAt;
 
+    @Column(nullable = false)
+    private boolean scratchRevealed = false;
+
     public static IpoSubscription request(Long userId, Long ipoId, Long securitiesAccountId,
                                            Integer shares, BigDecimal offerPrice, BigDecimal subscriptionAmount) {
         if (shares == null || shares <= 0) {
@@ -112,6 +115,10 @@ public class IpoSubscription extends BaseEntity {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "배정 완료된 청약만 입고 처리할 수 있습니다.");
         }
         this.resultStatus = "DEPOSITED";
+    }
+
+    public void revealScratch() {
+        this.scratchRevealed = true;
     }
 
     public void allocate(int allocatedShares, BigDecimal allocationRatePercent, BigDecimal heldAmount) {
