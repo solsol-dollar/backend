@@ -36,4 +36,7 @@ public interface SubscriptionFacade {
 
     /** 해당 사용자가 ipoId 종목을 이미 청약(REQUESTED/CONFIRMED)했는지 확인. */
     boolean isAlreadySubscribed(Long userId, Long ipoId);
+
+    /** 배정 결과 복권 긁기를 완료 처리한다. 이미 긁은 경우에도 정상 반환 (멱등). */
+    IpoSubscription revealScratch(Long subscriptionId, Long userId);
 }

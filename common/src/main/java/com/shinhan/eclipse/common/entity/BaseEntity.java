@@ -27,4 +27,12 @@ public abstract class BaseEntity {
 
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE";
+
+    public void deactivate() {
+        this.status = "CLOSED";
+    }
+
+    public void activate() {
+        this.status = "ACTIVE";
+    }
 }

@@ -313,6 +313,7 @@ CREATE TABLE `ipo_subscriptions` (
 	`allocation_rate`     DECIMAL(7,4) NULL,
 	`result_status`       VARCHAR(30) NULL DEFAULT 'PENDING',
 	`confirmed_at`        DATETIME NULL,
+	`scratch_revealed`    BOOLEAN NOT NULL DEFAULT FALSE COMMENT '배정 결과 복권 긁기 완료 여부',
 	`created_at`	DATETIME	NOT NULL,
 	`updated_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP,
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE',

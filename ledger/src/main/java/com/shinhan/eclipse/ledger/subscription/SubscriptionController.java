@@ -3,6 +3,7 @@ package com.shinhan.eclipse.ledger.subscription;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.auth.AuthUser;
+import com.shinhan.eclipse.common.resolver.UserHeader;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
@@ -68,6 +69,16 @@ public class SubscriptionController {
         IpoSubscription subscription = subscriptionFacade.cancelSubscription(subscriptionId, userId);
         FinancialAccount refundAccount = accountLinkService.getLinkedAccount(userId, subscription.getSecuritiesAccountId());
         return ResponseEntity.ok(ApiResponse.success(SubscriptionCancelRes.of(subscription, refundAccount)));
+    }
+
+    // SUB-005 복권 긁기 완료 처리 (멱등)
+    @PatchMapping("/{subscriptionId}/scratch")
+    public ResponseEntity<ApiResponse<SubscriptionRes>> revealScratch(
+            @UserHeader Long userId,
+            @PathVariable("subscriptionId") Long subscriptionId) {
+        log.info("복권 긁기 완료 요청: userId={}, subscriptionId={}", userId, subscriptionId);
+        IpoSubscription subscription = subscriptionFacade.revealScratch(subscriptionId, userId);
+        return ResponseEntity.ok(ApiResponse.success(toRes(subscription)));
     }
 
     // SUB-004 (from/to: 명세 외 추가 — 조회 조건 설정 모달용)
