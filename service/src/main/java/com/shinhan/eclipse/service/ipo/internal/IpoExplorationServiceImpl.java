@@ -171,20 +171,29 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
                     BigDecimal rate = safeGetRate(f.getCurrency());
                     return new IpoFinancialItem(
                             f.getFiscalYear(),
-                            f.getRevenue(), f.getOperatingIncome(), f.getNetIncome(),
                             f.getCurrency(),
-                            toKrw(f.getRevenue(), rate),
-                            toKrw(f.getOperatingIncome(), rate),
-                            toKrw(f.getNetIncome(), rate)
+                            rate,
+                            formatForeignCurrency(f.getRevenue(), f.getCurrency()),
+                            formatForeignCurrency(f.getOperatingIncome(), f.getCurrency()),
+                            formatForeignCurrency(f.getNetIncome(), f.getCurrency()),
+                            formatKrw(toKrw(f.getRevenue(), rate)),
+                            formatKrw(toKrw(f.getOperatingIncome(), rate)),
+                            formatKrw(toKrw(f.getNetIncome(), rate))
                     );
                 })
                 .toList();
     }
 
+    private static final Map<String, BigDecimal> FALLBACK_RATES = Map.of(
+            "BRL", new BigDecimal("299.75")
+    );
+
     private BigDecimal safeGetRate(String currency) {
         try {
             return exchangeService.getExchangeRate(currency).baseRate();
         } catch (Exception e) {
+            BigDecimal fallback = FALLBACK_RATES.get(currency);
+            if (fallback != null) return fallback;
             log.warn("환율 조회 실패 ({}), KRW 환산 생략: {}", currency, e.getMessage());
             return null;
         }
@@ -193,6 +202,44 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     private Long toKrw(Long amount, BigDecimal rate) {
         if (amount == null || rate == null) return null;
         return BigDecimal.valueOf(amount).multiply(rate).setScale(0, RoundingMode.HALF_UP).longValue();
+    }
+
+    private static final BigDecimal UNIT_JO  = BigDecimal.valueOf(1_000_000_000_000L);
+    private static final BigDecimal UNIT_EOK = BigDecimal.valueOf(100_000_000L);
+    private static final BigDecimal UNIT_MAN = BigDecimal.valueOf(10_000L);
+
+    // DB 저장 단위: 천(thousands). 실제값 = stored × 1,000
+    private String formatForeignCurrency(Long thousandsAmount, String currency) {
+        if (thousandsAmount == null) return null;
+        BigDecimal actual = BigDecimal.valueOf(thousandsAmount).multiply(BigDecimal.valueOf(1_000L));
+        boolean negative = actual.signum() < 0;
+        BigDecimal abs = actual.abs();
+        String formatted;
+        if (abs.compareTo(UNIT_JO) >= 0) {
+            formatted = abs.divide(UNIT_JO, 1, RoundingMode.HALF_UP).toPlainString() + "조";
+        } else if (abs.compareTo(UNIT_EOK) >= 0) {
+            formatted = abs.divide(UNIT_EOK, 1, RoundingMode.HALF_UP).toPlainString() + "억";
+        } else {
+            formatted = abs.divide(UNIT_MAN, 1, RoundingMode.HALF_UP).toPlainString() + "만";
+        }
+        return negative ? "-" + formatted : formatted;
+    }
+
+    // revenueKrw = thousandsUsd × rate → 단위: 천 KRW. 실제값 = stored × 1,000
+    private String formatKrw(Long thousandsKrw) {
+        if (thousandsKrw == null) return null;
+        BigDecimal actual = BigDecimal.valueOf(thousandsKrw).multiply(BigDecimal.valueOf(1_000L));
+        boolean negative = actual.signum() < 0;
+        BigDecimal abs = actual.abs();
+        String formatted;
+        if (abs.compareTo(UNIT_JO) >= 0) {
+            formatted = abs.divide(UNIT_JO, 1, RoundingMode.HALF_UP).toPlainString() + "조";
+        } else if (abs.compareTo(UNIT_EOK) >= 0) {
+            formatted = abs.divide(UNIT_EOK, 1, RoundingMode.HALF_UP).toPlainString() + "억";
+        } else {
+            formatted = abs.divide(UNIT_MAN, 1, RoundingMode.HALF_UP).toPlainString() + "만";
+        }
+        return negative ? "-" + formatted : formatted;
     }
 
     private List<Long> parseTopNewsIds(String json) {

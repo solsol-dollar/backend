@@ -45,7 +45,8 @@ class NotificationServiceImpl implements NotificationService {
                 settings.getFcmToken() != null,
                 settings.getIpoAllocationEnabled(),
                 settings.getIpoRefundEnabled(),
-                settings.getIdleDollarEnabled()
+                settings.getIdleDollarEnabled(),
+                settings.getSpendingReportEnabled()
         );
     }
 
@@ -93,7 +94,7 @@ class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public void updateNotificationSettings(Long userId, Boolean ipoAllocation, Boolean ipoRefund, Boolean idleDollar) {
+    public void updateNotificationSettings(Long userId, Boolean ipoAllocation, Boolean ipoRefund, Boolean idleDollar, Boolean spendingReport) {
         NotificationSettings settings = notificationSettingsRepository.findByUserId(userId)
                 .orElseGet(() -> {
                     try {
@@ -103,7 +104,7 @@ class NotificationServiceImpl implements NotificationService {
                                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "알림 설정을 찾을 수 없습니다."));
                     }
                 });
-        settings.updateSettings(ipoAllocation, ipoRefund, idleDollar);
+        settings.updateSettings(ipoAllocation, ipoRefund, idleDollar, spendingReport);
     }
 
     @Override
@@ -149,7 +150,7 @@ class NotificationServiceImpl implements NotificationService {
             case "IPO_ALLOCATION" -> settings.getIpoAllocationEnabled();
             case "IPO_REFUND" -> settings.getIpoRefundEnabled();
             case "IDLE_DOLLAR" -> settings.getIdleDollarEnabled();
-            case "SPENDING_REPORT" -> true;
+            case "SPENDING_REPORT" -> settings.getSpendingReportEnabled();
             default -> false;
         };
     }

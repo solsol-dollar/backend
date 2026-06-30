@@ -4,5 +4,6 @@ public record NotificationSettingsItem(
         Boolean fcmRegistered,
         Boolean ipoAllocationEnabled,
         Boolean ipoRefundEnabled,
-        Boolean idleDollarEnabled
+        Boolean idleDollarEnabled,
+        Boolean spendingReportEnabled
 ) {}
