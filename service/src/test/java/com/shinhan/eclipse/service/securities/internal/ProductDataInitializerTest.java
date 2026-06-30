@@ -28,7 +28,6 @@ class ProductDataInitializerTest {
 
     @Test
     void 테이블이_비어있으면_전체_시드를_저장한다() {
-        given(productRepository.countActive()).willReturn(0L);
         given(productRepository.existsByTicker(anyString())).willReturn(false);
 
         initializer.init();
@@ -44,8 +43,8 @@ class ProductDataInitializerTest {
     }
 
     @Test
-    void 데이터가_이미_존재하면_시드를_건너뛴다() {
-        given(productRepository.countActive()).willReturn(10L);
+    void 모든_ticker가_이미_존재하면_saveAll을_호출하지_않는다() {
+        given(productRepository.existsByTicker(anyString())).willReturn(true);
 
         initializer.init();
 
@@ -54,7 +53,6 @@ class ProductDataInitializerTest {
 
     @Test
     void 이미_존재하는_ticker는_중복_저장하지_않는다() {
-        given(productRepository.countActive()).willReturn(0L);
         // 기본적으로 존재하지 않음, AAPL만 이미 존재
         given(productRepository.existsByTicker(anyString())).willReturn(false);
         given(productRepository.existsByTicker("AAPL")).willReturn(true);

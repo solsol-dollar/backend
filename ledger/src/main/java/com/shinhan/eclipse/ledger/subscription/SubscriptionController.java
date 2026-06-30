@@ -2,7 +2,8 @@ package com.shinhan.eclipse.ledger.subscription;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.resolver.UserHeader;
+import com.shinhan.eclipse.auth.AuthUser;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.ipo.Ipo;
@@ -36,8 +37,9 @@ public class SubscriptionController {
     // SUB-001
     @PostMapping
     public ResponseEntity<ApiResponse<SubscriptionRes>> requestSubscription(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody SubscriptionReq request) {
+        Long userId = authUser.userId();
         log.info("청약 신청 요청: userId={}, ipoId={}", userId, request.ipoId());
         IpoSubscription subscription = subscriptionFacade.requestSubscription(
                 userId, request.ipoId(), request.securitiesAccountId(), request.subscriptionAmount(), request.offerPrice());
@@ -48,8 +50,9 @@ public class SubscriptionController {
     // SUB-002
     @PutMapping("/{subscriptionId}/confirm")
     public ResponseEntity<ApiResponse<SubscriptionRes>> confirmSubscription(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable("subscriptionId") Long subscriptionId) {
+        Long userId = authUser.userId();
         log.info("청약 확정 요청: userId={}, subscriptionId={}", userId, subscriptionId);
         IpoSubscription subscription = subscriptionFacade.confirmSubscription(subscriptionId, userId);
         return ResponseEntity.ok(ApiResponse.success(toRes(subscription)));
@@ -58,8 +61,9 @@ public class SubscriptionController {
     // SUB-003 (환불금액/환불계좌 포함: 명세 외 변경 — 기존엔 204 No Content였음)
     @DeleteMapping("/{subscriptionId}")
     public ResponseEntity<ApiResponse<SubscriptionCancelRes>> cancelSubscription(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable("subscriptionId") Long subscriptionId) {
+        Long userId = authUser.userId();
         log.info("청약 취소 요청: userId={}, subscriptionId={}", userId, subscriptionId);
         IpoSubscription subscription = subscriptionFacade.cancelSubscription(subscriptionId, userId);
         FinancialAccount refundAccount = accountLinkService.getLinkedAccount(userId, subscription.getSecuritiesAccountId());
@@ -69,11 +73,12 @@ public class SubscriptionController {
     // SUB-004 (from/to: 명세 외 추가 — 조회 조건 설정 모달용)
     @GetMapping
     public ResponseEntity<ApiResponse<SubscriptionListRes>> getSubscriptions(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @RequestParam(name = "ipoId", required = false) Long ipoId,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "from", required = false) LocalDate from,
             @RequestParam(name = "to", required = false) LocalDate to) {
+        Long userId = authUser.userId();
         if (from != null && to != null && from.isAfter(to)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "from은 to보다 늦을 수 없습니다.");
         }

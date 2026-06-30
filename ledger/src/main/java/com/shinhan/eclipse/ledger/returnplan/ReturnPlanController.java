@@ -2,7 +2,8 @@ package com.shinhan.eclipse.ledger.returnplan;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.resolver.UserHeader;
+import com.shinhan.eclipse.auth.AuthUser;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
@@ -47,8 +48,9 @@ public class ReturnPlanController {
     // RP-001
     @PostMapping
     public ResponseEntity<ApiResponse<ReturnPlanRes>> createReturnPlan(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody ReturnPlanCreateReq request) {
+        Long userId = authUser.userId();
         log.info("리턴 플랜 생성 요청: userId={}, subscriptionId={}", userId, request.subscriptionId());
         ReturnPlan plan = returnPlanFacade.createReturnPlan(userId, request.subscriptionId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(toRes(plan, userId)));
@@ -57,9 +59,10 @@ public class ReturnPlanController {
     // RP-002
     @PutMapping("/{returnPlanId}")
     public ResponseEntity<ApiResponse<ReturnPlanRes>> updateRatios(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable("returnPlanId") Long returnPlanId,
             @Valid @RequestBody ReturnPlanUpdateReq request) {
+        Long userId = authUser.userId();
         ReturnPlan plan = returnPlanFacade.updateRatios(returnPlanId, userId, request.allocations());
         return ResponseEntity.ok(ApiResponse.success(toRes(plan, userId)));
     }
@@ -67,8 +70,9 @@ public class ReturnPlanController {
     // 단건 조회 (명세 외 추가) — 수정/상세 화면이 마운트 시 현재 비율을 불러오기 위해 필요
     @GetMapping("/{returnPlanId}")
     public ResponseEntity<ApiResponse<ReturnPlanRes>> getReturnPlan(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable("returnPlanId") Long returnPlanId) {
+        Long userId = authUser.userId();
         ReturnPlan plan = returnPlanFacade.getReturnPlan(returnPlanId, userId);
         return ResponseEntity.ok(ApiResponse.success(toRes(plan, userId)));
     }
@@ -76,13 +80,14 @@ public class ReturnPlanController {
     // RP-004 (from/to/status: 명세 외 추가 — 조회 조건 설정 모달용)
     @GetMapping
     public ResponseEntity<ApiResponse<ReturnPlanListRes>> getReturnPlans(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size,
             @RequestParam(name = "from", required = false) LocalDate from,
             @RequestParam(name = "to", required = false) LocalDate to,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "keyword", required = false) String keyword) {
+        Long userId = authUser.userId();
         if (page < 0 || size < 1 || size > 100) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "page는 0 이상, size는 1~100 사이여야 합니다.");
         }
@@ -113,16 +118,18 @@ public class ReturnPlanController {
     // RP-006 (명세 외 추가): 프리셋 적용
     @PutMapping("/{returnPlanId}/preset")
     public ResponseEntity<ApiResponse<ReturnPlanRes>> applyPreset(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable("returnPlanId") Long returnPlanId,
             @Valid @RequestBody ReturnPlanPresetReq request) {
+        Long userId = authUser.userId();
         ReturnPlan plan = returnPlanFacade.applyPreset(returnPlanId, userId, request.presetCode());
         return ResponseEntity.ok(ApiResponse.success(toRes(plan, userId)));
     }
 
     // RP-007 (명세 외 추가): 리턴플랜 대시보드 요약
     @GetMapping("/summary")
-    public ResponseEntity<ApiResponse<ReturnPlanSummaryRes>> getSummary(@UserHeader Long userId) {
+    public ResponseEntity<ApiResponse<ReturnPlanSummaryRes>> getSummary(@AuthenticationPrincipal AuthUser authUser) {
+        Long userId = authUser.userId();
         List<ReturnPlan> plans = returnPlanFacade.getAllReturnPlans(userId);
         Map<Long, List<ReturnPlanAllocation>> allocationsByPlanId = returnPlanFacade.getAllocationsByPlanIds(
                 plans.stream().map(ReturnPlan::getId).toList());
@@ -134,8 +141,9 @@ public class ReturnPlanController {
     // RP-008 (명세 외 추가): 현재 CMA 가용 예수금 즉시 분배 (IPO 청약과 무관)
     @PostMapping("/immediate")
     public ResponseEntity<ApiResponse<ImmediateAllocationRes>> executeImmediate(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody ImmediateAllocationReq request) {
+        Long userId = authUser.userId();
         log.info("즉시 분배 요청: userId={}", userId);
         return ResponseEntity.ok(ApiResponse.success(
                 returnPlanFacade.executeImmediateAllocation(userId, request.allocations())));

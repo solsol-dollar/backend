@@ -264,16 +264,53 @@ final class ProductSeedCatalog {
 
     /** 인기 해외 ETF */
     static final List<Seed> ETF_LIST = List.of(
-        new Seed("QQQ",  "Invesco QQQ Trust",                      "NASDAQ 100 Index",   ETF, NASDAQ),
-        new Seed("SOXX", "iShares Semiconductor ETF",              "Semiconductors",     ETF, NYSE_ARCA),
-        new Seed("ARKK", "ARK Innovation ETF",                     "Growth/Innovation",  ETF, NYSE_ARCA),
-        new Seed("SPY",  "SPDR S&P 500 ETF Trust",                 "S&P 500 Index",      ETF, NYSE_ARCA),
-        new Seed("VOO",  "Vanguard S&P 500 ETF",                   "S&P 500 Index",      ETF, NYSE_ARCA),
-        new Seed("VTI",  "Vanguard Total Stock Market ETF",        "Total Market",       ETF, NYSE_ARCA),
-        new Seed("XLK",  "Technology Select Sector SPDR Fund",     "Technology",         ETF, NYSE_ARCA),
-        new Seed("SCHD", "Schwab US Dividend Equity ETF",          "Dividend",           ETF, NYSE_ARCA),
-        new Seed("GDX",  "VanEck Gold Miners ETF",                 "Gold Miners",        ETF, NYSE_ARCA),
-        new Seed("IAU",  "iShares Gold Trust",                     "Gold",               ETF, NYSE_ARCA)
+        // 브로드마켓 / 인덱스
+        new Seed("QQQ",  "Invesco QQQ Trust",                                    "NASDAQ 100 Index",        ETF, NASDAQ),
+        new Seed("SOXX", "iShares Semiconductor ETF",                            "Semiconductors",          ETF, NYSE_ARCA),
+        new Seed("ARKK", "ARK Innovation ETF",                                   "Growth/Innovation",       ETF, NYSE_ARCA),
+        new Seed("SPY",  "SPDR S&P 500 ETF Trust",                               "S&P 500 Index",           ETF, NYSE_ARCA),
+        new Seed("VOO",  "Vanguard S&P 500 ETF",                                 "S&P 500 Index",           ETF, NYSE_ARCA),
+        new Seed("VTI",  "Vanguard Total Stock Market ETF",                      "Total Market",            ETF, NYSE_ARCA),
+        new Seed("XLK",  "Technology Select Sector SPDR Fund",                   "Technology",              ETF, NYSE_ARCA),
+        new Seed("SCHD", "Schwab US Dividend Equity ETF",                        "Dividend",                ETF, NYSE_ARCA),
+        new Seed("GDX",  "VanEck Gold Miners ETF",                               "Gold Miners",             ETF, NYSE_ARCA),
+        new Seed("IAU",  "iShares Gold Trust",                                   "Gold",                    ETF, NYSE_ARCA),
+        // IT / Tech
+        new Seed("IGV",  "iShares Expanded Tech-Software Sector ETF",            "IT / Tech",               ETF, NASDAQ),
+        new Seed("WCLD", "WisdomTree Cloud Computing Fund",                       "IT / Tech",               ETF, NASDAQ),
+        new Seed("AIQ",  "Global X Artificial Intelligence & Tech ETF",           "IT / Tech",               ETF, NASDAQ),
+        // Healthcare / Biotech
+        new Seed("XBI",  "SPDR S&P Biotech ETF",                                 "Healthcare / Biotech",    ETF, NYSE_ARCA),
+        new Seed("IBB",  "iShares Biotechnology ETF",                             "Healthcare / Biotech",    ETF, NASDAQ),
+        new Seed("ARKG", "ARK Genomic Revolution ETF",                            "Healthcare / Biotech",    ETF, NYSE_ARCA),
+        // Industrials / Defense
+        new Seed("ITA",  "iShares U.S. Aerospace & Defense ETF",                  "Industrials / Defense",   ETF, NYSE_ARCA),
+        new Seed("SHLD", "Global X Defense Tech ETF",                             "Industrials / Defense",   ETF, NASDAQ),
+        new Seed("ARKX", "ARK Space Exploration & Innovation ETF",                "Industrials / Defense",   ETF, NYSE_ARCA),
+        // Finance / FinTech
+        new Seed("FINX", "Global X FinTech ETF",                                  "Finance / FinTech",       ETF, NASDAQ),
+        new Seed("IPAY", "ETFMG Prime Mobile Payments ETF",                       "Finance / FinTech",       ETF, NYSE_ARCA),
+        new Seed("BLOK", "Amplify Transformational Data Sharing ETF",             "Finance / FinTech",       ETF, NYSE_ARCA),
+        // Energy / Utilities
+        new Seed("ICLN", "iShares Global Clean Energy ETF",                       "Energy / Utilities",      ETF, NASDAQ),
+        new Seed("CNRG", "SPDR S&P Kensho Clean Power ETF",                       "Energy / Utilities",      ETF, NYSE_ARCA),
+        new Seed("AMLP", "Alerian MLP ETF",                                       "Energy / Utilities",      ETF, NYSE_ARCA),
+        // Materials / Mining
+        new Seed("XME",  "SPDR S&P Metals & Mining ETF",                          "Materials / Mining",      ETF, NYSE_ARCA),
+        new Seed("COPX", "Global X Copper Miners ETF",                            "Materials / Mining",      ETF, NYSE_ARCA),
+        new Seed("REMX", "VanEck Rare Earth & Strategic Metals ETF",              "Materials / Mining",      ETF, NYSE_ARCA),
+        // Consumer Staples / Discretionary
+        new Seed("PBJ",  "Invesco Dynamic Food & Beverage ETF",                   "Consumer Staples / Disc", ETF, NYSE_ARCA),
+        new Seed("XRT",  "SPDR S&P Retail ETF",                                   "Consumer Staples / Disc", ETF, NYSE_ARCA),
+        new Seed("FDIS", "Fidelity MSCI Consumer Discretionary ETF",              "Consumer Staples / Disc", ETF, NYSE_ARCA),
+        // Real Estate / Infra
+        new Seed("SRVR", "Pacer Data & Infrastructure Real Estate ETF",           "Real Estate / Infra",     ETF, NASDAQ),
+        new Seed("IFRA", "iShares U.S. Infrastructure ETF",                       "Real Estate / Infra",     ETF, NYSE_ARCA),
+        new Seed("PAVE", "Global X U.S. Infrastructure Development ETF",          "Real Estate / Infra",     ETF, NYSE_ARCA),
+        // Logistics / Mobility
+        new Seed("IYT",  "iShares U.S. Transportation ETF",                       "Logistics / Mobility",    ETF, NYSE_ARCA),
+        new Seed("XTN",  "SPDR S&P Transportation ETF",                           "Logistics / Mobility",    ETF, NYSE_ARCA),
+        new Seed("DRIV", "Global X Autonomous & Electric Vehicles ETF",           "Logistics / Mobility",    ETF, NASDAQ)
     );
 
     private ProductSeedCatalog() {}
