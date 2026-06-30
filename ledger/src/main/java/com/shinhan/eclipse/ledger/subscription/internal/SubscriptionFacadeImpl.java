@@ -205,7 +205,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
         if (today.isBefore(ipo.getSubscriptionStartDate()) || today.isAfter(ipo.getSubscriptionEndDate())) {
             throw new BusinessException(ErrorCode.SUBSCRIPTION_PERIOD_INVALID);
         }
-        if (checkTime && !skipTimeCheck) {
+        if (false && checkTime && !skipTimeCheck) { // TODO: 시간 제한 임시 해제
             LocalTime time = now.toLocalTime();
             if (time.isBefore(SUBSCRIPTION_OPEN) || !time.isBefore(SUBSCRIPTION_CLOSE)) {
                 throw new BusinessException(ErrorCode.SUBSCRIPTION_PERIOD_INVALID, "청약 신청은 09:00 ~ 17:00(KST)에만 가능합니다.");
