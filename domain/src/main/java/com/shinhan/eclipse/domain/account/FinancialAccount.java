@@ -108,8 +108,8 @@ public class FinancialAccount extends BaseEntity {
     }
 
     private static String generateAccountNumber() {
-        int suffix = (int) (Math.random() * 9000) + 1000;
-        return "****-****-" + suffix;
+        java.util.concurrent.ThreadLocalRandom r = java.util.concurrent.ThreadLocalRandom.current();
+        return String.format("110-%03d-%06d", r.nextInt(0, 1000), r.nextInt(0, 1000000));
     }
 
     public void link() {
