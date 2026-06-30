@@ -64,8 +64,7 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
             throw new BusinessException(ErrorCode.RETURN_PLAN_ALREADY_EXISTS);
         }
 
-        FinancialAccount savingsAccount = requireLinkedAccount(userId, "SAVINGS", "외화적립예금");
-        requireLinkedAccount(userId, "DEPOSIT", "외화통장");
+        FinancialAccount savingsAccount = accountLinkService.findAccountByType(userId, "SAVINGS").orElse(null);
 
         Ipo subIpo = subscriptionFacade.getIpo(subscription.getIpoId());
         if (subIpo.getRefundDate() != null) {
@@ -83,7 +82,7 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
                 subscription.getRefundAmount(),
                 nextIpo == null ? null : nextIpo.getId(),
                 null,
-                savingsAccount.getInterestRate());
+                savingsAccount == null ? null : savingsAccount.getInterestRate());
 
         ReturnPlan saved;
         try {
