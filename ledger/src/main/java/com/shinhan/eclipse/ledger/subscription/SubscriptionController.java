@@ -70,6 +70,16 @@ public class SubscriptionController {
         return ResponseEntity.ok(ApiResponse.success(SubscriptionCancelRes.of(subscription, refundAccount)));
     }
 
+    // SUB-005 복권 긁기 완료 처리 (멱등)
+    @PatchMapping("/{subscriptionId}/scratch")
+    public ResponseEntity<ApiResponse<SubscriptionRes>> revealScratch(
+            @UserHeader Long userId,
+            @PathVariable("subscriptionId") Long subscriptionId) {
+        log.info("복권 긁기 완료 요청: userId={}, subscriptionId={}", userId, subscriptionId);
+        IpoSubscription subscription = subscriptionFacade.revealScratch(subscriptionId, userId);
+        return ResponseEntity.ok(ApiResponse.success(toRes(subscription)));
+    }
+
     // SUB-004 (from/to: 명세 외 추가 — 조회 조건 설정 모달용)
     @GetMapping
     public ResponseEntity<ApiResponse<SubscriptionListRes>> getSubscriptions(

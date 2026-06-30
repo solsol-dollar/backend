@@ -175,6 +175,18 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
     }
 
     @Override
+    @Transactional
+    public IpoSubscription revealScratch(Long subscriptionId, Long userId) {
+        IpoSubscription subscription = subscriptionRepository.findByIdAndUserId(subscriptionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND));
+        if (!subscription.isScratchRevealed()) {
+            subscription.revealScratch();
+        }
+        log.info("복권 긁기 완료: subscriptionId={}, userId={}", subscriptionId, userId);
+        return subscription;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public boolean isAlreadySubscribed(Long userId, Long ipoId) {
         return subscriptionRepository.existsByUserIdAndIpoIdAndSubscriptionStatusIn(
