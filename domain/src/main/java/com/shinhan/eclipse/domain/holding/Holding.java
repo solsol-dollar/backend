@@ -44,10 +44,16 @@ public class Holding extends BaseEntity {
                 .add(price.multiply(BigDecimal.valueOf(quantity)));
         this.totalQuantity += quantity;
         this.averagePrice = totalCost.divide(BigDecimal.valueOf(this.totalQuantity), 4, RoundingMode.HALF_UP);
+        if ("CLOSED".equals(getStatus())) {
+            activate();
+        }
     }
 
     public void addSell(Integer quantity) {
         if (quantity > this.totalQuantity) throw new IllegalArgumentException("보유 수량 부족");
         this.totalQuantity -= quantity;
+        if (this.totalQuantity == 0) {
+            deactivate();
+        }
     }
 }
