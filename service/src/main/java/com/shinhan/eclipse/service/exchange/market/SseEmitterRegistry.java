@@ -20,6 +20,11 @@ public class SseEmitterRegistry {
         emitter.onCompletion(() -> emitters.remove(emitter));
         emitter.onTimeout(() -> emitters.remove(emitter));
         emitter.onError(e -> emitters.remove(emitter));
+        try {
+            emitter.send(SseEmitter.event().comment("connected"));
+        } catch (Exception e) {
+            emitters.remove(emitter);
+        }
         return emitter;
     }
 
