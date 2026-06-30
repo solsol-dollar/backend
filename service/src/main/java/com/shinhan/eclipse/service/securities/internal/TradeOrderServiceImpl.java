@@ -2,6 +2,7 @@ package com.shinhan.eclipse.service.securities.internal;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
+import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.holding.HoldingLot;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
@@ -24,12 +25,12 @@ import java.util.Optional;
 @RequiredArgsConstructor
 class TradeOrderServiceImpl implements TradeOrderService {
 
-    private final ProductRepository    productRepository;
-    private final HoldingRepository    holdingRepository;
-    private final HoldingLotRepository holdingLotRepository;
-    private final TradeOrderRepository tradeOrderRepository;
-    private final QuoteCache           quoteCache;
-    private final LedgerClient         ledgerClient;
+    private final ProductRepository         productRepository;
+    private final HoldingRepository         holdingRepository;
+    private final HoldingLotRepository      holdingLotRepository;
+    private final TradeOrderRepository      tradeOrderRepository;
+    private final FinancialAccountRepository accountRepository;
+    private final QuoteCache                quoteCache;
 
     @Value("${eclipse.fx.usd-krw:1368.5}")
     private BigDecimal usdKrw;
@@ -139,48 +140,27 @@ class TradeOrderServiceImpl implements TradeOrderService {
     private TradeOrderResponse executeBuy(Long userId, InvestmentProduct product,
                                           TradeOrderRequest req,
                                           BigDecimal executedPrice, BigDecimal executedAmount) {
-        Saga saga = new Saga("BuyTrade[userId=" + userId + ",ticker=" + product.getTicker() + "]");
-        try {
-            // Step 1: 잔고 차감 (ledger-app) — 보상: 잔고 복구
-            saga.step("잔고 차감",
-                    () -> ledgerClient.deductBalance(userId, req.accountId(), executedAmount),
-                    () -> ledgerClient.addBalance(userId, req.accountId(), executedAmount)
-            );
+        FinancialAccount account = accountRepository
+                .findByIdAndUserIdForUpdate(req.accountId(), userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND,
+                        "계좌를 찾을 수 없습니다: accountId=" + req.accountId()));
+        account.deductBalance(executedAmount);
 
-            // Step 2~4: service DB — 실패 시 @Transactional 롤백이 처리, Saga 보상은 Step 1용
-            TradeOrder order = saga.step("주문 저장",
-                    () -> tradeOrderRepository.save(TradeOrder.mockFill(
-                            userId, product.getId(), req.accountId(),
-                            "BUY", req.quantity(), executedPrice)),
-                    () -> {} // DB 롤백은 @Transactional이 담당
-            );
+        TradeOrder order = tradeOrderRepository.save(TradeOrder.mockFill(
+                userId, product.getId(), req.accountId(), "BUY", req.quantity(), executedPrice));
 
-            Holding holding = holdingRepository
-                    .findByUserIdAndProductId(userId, product.getId())
-                    .map(h -> { h.addBuy(req.quantity(), executedPrice); return h; })
-                    .orElseGet(() -> Holding.create(userId, product.getId(), req.quantity(), executedPrice));
+        Holding holding = holdingRepository
+                .findByUserIdAndProductId(userId, product.getId())
+                .map(h -> { h.addBuy(req.quantity(), executedPrice); return h; })
+                .orElseGet(() -> Holding.create(userId, product.getId(), req.quantity(), executedPrice));
+        Holding savedHolding = holdingRepository.save(holding);
 
-            Holding savedHolding = saga.step("보유 업데이트",
-                    () -> holdingRepository.save(holding),
-                    () -> {}
-            );
+        holdingLotRepository.save(HoldingLot.ofBuy(
+                savedHolding.getId(), userId, product.getId(), order.getId(), req.quantity(), executedPrice));
 
-            saga.step("보유 로트 저장",
-                    () -> holdingLotRepository.save(
-                            HoldingLot.ofBuy(savedHolding.getId(), userId, product.getId(),
-                                    order.getId(), req.quantity(), executedPrice)),
-                    () -> {}
-            );
-
-            log.info("매수 체결: userId={} ticker={} qty={} price={}",
-                    userId, product.getTicker(), req.quantity(), executedPrice);
-            return TradeOrderResponse.of(order, product.getTicker(), product.getProductName());
-
-        } catch (Exception e) {
-            saga.compensate(e);
-            if (e instanceof BusinessException be) throw be;
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR, e.getMessage());
-        }
+        log.info("매수 체결: userId={} ticker={} qty={} price={}",
+                userId, product.getTicker(), req.quantity(), executedPrice);
+        return TradeOrderResponse.of(order, product.getTicker(), product.getProductName());
     }
 
     private TradeOrderResponse executeSell(Long userId, InvestmentProduct product,
@@ -196,37 +176,20 @@ class TradeOrderServiceImpl implements TradeOrderService {
                     "보유 수량 부족 (보유: %d, 요청: %d)".formatted(holding.getTotalQuantity(), req.quantity()));
         }
 
-        Saga saga = new Saga("SellTrade[userId=" + userId + ",ticker=" + product.getTicker() + "]");
-        try {
-            // Step 1~2: service DB — 실패 시 @Transactional 롤백
-            holding.addSell(req.quantity());
-            saga.step("보유 차감",
-                    () -> holdingRepository.save(holding),
-                    () -> {}
-            );
+        holding.addSell(req.quantity());
+        holdingRepository.save(holding);
 
-            TradeOrder order = saga.step("주문 저장",
-                    () -> tradeOrderRepository.save(TradeOrder.mockFill(
-                            userId, product.getId(), req.accountId(),
-                            "SELL", req.quantity(), executedPrice)),
-                    () -> {}
-            );
+        TradeOrder order = tradeOrderRepository.save(TradeOrder.mockFill(
+                userId, product.getId(), req.accountId(), "SELL", req.quantity(), executedPrice));
 
-            // Step 3: 잔고 증가 (ledger-app) — 실패 시 @Transactional이 DB 롤백하므로
-            //          보상으로 잔고 다시 차감 불필요. 단, 멱등성을 위해 명시적으로 정의.
-            saga.step("잔고 증가",
-                    () -> ledgerClient.addBalance(userId, req.accountId(), executedAmount),
-                    () -> ledgerClient.deductBalance(userId, req.accountId(), executedAmount)
-            );
+        FinancialAccount account = accountRepository
+                .findByIdAndUserIdForUpdate(req.accountId(), userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND,
+                        "계좌를 찾을 수 없습니다: accountId=" + req.accountId()));
+        account.addBalance(executedAmount);
 
-            log.info("매도 체결: userId={} ticker={} qty={} price={}",
-                    userId, product.getTicker(), req.quantity(), executedPrice);
-            return TradeOrderResponse.of(order, product.getTicker(), product.getProductName());
-
-        } catch (Exception e) {
-            saga.compensate(e);
-            if (e instanceof BusinessException be) throw be;
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR, e.getMessage());
-        }
+        log.info("매도 체결: userId={} ticker={} qty={} price={}",
+                userId, product.getTicker(), req.quantity(), executedPrice);
+        return TradeOrderResponse.of(order, product.getTicker(), product.getProductName());
     }
 }
