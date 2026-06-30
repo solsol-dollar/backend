@@ -10,4 +10,6 @@ import java.util.List;
 public interface WorkerProductRepository extends JpaRepository<InvestmentProduct, Long> {
 
     List<InvestmentProduct> findByStatus(String status);
+
+    boolean existsByTicker(String ticker);
 }

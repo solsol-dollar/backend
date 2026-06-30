@@ -13,4 +13,6 @@ public interface WorkerIpoRepository extends JpaRepository<Ipo, Long> {
     List<Ipo> findByListingDate(LocalDate listingDate);
 
     List<Ipo> findByRefundDateLessThanAndIpoStatusNot(LocalDate refundDate, String ipoStatus);
+
+    List<Ipo> findByIpoStatusAndProductIdIsNull(String ipoStatus);
 }

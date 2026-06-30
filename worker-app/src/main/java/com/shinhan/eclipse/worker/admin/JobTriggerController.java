@@ -104,6 +104,20 @@ public class JobTriggerController {
         return ResponseEntity.accepted().body(Map.of("status", "started", "job", "return-plan-settlement"));
     }
 
+    /** LISTED이지만 product_id 미연결인 IPO 보정 */
+    @PostMapping("/listing-completion/link-products")
+    public ResponseEntity<Map<String, Object>> triggerLinkMissingProducts() {
+        log.info("[MANUAL] LISTED IPO product_id 보정 시작");
+        try {
+            int linked = ipoListingCompletionJob.linkMissingProducts();
+            return ResponseEntity.ok(Map.of("status", "completed", "linked", linked));
+        } catch (Exception e) {
+            log.error("[MANUAL] LISTED IPO product_id 보정 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "failed", "error", e.getMessage()));
+        }
+    }
+
     /** IPO 상장완료 상태 전환 수동 실행 */
     @PostMapping("/listing-completion")
     public ResponseEntity<Map<String, Object>> triggerListingCompletion() {
