@@ -3,6 +3,7 @@ package com.shinhan.eclipse.ledger.subscription;
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.auth.AuthUser;
+import com.shinhan.eclipse.common.resolver.UserHeader;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.domain.account.FinancialAccount;

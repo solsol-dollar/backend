@@ -330,7 +330,7 @@ class SecuritiesServiceImpl implements SecuritiesService {
     @Override
     public List<MarketIndex> getMarketIndices() {
         boolean marketOpen = MarketHoursUtil.isUsMarketOpen();
-        MarketIndex spy = resolveIndexSnapshot("SPY", "NYSE", marketOpen);
+        MarketIndex spy = resolveIndexSnapshot("SPY", "NYSE Arca", marketOpen);
         MarketIndex qqq = resolveIndexSnapshot("QQQ", "NAS",  marketOpen);
 
         // USD/KRW: 캐시(Yahoo Finance 갱신) 우선, 없으면 config 기본값

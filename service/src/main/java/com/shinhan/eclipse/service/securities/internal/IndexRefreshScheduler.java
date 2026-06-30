@@ -16,7 +16,7 @@ class IndexRefreshScheduler {
 
     // ticker, KIS exchangeName
     private static final List<String[]> INDEX_TICKERS = List.of(
-            new String[]{"SPY", "NYSE"},
+            new String[]{"SPY", "NYSE Arca"},
             new String[]{"QQQ", "NASDAQ"}
     );
     // 장 외 Yahoo Finance로 갱신할 ticker 목록 (USDKRW 포함)
