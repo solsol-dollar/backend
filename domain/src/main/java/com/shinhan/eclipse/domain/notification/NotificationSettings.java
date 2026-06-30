@@ -26,6 +26,9 @@ public class NotificationSettings extends BaseEntity {
     @Column(nullable = false)
     private Boolean idleDollarEnabled = true;
 
+    @Column(nullable = false)
+    private Boolean spendingReportEnabled = true;
+
     public static NotificationSettings create(Long userId) {
         NotificationSettings settings = new NotificationSettings();
         settings.userId = userId;
@@ -36,9 +39,10 @@ public class NotificationSettings extends BaseEntity {
         this.fcmToken = fcmToken;
     }
 
-    public void updateSettings(Boolean ipoAllocation, Boolean ipoRefund, Boolean idleDollar) {
+    public void updateSettings(Boolean ipoAllocation, Boolean ipoRefund, Boolean idleDollar, Boolean spendingReport) {
         if (ipoAllocation != null) this.ipoAllocationEnabled = ipoAllocation;
         if (ipoRefund != null) this.ipoRefundEnabled = ipoRefund;
         if (idleDollar != null) this.idleDollarEnabled = idleDollar;
+        if (spendingReport != null) this.spendingReportEnabled = spendingReport;
     }
 }
