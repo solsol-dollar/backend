@@ -4,6 +4,7 @@ import com.shinhan.eclipse.worker.allocation.IpoAllocationJob;
 import com.shinhan.eclipse.worker.allocation.IpoListingJob;
 import com.shinhan.eclipse.worker.ipo.sync.IpoFinancialSyncService;
 import com.shinhan.eclipse.worker.candle.CandleSyncService;
+import com.shinhan.eclipse.worker.candle.job.CandleGapFillJob;
 import com.shinhan.eclipse.worker.candle.job.DailyCandleJob;
 import com.shinhan.eclipse.worker.settlement.IpoListingCompletionJob;
 import com.shinhan.eclipse.worker.settlement.ReturnPlanSettlementJob;
@@ -40,6 +41,7 @@ public class JobTriggerController {
     private final ReturnPlanSettlementJob returnPlanSettlementJob;
     private final IpoListingCompletionJob ipoListingCompletionJob;
     private final DailyCandleJob dailyCandleJob;
+    private final CandleGapFillJob candleGapFillJob;
     private final CandleSyncService candleSyncService;
     private final JobLauncher jobLauncher;
     private final IpoFinancialSyncService ipoFinancialSyncService;
@@ -168,6 +170,30 @@ public class JobTriggerController {
             }
         });
         return ResponseEntity.accepted().body(Map.of("status", "started", "job", "ipo-financials-sync"));
+    }
+
+    /** 캔들 Gap Fill — 종목별 누락 구간만 적재 */
+    @PostMapping("/candle/gap-fill")
+    public ResponseEntity<Map<String, Object>> triggerGapFill(
+            @RequestParam(required = false) String tickers) {
+        log.info("[MANUAL] 캔들 Gap Fill 시작: tickers={}", tickers != null ? tickers : "ALL");
+        CompletableFuture.runAsync(() -> {
+            try {
+                var products = candleSyncService.findActiveProducts();
+                if (tickers != null && !tickers.isBlank()) {
+                    var filter = Set.of(tickers.toUpperCase().split(","));
+                    products = products.stream()
+                            .filter(p -> filter.contains(p.getTicker()))
+                            .toList();
+                }
+                log.info("[MANUAL] Gap Fill 대상 종목: {}개", products.size());
+                candleGapFillJob.run(products);
+                log.info("[MANUAL] 캔들 Gap Fill 완료");
+            } catch (Exception e) {
+                log.error("[MANUAL] 캔들 Gap Fill 실패", e);
+            }
+        });
+        return ResponseEntity.accepted().body(Map.of("status", "started", "job", "candle-gap-fill"));
     }
 
     /** 5년치 캔들 전체 백필 */
