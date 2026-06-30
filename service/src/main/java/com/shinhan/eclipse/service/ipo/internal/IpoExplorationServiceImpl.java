@@ -204,19 +204,23 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
         return BigDecimal.valueOf(amount).multiply(rate).setScale(0, RoundingMode.HALF_UP).longValue();
     }
 
+    private static final BigDecimal UNIT_JO  = BigDecimal.valueOf(1_000_000_000_000L);
+    private static final BigDecimal UNIT_EOK = BigDecimal.valueOf(100_000_000L);
+    private static final BigDecimal UNIT_MAN = BigDecimal.valueOf(10_000L);
+
     // DB 저장 단위: 천(thousands). 실제값 = stored × 1,000
     private String formatForeignCurrency(Long thousandsAmount, String currency) {
         if (thousandsAmount == null) return null;
-        long actual = thousandsAmount * 1_000L;
-        boolean negative = actual < 0;
-        long abs = Math.abs(actual);
+        BigDecimal actual = BigDecimal.valueOf(thousandsAmount).multiply(BigDecimal.valueOf(1_000L));
+        boolean negative = actual.signum() < 0;
+        BigDecimal abs = actual.abs();
         String formatted;
-        if (abs >= 1_000_000_000_000L) {
-            formatted = String.format("%.1f조", abs / 1_000_000_000_000.0);
-        } else if (abs >= 100_000_000L) {
-            formatted = (abs / 100_000_000L) + "억";
+        if (abs.compareTo(UNIT_JO) >= 0) {
+            formatted = abs.divide(UNIT_JO, 1, RoundingMode.HALF_UP).toPlainString() + "조";
+        } else if (abs.compareTo(UNIT_EOK) >= 0) {
+            formatted = abs.divide(UNIT_EOK, 1, RoundingMode.HALF_UP).toPlainString() + "억";
         } else {
-            formatted = (abs / 10_000L) + "만";
+            formatted = abs.divide(UNIT_MAN, 1, RoundingMode.HALF_UP).toPlainString() + "만";
         }
         return negative ? "-" + formatted : formatted;
     }
@@ -224,16 +228,16 @@ class IpoExplorationServiceImpl implements IpoExplorationService {
     // revenueKrw = thousandsUsd × rate → 단위: 천 KRW. 실제값 = stored × 1,000
     private String formatKrw(Long thousandsKrw) {
         if (thousandsKrw == null) return null;
-        long actual = thousandsKrw * 1_000L;
-        boolean negative = actual < 0;
-        long abs = Math.abs(actual);
+        BigDecimal actual = BigDecimal.valueOf(thousandsKrw).multiply(BigDecimal.valueOf(1_000L));
+        boolean negative = actual.signum() < 0;
+        BigDecimal abs = actual.abs();
         String formatted;
-        if (abs >= 1_000_000_000_000L) {
-            formatted = String.format("%.1f조", abs / 1_000_000_000_000.0);
-        } else if (abs >= 100_000_000L) {
-            formatted = (abs / 100_000_000L) + "억";
+        if (abs.compareTo(UNIT_JO) >= 0) {
+            formatted = abs.divide(UNIT_JO, 1, RoundingMode.HALF_UP).toPlainString() + "조";
+        } else if (abs.compareTo(UNIT_EOK) >= 0) {
+            formatted = abs.divide(UNIT_EOK, 1, RoundingMode.HALF_UP).toPlainString() + "억";
         } else {
-            formatted = (abs / 10_000L) + "만";
+            formatted = abs.divide(UNIT_MAN, 1, RoundingMode.HALF_UP).toPlainString() + "만";
         }
         return negative ? "-" + formatted : formatted;
     }
