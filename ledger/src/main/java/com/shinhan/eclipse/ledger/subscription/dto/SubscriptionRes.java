@@ -34,6 +34,7 @@ public class SubscriptionRes {
     private final BigDecimal offerPriceMax;
     private final BigDecimal confirmedOfferPrice;
     private final LocalDate listingDate;
+    private final String logoUrl;
 
     public static SubscriptionRes from(IpoSubscription subscription, Ipo ipo) {
         return SubscriptionRes.builder()
@@ -55,6 +56,7 @@ public class SubscriptionRes {
                 .offerPriceMax(ipo.getOfferPriceMax())
                 .confirmedOfferPrice(ipo.getConfirmedOfferPrice())
                 .listingDate(ipo.getListingDate())
+                .logoUrl(ipo.getLogoUrl())
                 .build();
     }
 }
