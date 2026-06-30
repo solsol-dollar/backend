@@ -2,7 +2,8 @@ package com.shinhan.eclipse.ledger.allocation;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
-import com.shinhan.eclipse.common.resolver.UserHeader;
+import com.shinhan.eclipse.auth.AuthUser;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.domain.ipo.Ipo;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
@@ -32,12 +33,13 @@ public class AllocationResultController {
     // ALLOC-001 (from/to/statusGroup/keyword: 명세 외 추가 — 조회 조건 설정 모달용)
     @GetMapping
     public ResponseEntity<ApiResponse<AllocationResultListRes>> getAllocationResults(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @RequestParam(name = "subscriptionId", required = false) Long subscriptionId,
             @RequestParam(name = "from", required = false) LocalDate from,
             @RequestParam(name = "to", required = false) LocalDate to,
             @RequestParam(name = "statusGroup", required = false) String statusGroup,
             @RequestParam(name = "keyword", required = false) String keyword) {
+        Long userId = authUser.userId();
         if (from != null && to != null && from.isAfter(to)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "from은 to보다 늦을 수 없습니다.");
         }
@@ -91,8 +93,9 @@ public class AllocationResultController {
     // ALLOC-002
     @GetMapping("/{subscriptionResultId}")
     public ResponseEntity<ApiResponse<AllocationResultDetailRes>> getAllocationResultDetail(
-            @UserHeader Long userId,
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable("subscriptionResultId") Long subscriptionResultId) {
+        Long userId = authUser.userId();
         IpoSubscription subscription = subscriptionFacade.getSubscriptionResult(subscriptionResultId, userId);
         Ipo ipo = subscriptionFacade.getIpo(subscription.getIpoId());
         BigDecimal currentPrice = ipo.getProductId() == null ? null : quoteClient.getCurrentPrice(ipo.getProductId());
