@@ -77,7 +77,8 @@ public class NotificationController {
                 authUser.userId(),
                 request.ipoAllocationEnabled(),
                 request.ipoRefundEnabled(),
-                request.idleDollarEnabled());
+                request.idleDollarEnabled(),
+                request.spendingReportEnabled());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
@@ -88,6 +89,7 @@ public class NotificationController {
     record NotificationSettingsRequest(
             Boolean ipoAllocationEnabled,
             Boolean ipoRefundEnabled,
-            Boolean idleDollarEnabled
+            Boolean idleDollarEnabled,
+            Boolean spendingReportEnabled
     ) {}
 }

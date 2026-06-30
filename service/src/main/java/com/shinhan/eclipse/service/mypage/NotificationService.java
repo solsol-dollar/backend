@@ -14,7 +14,7 @@ public interface NotificationService {
     void markAsRead(Long userId, Long notificationId);
     void registerFcmToken(Long userId, String fcmToken);
     void unregisterFcmToken(Long userId);
-    void updateNotificationSettings(Long userId, Boolean ipoAllocation, Boolean ipoRefund, Boolean idleDollar);
+    void updateNotificationSettings(Long userId, Boolean ipoAllocation, Boolean ipoRefund, Boolean idleDollar, Boolean spendingReport);
 
     List<Long> getAllUserIdsWithFcmToken();
 }

@@ -2,11 +2,12 @@ package com.shinhan.eclipse.service.ipo;
 
 public record IpoFinancialItem(
         int fiscalYear,
-        Long revenue,
-        Long operatingIncome,
-        Long netIncome,
         String currency,
-        Long revenueKrw,
-        Long operatingIncomeKrw,
-        Long netIncomeKrw
+        java.math.BigDecimal exchangeRate,
+        String revenue,
+        String operatingIncome,
+        String netIncome,
+        String revenueKrw,
+        String operatingIncomeKrw,
+        String netIncomeKrw
 ) {}

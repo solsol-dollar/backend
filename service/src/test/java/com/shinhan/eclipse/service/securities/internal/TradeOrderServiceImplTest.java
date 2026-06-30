@@ -2,6 +2,7 @@ package com.shinhan.eclipse.service.securities.internal;
 
 import com.shinhan.eclipse.common.exception.BusinessException;
 import com.shinhan.eclipse.common.exception.ErrorCode;
+import com.shinhan.eclipse.domain.account.FinancialAccount;
 import com.shinhan.eclipse.domain.holding.Holding;
 import com.shinhan.eclipse.domain.product.InvestmentProduct;
 import com.shinhan.eclipse.domain.trade.TradeOrder;
@@ -24,17 +25,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class TradeOrderServiceImplTest {
 
-    @Mock ProductRepository    productRepository;
-    @Mock HoldingRepository    holdingRepository;
-    @Mock HoldingLotRepository holdingLotRepository;
-    @Mock TradeOrderRepository tradeOrderRepository;
-    @Mock QuoteCache           quoteCache;
-    @Mock LedgerClient         ledgerClient;
+    @Mock ProductRepository         productRepository;
+    @Mock HoldingRepository         holdingRepository;
+    @Mock HoldingLotRepository      holdingLotRepository;
+    @Mock TradeOrderRepository      tradeOrderRepository;
+    @Mock FinancialAccountRepository accountRepository;
+    @Mock QuoteCache                quoteCache;
 
     @InjectMocks TradeOrderServiceImpl service;
 
@@ -63,8 +65,10 @@ class TradeOrderServiceImplTest {
     void 매수_정상_체결() {
         InvestmentProduct product = activeProduct(10L, "TSLA");
         TradeOrder order = savedOrder(100L, "BUY", 5, new BigDecimal("200.00"));
+        FinancialAccount account = mock(FinancialAccount.class);
 
         given(productRepository.findById(10L)).willReturn(Optional.of(product));
+        given(accountRepository.findByIdAndUserIdForUpdate(99L, 1L)).willReturn(Optional.of(account));
         given(holdingRepository.findByUserIdAndProductId(1L, null)).willReturn(Optional.empty());
         given(holdingRepository.save(any())).willAnswer(inv -> {
             Holding h = inv.getArgument(0);
@@ -91,10 +95,12 @@ class TradeOrderServiceImplTest {
     @Test
     void 매수_잔액_부족이면_예외() {
         InvestmentProduct product = activeProduct(10L, "TSLA");
+        FinancialAccount account = mock(FinancialAccount.class);
 
         given(productRepository.findById(10L)).willReturn(Optional.of(product));
+        given(accountRepository.findByIdAndUserIdForUpdate(99L, 1L)).willReturn(Optional.of(account));
         willThrow(new BusinessException(ErrorCode.INSUFFICIENT_BALANCE))
-                .given(ledgerClient).deductBalance(any(), any(), any());
+                .given(account).deductBalance(any());
 
         TradeOrderRequest req = new TradeOrderRequest(10L, 99L, "BUY", 5, new BigDecimal("200.00"));
 
@@ -109,11 +115,13 @@ class TradeOrderServiceImplTest {
         InvestmentProduct product = activeProduct(10L, "TSLA");
         Holding holding = Holding.create(1L, null, 10, new BigDecimal("180.00"));
         TradeOrder order = savedOrder(101L, "SELL", 3, new BigDecimal("200.00"));
+        FinancialAccount account = mock(FinancialAccount.class);
 
         given(productRepository.findById(10L)).willReturn(Optional.of(product));
         given(holdingRepository.findByUserIdAndProductId(1L, null)).willReturn(Optional.of(holding));
         given(holdingRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(tradeOrderRepository.save(any())).willReturn(order);
+        given(accountRepository.findByIdAndUserIdForUpdate(99L, 1L)).willReturn(Optional.of(account));
 
         TradeOrderRequest req = new TradeOrderRequest(10L, 99L, "SELL", 3, new BigDecimal("200.00"));
 
@@ -155,7 +163,9 @@ class TradeOrderServiceImplTest {
                 BigDecimal.ZERO, BigDecimal.ZERO, 0L, "3", Instant.now());
         TradeOrder order = savedOrder(102L, "BUY", 1, new BigDecimal("250.00"));
 
+        FinancialAccount account = mock(FinancialAccount.class);
         given(productRepository.findById(10L)).willReturn(Optional.of(product));
+        given(accountRepository.findByIdAndUserIdForUpdate(99L, 1L)).willReturn(Optional.of(account));
         given(quoteCache.get("TSLA")).willReturn(Optional.of(snapshot));
         given(holdingRepository.findByUserIdAndProductId(any(), any())).willReturn(Optional.empty());
         given(holdingRepository.save(any())).willAnswer(inv -> {
