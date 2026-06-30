@@ -22,11 +22,6 @@ class ProductDataInitializer {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void init() {
-        if (productRepository.countActive() > 0) {
-            log.info("investment_products 이미 존재 ({} 건) — 시드 스킵", productRepository.countActive());
-            return;
-        }
-
         List<ProductSeedCatalog.Seed> all = Stream.concat(
                 Stream.concat(
                         ProductSeedCatalog.NASDAQ_100.stream(),
@@ -48,7 +43,12 @@ class ProductDataInitializer {
             ));
         }
 
+        if (products.isEmpty()) {
+            log.info("investment_products 신규 시드 없음 — 스킵");
+            return;
+        }
+
         productRepository.saveAll(products);
-        log.info("investment_products 시드 완료: {} 건 (NASDAQ100 + ETF)", products.size());
+        log.info("investment_products 시드 완료: {} 건 (NASDAQ100 + ETF + 섹터 ETF)", products.size());
     }
 }

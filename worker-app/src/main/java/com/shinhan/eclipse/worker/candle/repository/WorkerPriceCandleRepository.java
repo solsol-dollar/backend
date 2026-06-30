@@ -14,6 +14,15 @@ import java.util.List;
 @Repository
 public interface WorkerPriceCandleRepository extends JpaRepository<PriceCandle, Long> {
 
+    /** 전체 종목의 캔들타입별 최신 날짜를 한 번에 조회 (쿼리 1회로 N×3 쿼리 대체). */
+    @Query(nativeQuery = true, value = """
+            SELECT product_id, candle_type, MAX(candle_at) AS latest_date
+            FROM price_candles
+            WHERE status = 'ACTIVE'
+            GROUP BY product_id, candle_type
+            """)
+    List<Object[]> findLatestCandleDates();
+
     @Query("SELECT c FROM PriceCandle c WHERE c.productId = :productId " +
            "AND c.candleType = :candleType AND c.candleAt = :candleAt")
     java.util.Optional<PriceCandle> findByProductIdAndCandleTypeAndCandleAt(
