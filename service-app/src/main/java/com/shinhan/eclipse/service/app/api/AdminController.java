@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClient;
 
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -27,6 +29,12 @@ public class AdminController {
 
     private final FinnhubSyncScheduler finnhubSyncScheduler;
     private final SpendingReportService spendingReportService;
+
+    /**
+     * worker-app 내부 잡 트리거 프록시용 베이스 URL. QA 데모 전용 — 운영 노출 금지.
+     * 도커 네트워크에서 worker-app 서비스명으로 접근(설정 파일 변경 없이 하드코딩).
+     */
+    private static final String WORKER_URL = "http://worker-app:8082";
 
     /** Finnhub IPO 캘린더 동기화 수동 트리거 */
     @PostMapping("/finnhub-sync")
@@ -66,5 +74,44 @@ public class AdminController {
             }
         });
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    // ───────────────────────────────────────────────────────────────
+    // worker-app 잡 트리거 프록시 (QA 데모 전용). worker-app은 ALB 미노출이라
+    // service-app을 경유해 /internal/jobs/* 를 호출한다. 인증 가드 없음 — 운영 금지.
+    // ───────────────────────────────────────────────────────────────
+
+    /** 청약 배정 잡 (worker /internal/jobs/allocation) */
+    @PostMapping("/allocation")
+    public ResponseEntity<ApiResponse<Object>> triggerAllocation() {
+        return forwardToWorker("/internal/jobs/allocation");
+    }
+
+    /** IPO 상장 입고 잡 — resultStatus DEPOSITED(입고완료) 전환 (worker /internal/jobs/listing) */
+    @PostMapping("/listing")
+    public ResponseEntity<ApiResponse<Object>> triggerListing() {
+        return forwardToWorker("/internal/jobs/listing");
+    }
+
+    /** 리턴플랜 정산(실행) 잡 (worker /internal/jobs/settlement) */
+    @PostMapping("/settlement")
+    public ResponseEntity<ApiResponse<Object>> triggerSettlement() {
+        return forwardToWorker("/internal/jobs/settlement");
+    }
+
+    private ResponseEntity<ApiResponse<Object>> forwardToWorker(String path) {
+        log.info("[QA] worker 잡 트리거 프록시 호출: {}{}", WORKER_URL, path);
+        try {
+            Object body = RestClient.create()
+                    .post()
+                    .uri(WORKER_URL + path)
+                    .retrieve()
+                    .body(Object.class);
+            return ResponseEntity.ok(ApiResponse.success(body));
+        } catch (Exception e) {
+            log.error("[QA] worker 잡 트리거 실패: {}{}", WORKER_URL, path, e);
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.success(Map.of("status", "failed", "error", String.valueOf(e.getMessage()))));
+        }
     }
 }

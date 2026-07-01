@@ -4,6 +4,7 @@ import com.shinhan.eclipse.domain.account.CardTransaction;
 import com.shinhan.eclipse.service.card.CardService;
 import com.shinhan.eclipse.service.card.CardTransactionSummary;
 import com.shinhan.eclipse.service.card.CardTransactionSummary.*;
+import com.shinhan.eclipse.service.card.CardTransactionsByCategory;
 import com.shinhan.eclipse.service.exchange.ExchangeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -136,6 +137,44 @@ class CardServiceImpl implements CardService {
         }
 
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CardTransactionsByCategory getByCategory(Long userId, int year, int month, String category) {
+        LocalDateTime from = LocalDateTime.of(year, month, 1, 0, 0);
+        LocalDateTime to   = from.plusMonths(1);
+
+        List<CardTransaction> monthly = txRepository
+                .findByUserIdAndTransactedAtBetweenOrderByTransactedAtDesc(userId, from, to);
+
+        // category 파라미터가 있으면 해당 카테고리만 필터링
+        if (category != null && !category.isBlank()) {
+            monthly = monthly.stream()
+                    .filter(t -> t.getCategory().equals(category))
+                    .toList();
+        }
+
+        List<CardTransactionsByCategory.CategoryGroup> groups = monthly.stream()
+                .collect(Collectors.groupingBy(CardTransaction::getCategory))
+                .entrySet().stream()
+                .map(e -> {
+                    List<CardTransactionsByCategory.TransactionItem> items = e.getValue().stream()
+                            .sorted(Comparator.comparing(CardTransaction::getTransactedAt).reversed())
+                            .map(t -> new CardTransactionsByCategory.TransactionItem(
+                                    t.getId(), t.getMerchantName(),
+                                    t.getAmount(), t.getCurrency(), t.getTransactedAt()))
+                            .toList();
+                    BigDecimal total = e.getValue().stream()
+                            .map(CardTransaction::getAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    return new CardTransactionsByCategory.CategoryGroup(
+                            e.getKey(), total, e.getValue().size(), items);
+                })
+                .sorted(Comparator.comparing(CardTransactionsByCategory.CategoryGroup::totalAmount).reversed())
+                .toList();
+
+        return new CardTransactionsByCategory(groups);
     }
 
     private TransactionItem toItem(CardTransaction tx) {
