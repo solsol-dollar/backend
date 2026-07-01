@@ -26,7 +26,8 @@ public class NotificationSettings extends BaseEntity {
     @Column(nullable = false)
     private Boolean idleDollarEnabled = true;
 
-    @Column(nullable = false)
+    // RDS 스키마 미적용 컬럼 — 마이그레이션 완료 후 @Column(nullable = false)로 복원
+    @jakarta.persistence.Transient
     private Boolean spendingReportEnabled = true;
 
     public static NotificationSettings create(Long userId) {

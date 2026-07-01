@@ -9,6 +9,7 @@ import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -21,6 +22,7 @@ public class ReturnPlanRes {
     private final String sourceTicker;
     private final String sourceCompanyName;
     private final LocalDate refundDate;
+    private final LocalDateTime executedAt;
     /** 출처 청약/배정 정보 (상세 화면 상단 청약금/배정률/배정금 표시용, 명세 외 추가). */
     private final BigDecimal subscriptionAmount;
     private final BigDecimal allocationRate;
@@ -38,6 +40,7 @@ public class ReturnPlanRes {
                 .sourceTicker(sourceIpo.getTicker())
                 .sourceCompanyName(sourceIpo.getCompanyName())
                 .refundDate(sourceIpo.getRefundDate())
+                .executedAt(plan.getExecutedAt())
                 .subscriptionAmount(sourceSubscription.getSubscriptionAmount())
                 .allocationRate(sourceSubscription.getAllocationRate())
                 .allocatedAmount(sourceSubscription.getAllocatedAmount())

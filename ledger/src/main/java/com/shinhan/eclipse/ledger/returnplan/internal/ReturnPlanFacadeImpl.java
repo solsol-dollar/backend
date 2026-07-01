@@ -8,6 +8,7 @@ import com.shinhan.eclipse.domain.returnplan.ReturnPlan;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlanAllocation;
 import com.shinhan.eclipse.domain.returnplan.ReturnPlanPreset;
 import com.shinhan.eclipse.domain.subscription.IpoSubscription;
+import com.shinhan.eclipse.domain.transaction.TransferTransaction;
 import com.shinhan.eclipse.ledger.accountlink.AccountLinkService;
 import com.shinhan.eclipse.ledger.event.AllocationCompletedEvent;
 import com.shinhan.eclipse.ledger.returnplan.ReturnPlanFacade;
@@ -52,6 +53,7 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
     private final SubscriptionFacade subscriptionFacade;
     private final AccountLinkService accountLinkService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ReturnPlanTransferRepository transferRepository;
 
     @Override
     @Transactional
@@ -180,17 +182,44 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
         return plan;
     }
 
-    /** 목적지 타입별 계좌에 분배 금액을 실제로 적립한다 (환불금 자체가 여기서 처음 계좌에 들어간다). */
+    /**
+     * 목적지 타입별 계좌로 환불금을 이동한다.
+     * IpoAllocationJob이 settleReserved(allocated) + releaseReserved(refund)를 수행하므로
+     * 환불금은 이미 CMA balance에 있다. SECURITIES 몫은 CMA에 그대로 두고,
+     * SAVINGS/DEPOSIT 몫만 CMA에서 차감 후 해당 계좌에 적립한다.
+     */
     private void creditAllocations(ReturnPlan plan, List<ReturnPlanAllocation> allocations) {
+        FinancialAccount cmaAccount = accountLinkService.findAccountByType(plan.getUserId(), "SECURITIES")
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED, "증권 CMA 계좌가 연동되어 있지 않아 분배를 실행할 수 없습니다."));
+
         for (ReturnPlanAllocation allocation : allocations) {
             if (allocation.getAllocationAmount().compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }
-            FinancialAccount account = accountLinkService.findAccountByType(plan.getUserId(), allocation.getDestinationType())
+
+            // SECURITIES 몫은 CMA에 이미 있으므로 이동 없음
+            if ("SECURITIES".equals(allocation.getDestinationType())) {
+                allocation.markExecuted(cmaAccount.getId());
+                continue;
+            }
+
+            FinancialAccount destAccount = accountLinkService.findAccountByType(plan.getUserId(), allocation.getDestinationType())
                     .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED,
                             allocation.getDestinationType() + " 계좌가 연동되어 있지 않아 분배를 실행할 수 없습니다."));
-            accountLinkService.credit(plan.getUserId(), account.getId(), allocation.getAllocationAmount());
-            allocation.markExecuted(account.getId());
+
+            accountLinkService.deduct(plan.getUserId(), cmaAccount.getId(), allocation.getAllocationAmount());
+            accountLinkService.credit(plan.getUserId(), destAccount.getId(), allocation.getAllocationAmount());
+            allocation.markExecuted(destAccount.getId());
+
+            TransferTransaction tx = TransferTransaction.create(
+                    plan.getUserId(),
+                    cmaAccount.getId(),
+                    destAccount.getId(),
+                    "RETURN_PLAN",
+                    allocation.getAllocationAmount()
+            );
+            tx.complete();
+            transferRepository.save(tx);
         }
     }
 
@@ -294,10 +323,23 @@ class ReturnPlanFacadeImpl implements ReturnPlanFacade {
 
             if (!"SECURITIES".equals(item.destinationType()) && item.ratio() > 0) {
                 FinancialAccount destAccount = accountLinkService.findAccountByType(userId, item.destinationType())
-                        .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_LINKED,
-                                item.destinationType() + " 계좌가 연동되지 않았습니다."));
+                        .orElse(null);
+                if (destAccount == null) {
+                    views.add(new ImmediateAllocationRes.AllocationView(item.destinationType(), item.ratio(), BigDecimal.ZERO));
+                    continue;
+                }
                 accountLinkService.deduct(userId, cmaAccount.getId(), amount);
                 accountLinkService.credit(userId, destAccount.getId(), amount);
+
+                TransferTransaction tx = TransferTransaction.create(
+                        userId,
+                        cmaAccount.getId(),
+                        destAccount.getId(),
+                        "IMMEDIATE_ALLOCATION",
+                        amount
+                );
+                tx.complete();
+                transferRepository.save(tx);
             }
 
             views.add(new ImmediateAllocationRes.AllocationView(item.destinationType(), item.ratio(), amount));
