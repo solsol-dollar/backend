@@ -194,7 +194,7 @@ class SubscriptionFacadeImpl implements SubscriptionFacade {
     }
 
     private static final LocalTime SUBSCRIPTION_OPEN  = LocalTime.of(9, 0);
-    private static final LocalTime SUBSCRIPTION_CLOSE = LocalTime.of(17, 0);
+    private static final LocalTime SUBSCRIPTION_CLOSE = LocalTime.of(20, 0);
 
     /** 취소 가능 구간: subscriptionStartDate 09:00 ~ subscriptionEndDate 17:00 (KST) */
     private void validateCancellationPeriod(Ipo ipo) {
