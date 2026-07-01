@@ -6,6 +6,7 @@ import com.shinhan.eclipse.common.exception.ErrorCode;
 import com.shinhan.eclipse.common.response.ApiResponse;
 import com.shinhan.eclipse.service.card.CardService;
 import com.shinhan.eclipse.service.card.CardTransactionSummary;
+import com.shinhan.eclipse.service.card.CardTransactionsByCategory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -39,5 +40,24 @@ public class CardTransactionController {
 
         return ResponseEntity.ok(ApiResponse.success(
                 cardService.getMonthlySummary(authUser.userId(), targetYear, targetMonth)));
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<ApiResponse<CardTransactionsByCategory>> getByCategory(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) String category) {
+
+        LocalDate now = LocalDate.now();
+        int targetYear  = (year  != null) ? year  : now.getYear();
+        int targetMonth = (month != null) ? month : now.getMonthValue();
+
+        if (targetMonth < 1 || targetMonth > 12) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "month는 1~12 사이여야 합니다.");
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(
+                cardService.getByCategory(authUser.userId(), targetYear, targetMonth, category)));
     }
 }
