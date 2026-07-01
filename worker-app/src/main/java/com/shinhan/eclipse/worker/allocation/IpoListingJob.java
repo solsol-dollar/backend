@@ -50,6 +50,16 @@ public class IpoListingJob {
         if (!isNewYorkInDst()) run();
     }
 
+    /** 특정 IPO 한 건만 입고 (QA 단건 트리거용). deliverForIpo는 별도 빈이라 @Transactional이 적용된다. */
+    public int runForIpo(Long ipoId) {
+        Ipo ipo = ipoRepository.findById(ipoId)
+                .orElseThrow(() -> new IllegalArgumentException("IPO를 찾을 수 없습니다: ipoId=" + ipoId));
+        if (ipo.getProductId() == null) {
+            throw new IllegalStateException("productId가 없어 입고할 수 없습니다: ipoId=" + ipoId);
+        }
+        return deliveryService.deliverForIpo(ipo);
+    }
+
     public void run() {
         if (!running.compareAndSet(false, true)) {
             log.warn("IpoListingJob 이미 실행 중 — 이번 실행은 건너뜀");
