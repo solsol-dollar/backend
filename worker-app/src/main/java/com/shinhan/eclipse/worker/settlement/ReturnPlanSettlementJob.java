@@ -97,6 +97,26 @@ public class ReturnPlanSettlementJob {
         }
     }
 
+    /** 특정 리턴플랜 한 건만 실행 (QA 단건 트리거용). 409(이미 실행됨)는 성공으로 처리한다.
+     *  성공 시 배치와 동일하게 IPO_REFUND 알림을 생성한다. */
+    public boolean executeOne(Long returnPlanId) {
+        boolean executed = executeWithRetry(returnPlanId);
+        if (executed) {
+            returnPlanRepository.findById(returnPlanId).ifPresent(plan -> {
+                String companyName = returnPlanRepository
+                        .findCompanyNamesBySubscriptionIds(List.of(plan.getSubscriptionId()))
+                        .stream().findFirst().map(row -> (String) row[1]).orElse("IPO");
+                notificationRepository.save(Notification.create(
+                        plan.getUserId(),
+                        "IPO_REFUND",
+                        "리턴 플랜 완료",
+                        companyName + " 청약 환불금 $" + plan.getTotalRefundAmount().stripTrailingZeros().toPlainString() + "가 리턴 플랜되었어요!",
+                        "RETURN_PLAN", plan.getId()));
+            });
+        }
+        return executed;
+    }
+
     /** 일시적인 네트워크/타임아웃 오류에 대비해 짧은 backoff로 몇 번 더 시도한다. */
     private boolean executeWithRetry(Long returnPlanId) {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {

@@ -8,6 +8,7 @@ import com.shinhan.eclipse.service.ipo.internal.FinnhubSyncScheduler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,10 +32,12 @@ public class AdminController {
     private final SpendingReportService spendingReportService;
 
     /**
-     * worker-app 내부 잡 트리거 프록시용 베이스 URL. QA 데모 전용 — 운영 노출 금지.
-     * 도커 네트워크에서 worker-app 서비스명으로 접근(설정 파일 변경 없이 하드코딩).
+     * worker-app 내부 잡 트리거 프록시용 베이스 URL 후보. QA 데모 전용 — 운영 노출 금지.
+     * 배포(도커)는 서비스명 worker-app:8082, 로컬은 localhost:8082로 접근.
+     * 설정 파일 변경 없이 앞에서부터 연결되는 주소를 사용한다.
      */
-    private static final String WORKER_URL = "http://worker-app:8082";
+    private static final java.util.List<String> WORKER_URLS =
+            java.util.List.of("http://worker-app:8082", "http://localhost:8082");
 
     /** Finnhub IPO 캘린더 동기화 수동 트리거 */
     @PostMapping("/finnhub-sync")
@@ -99,19 +102,50 @@ public class AdminController {
         return forwardToWorker("/internal/jobs/settlement");
     }
 
+    /** 단건: 특정 IPO만 배정 (worker /internal/jobs/allocation/{ipoId}) */
+    @PostMapping("/allocation/{ipoId}")
+    public ResponseEntity<ApiResponse<Object>> triggerAllocationForIpo(@PathVariable("ipoId") Long ipoId) {
+        return forwardToWorker("/internal/jobs/allocation/" + ipoId);
+    }
+
+    /** 단건: 특정 IPO만 입고(입고완료) (worker /internal/jobs/listing/{ipoId}) */
+    @PostMapping("/listing/{ipoId}")
+    public ResponseEntity<ApiResponse<Object>> triggerListingForIpo(@PathVariable("ipoId") Long ipoId) {
+        return forwardToWorker("/internal/jobs/listing/" + ipoId);
+    }
+
+    /** 단건: 특정 리턴플랜만 실행 (worker /internal/jobs/settlement/{returnPlanId}) */
+    @PostMapping("/settlement/{returnPlanId}")
+    public ResponseEntity<ApiResponse<Object>> triggerSettlementForPlan(@PathVariable("returnPlanId") Long returnPlanId) {
+        return forwardToWorker("/internal/jobs/settlement/" + returnPlanId);
+    }
+
     private ResponseEntity<ApiResponse<Object>> forwardToWorker(String path) {
-        log.info("[QA] worker 잡 트리거 프록시 호출: {}{}", WORKER_URL, path);
-        try {
-            Object body = RestClient.create()
-                    .post()
-                    .uri(WORKER_URL + path)
-                    .retrieve()
-                    .body(Object.class);
-            return ResponseEntity.ok(ApiResponse.success(body));
-        } catch (Exception e) {
-            log.error("[QA] worker 잡 트리거 실패: {}{}", WORKER_URL, path, e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.success(Map.of("status", "failed", "error", String.valueOf(e.getMessage()))));
+        Exception lastError = null;
+        for (String baseUrl : WORKER_URLS) {
+            log.info("[QA] worker 잡 트리거 프록시 호출 시도: {}{}", baseUrl, path);
+            try {
+                Object body = RestClient.create()
+                        .post()
+                        .uri(baseUrl + path)
+                        .retrieve()
+                        .body(Object.class);
+                return ResponseEntity.ok(ApiResponse.success(body));
+            } catch (org.springframework.web.client.RestClientResponseException e) {
+                // worker가 응답은 했으나 4xx/5xx (예: IPO 없음) — 다음 후보로 넘기지 않고 그대로 반환
+                log.warn("[QA] worker 잡 응답 오류: {}{} status={}", baseUrl, path, e.getStatusCode());
+                return ResponseEntity.status(e.getStatusCode())
+                        .body(ApiResponse.success(Map.of("status", "worker-error", "body", e.getResponseBodyAsString())));
+            } catch (Exception e) {
+                // 연결 실패(주소 미해결 등) — 다음 후보 주소로 재시도
+                log.warn("[QA] worker 연결 실패, 다음 후보 시도: {}{} ({})", baseUrl, path, e.getMessage());
+                lastError = e;
+            }
         }
+        log.error("[QA] worker 잡 트리거 전체 실패: {}", path, lastError);
+        return ResponseEntity.internalServerError()
+                .body(ApiResponse.success(Map.of(
+                        "status", "failed",
+                        "error", lastError != null ? String.valueOf(lastError.getMessage()) : "unknown")));
     }
 }

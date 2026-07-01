@@ -84,6 +84,14 @@ public class IpoAllocationJob {
         log.info("IpoAllocationJob 완료: 청약 {}건 배정", totalAllocated);
     }
 
+    /** 특정 IPO 한 건만 배정 (QA 단건 트리거용). 외부 호출이므로 @Transactional 프록시가 적용된다. */
+    @Transactional
+    public int runForIpo(Long ipoId) {
+        Ipo ipo = ipoRepository.findById(ipoId)
+                .orElseThrow(() -> new IllegalArgumentException("IPO를 찾을 수 없습니다: ipoId=" + ipoId));
+        return allocateForIpo(ipo);
+    }
+
     @Transactional
     int allocateForIpo(Ipo ipo) {
         List<IpoSubscription> subscriptions = subscriptionRepository

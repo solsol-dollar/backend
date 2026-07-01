@@ -17,6 +17,7 @@ import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -102,6 +103,49 @@ public class JobTriggerController {
             }
         });
         return ResponseEntity.accepted().body(Map.of("status", "started", "job", "return-plan-settlement"));
+    }
+
+    /** 단건: 특정 IPO만 배정 (QA용) */
+    @PostMapping("/allocation/{ipoId}")
+    public ResponseEntity<Map<String, Object>> triggerAllocationForIpo(@PathVariable("ipoId") Long ipoId) {
+        log.info("[MANUAL] 단건 IPO 배정 시작: ipoId={}", ipoId);
+        try {
+            int allocated = ipoAllocationJob.runForIpo(ipoId);
+            return ResponseEntity.ok(Map.of("status", "completed", "job", "ipo-allocation", "ipoId", ipoId, "allocated", allocated));
+        } catch (Exception e) {
+            log.error("[MANUAL] 단건 IPO 배정 실패: ipoId={}", ipoId, e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "failed", "ipoId", ipoId, "error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    /** 단건: 특정 IPO만 입고 (QA용) */
+    @PostMapping("/listing/{ipoId}")
+    public ResponseEntity<Map<String, Object>> triggerListingForIpo(@PathVariable("ipoId") Long ipoId) {
+        log.info("[MANUAL] 단건 IPO 입고 시작: ipoId={}", ipoId);
+        try {
+            int delivered = ipoListingJob.runForIpo(ipoId);
+            return ResponseEntity.ok(Map.of("status", "completed", "job", "ipo-listing", "ipoId", ipoId, "delivered", delivered));
+        } catch (Exception e) {
+            log.error("[MANUAL] 단건 IPO 입고 실패: ipoId={}", ipoId, e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "failed", "ipoId", ipoId, "error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    /** 단건: 특정 리턴플랜만 실행 (QA용) */
+    @PostMapping("/settlement/{returnPlanId}")
+    public ResponseEntity<Map<String, Object>> triggerSettlementForPlan(@PathVariable("returnPlanId") Long returnPlanId) {
+        log.info("[MANUAL] 단건 리턴플랜 실행 시작: returnPlanId={}", returnPlanId);
+        try {
+            boolean executed = returnPlanSettlementJob.executeOne(returnPlanId);
+            return ResponseEntity.ok(Map.of("status", executed ? "completed" : "skipped",
+                    "job", "return-plan-settlement", "returnPlanId", returnPlanId));
+        } catch (Exception e) {
+            log.error("[MANUAL] 단건 리턴플랜 실행 실패: returnPlanId={}", returnPlanId, e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "failed", "returnPlanId", returnPlanId, "error", String.valueOf(e.getMessage())));
+        }
     }
 
     /** LISTED이지만 product_id 미연결인 IPO 보정 */
